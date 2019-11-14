@@ -22,21 +22,21 @@ class DFT1D:
         for i in range(0,m):
             b[i] = np.sum(x*np.exp(2j*self.phi*(self.lambda2[i]-self.lambda2_ref)))
         return self.W * b
-    
+            
     def backward(self, b):
         n = len(self.phi)
         x = np.zeros(n) + 1j*np.zeros(n)
         
         for i in range(0,n):
-            x[i] = np.sum(b*np.exp(-2j*self.phi[i]*(self.lambda2-self.lambda2_ref)))
+            x[i] = np.sum(self.W*b*np.exp(-2j*self.phi[i]*(self.lambda2-self.lambda2_ref)))
         
-        return x/n
-        
-    def backward_dirty(self, b):
+        return self.K * x
+    
+    def backward_normalized(self, b):
         n = len(self.phi)
         x = np.zeros(n) + 1j*np.zeros(n)
         
         for i in range(0,n):
-            x[i] = np.sum(b*np.exp(-2j*self.phi[i]*(self.lambda2-self.lambda2_ref)))
+            x[i] = np.sum(self.W*b*np.exp(-2j*self.phi[i]*(self.lambda2-self.lambda2_ref)))
         
-        return self.K * x
+        return x/n

@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+Created on Thu Nov 14 13:45:38 2019
+
+@author: miguel
+"""
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
 Created on Tue Nov  5 13:26:28 2019
 
 @author: miguel
@@ -14,9 +22,10 @@ from pre_processing import PreProcessor
 from dfts import DFT1D
 import matplotlib.pyplot as plt
 from ofunction import OFunction
-from priors import TV, L1, chi2
+from priors import chi2, TV, L1
 from optimizer import Optimizer
 from utilities import real_to_complex, complex_to_real, find_pixel
+from prox_functions import prox_function
 
 def getopt():
      # initiate the parser
@@ -95,17 +104,26 @@ def main():
     F = dft.backward(P)
 
     F_real = complex_to_real(F)
+    
+    lambda_l1 = 1e-5
+    lambda_tv = 0.0
+    F_func = [chi2(P, dft), TV(lambda_tv), L1(lambda_l1)]
+    f_func = [chi2(P, dft), TV(lambda_tv)]
+    g_func = [L1(lambda_l1)]
+    
+    proximal_function = prox_function(lambda_l1)
 
-    F_i = [chi2(P, dft), L1(0.01), TV(0.0)]
-    #priors = []
-    objf = OFunction(F_i)
+    F_obj = OFunction(F_func)
+    f_obj = OFunction(f_func)
+    g_obj = OFunction(g_func)
 
     print("Optimizing objetive function...")
-    opt = Optimizer(objf.evaluate, objf.calculate_gradient, F_real, 10000, method='CG', verbose=verbose)
+    opt = Optimizer(F_obj.evaluate, F_obj.calculate_gradient, F_real, 5, verbose=verbose)
 
-    res = opt.gradient_based_method()
+    obj, X = opt.FISTA(f_obj.evaluate, g_obj.evaluate, f_obj.calculate_gradient, proximal_function, 0.001)
+    print("Obj final: ", obj)
 
-    X = real_to_complex(res.x)
+    X = real_to_complex(X)
 
     plt.rc('text', usetex=True)
     plt.rc('font', family='serif')

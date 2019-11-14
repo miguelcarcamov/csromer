@@ -6,7 +6,7 @@ Created on Tue Nov  5 09:38:54 2019
 @author: miguel
 """
 import numpy as np
-#from utilities import real_to_complex, complex_to_real
+from utilities import real_to_complex, complex_to_real
 
 class TV:
     reg = 0.0
@@ -51,3 +51,25 @@ class L1:
         dx[idx] = x[idx]/np.abs(x[idx])
         dx[idx_0] = 0.0
         return dx
+        
+class chi2:
+    reg = 1.0
+    def __init__(self, b, dft_obj, reg = 1.0):
+        self.b = b
+        self.dft = dft_obj
+        self.F_dirty = self.dft.backward(self.b)
+        self.reg = reg
+    
+    def evaluate(self, x):
+        x_complex = real_to_complex(x)
+
+        y = self.b - self.dft.forward(x_complex)
+        
+        return 0.5 * (np.linalg.norm(y)**2)
+    
+    def calculate_gradient(self, x):
+        res = complex_to_real(self.F_dirty) - x
+        
+        return res
+        
+        

@@ -7,34 +7,24 @@ Created on Mon Nov  4 15:43:15 2019
 """
 
 import numpy as np
-from utilities import real_to_complex, complex_to_real
 
 class OFunction:
     value = 0.0
-    priors = []
-    def __init__(self, b, dft_obj, priors=[]):
-        self.b = b
-        self.dft = dft_obj
-        self.priors = priors
+
+    def __init__(self, F=[]):
+        self.F = F
         
     def evaluate(self, x):
-        x_complex = real_to_complex(x)
-
-        y = self.b - self.dft.forward(x_complex)
-
-        ret = 0.5 * (np.linalg.norm(y)**2)
-        
-        for p in self.priors:
-            ret += p.reg * p.evaluate(x_complex)
+        ret = 0.0
+        for f_i in self.F:
+            ret += f_i.reg * f_i.evaluate(x)
             
         return ret
     
     def calculate_gradient(self, x):
-        
-        res = complex_to_real(self.dft.backward_dirty(self.b)) - x
-        
-        for p in self.priors:
-            res += p.reg * p.calculate_gradient(x)
+        res = np.zeros(len(x), dtype=x.dtype)
+        for f_i in self.F:
+            res += f_i.reg * f_i.calculate_gradient(x)
         
         return res
         
