@@ -17,7 +17,7 @@ class PreProcessor:
 
     def __init__(self, freqs=[], lambda2 = []):
        self.freqs = freqs
-       
+
        if len(lambda2):
            self.m = len(lambda2)
            self.lambda2 = lambda2
@@ -25,15 +25,15 @@ class PreProcessor:
            self.m = len(freqs)
            self.lambda2 = (c/self.freqs)**2
            self.lambda2 = self.lambda2[::-1]
-          
-    def calculate_phi(self, times=4):
+
+    def calculate_phi(self, W, K, times=4):
 
         l2 = self.lambda2
 
         l2_max = l2[-1]
         l2_min = l2[0]
 
-        l2_ref = (l2_max+l2_min)/2.0
+        l2_ref = np.sum(W*self.lambda2)/K
 
         delta_l2 = np.abs(l2[1]-l2[0])
 

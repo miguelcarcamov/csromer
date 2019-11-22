@@ -50,7 +50,7 @@ def main():
     index = int(index)
     imag_counter = len(images)
     
-    
+    """
     if imag_counter > 1:
         reader = Read(images[0], images[1], freq_f)
         Q,U = reader.readCube()
@@ -63,19 +63,19 @@ def main():
         Q,U = reader.readNumpyFile()
         Q = np.flipud(Q)
         U = np.flipud(U)
-    
-    #file = images[0]
-    #r_file = np.loadtxt(file)
-    #lambda2 = r_file[:,0]
-    #Q = r_file[:,1]
-    #sigma = r_file[:,2]
-    #U = r_file[:,3]
+    """
+    file = images[0]
+    r_file = np.loadtxt(file)
+    lambda2 = r_file[:,0]
+    Q = r_file[:,1]
+    sigma = r_file[:,2]
+    U = r_file[:,3]
 
 
-    freqs = reader.getFileNFrequencies()
-    #pre_proc = PreProcessor(lambda2=lambda2)
-    pre_proc = PreProcessor(freqs)
-    
+   #freqs = reader.getFileNFrequencies()
+    pre_proc = PreProcessor(lambda2=lambda2)
+    #pre_proc = PreProcessor(freqs)
+    """
     if imag_counter > 1:
        i, j = find_pixel(M, N, index)
        Q = Q[:,i,j]
@@ -83,10 +83,12 @@ def main():
     else:
        Q = Q[index,:,0]
        U = U[index,:,1]
+    """
     
     lambda2, lambda2_ref, phi, phi_r = pre_proc.calculate_phi()
 
-    W, K = pre_proc.calculate_W_K()
+    W, K = pre_proc.calculate_W_K(sigma)
+    #W, K = pre_proc.calculate_W_K()
 
     P = Q + 1j * U
 
@@ -95,8 +97,10 @@ def main():
     F = dft.backward(P)
 
     F_real = complex_to_real(F)
-
-    F_i = [chi2(P, dft), L1(0.01), TV(0.0)]
+    
+    lambda_l1 = 0.1
+    lambda_tv = 0.0
+    F_i = [chi2(P, dft), L1(lambda_l1), TV(lambda_tv)]
     #priors = []
     objf = OFunction(F_i)
 
@@ -111,9 +115,9 @@ def main():
     plt.rc('font', family='serif')
     
     #plt.axvline(x=50, color='darkgrey', linestyle='-')
-    plt.plot(lambda2, P.real, 'c-', label=r"Real part")
-    plt.plot(lambda2, P.imag, 'c-.', label=r"Imaginary part")
-    plt.plot(lambda2, np.abs(P), 'k-', label=r"Amplitude")
+    plt.plot(lambda2, P.real, 'c.', label=r"Real part")
+    plt.plot(lambda2, P.imag, 'c.', label=r"Imaginary part")
+    plt.plot(lambda2, np.abs(P), 'k.', label=r"Amplitude")
     plt.xlabel(r'$\phi$[rad m$^{-2}$]')
     plt.ylabel(r'Jy m$^2$ rad$^{-1}$')
     plt.legend(loc='upper right')
@@ -130,7 +134,7 @@ def main():
     plt.ylabel(r'Jy m$^2$ rad$^{-1}$')
     plt.legend(loc='upper right')
     plt.xlim([-500, 500])
-    #plt.ylim([-0.75, 1.25])
+    plt.ylim([-0.75, 1.25])
     
 
     plt.figure(3)
@@ -141,7 +145,7 @@ def main():
     plt.ylabel(r'Jy m$^2$ rad$^{-1}$')
     plt.legend(loc='upper right')
     plt.xlim([-500, 500])
-    #plt.ylim([-0.75, 1.25])
+    plt.ylim([-0.75, 1.25])
     
     plt.show()
 

@@ -25,7 +25,7 @@ from ofunction import OFunction
 from priors import chi2, TV, L1
 from optimizer import Optimizer
 from utilities import real_to_complex, complex_to_real, find_pixel
-from prox_functions import prox_function
+from prox_functions import soft_thresholding, total_variation
 
 def getopt():
      # initiate the parser
@@ -58,8 +58,8 @@ def main():
     images, freq_f, reg_terms, output, index, verbose = getopt()
     index = int(index)
     imag_counter = len(images)
-    
-    
+
+    """
     if imag_counter > 1:
         reader = Read(images[0], images[1], freq_f)
         Q,U = reader.readCube()
@@ -72,19 +72,19 @@ def main():
         Q,U = reader.readNumpyFile()
         Q = np.flipud(Q)
         U = np.flipud(U)
-    
-    #file = images[0]
-    #r_file = np.loadtxt(file)
-    #lambda2 = r_file[:,0]
-    #Q = r_file[:,1]
-    #sigma = r_file[:,2]
-    #U = r_file[:,3]
+    """
+    file = images[0]
+    r_file = np.loadtxt(file)
+    lambda2 = r_file[:,0]
+    Q = r_file[:,1]
+    sigma = r_file[:,2]
+    U = r_file[:,3]
 
 
-    freqs = reader.getFileNFrequencies()
-    #pre_proc = PreProcessor(lambda2=lambda2)
-    pre_proc = PreProcessor(freqs)
-    
+    #freqs = reader.getFileNFrequencies()
+    pre_proc = PreProcessor(lambda2=lambda2)
+    #pre_proc = PreProcessor(freqs)
+    """
     if imag_counter > 1:
        i, j = find_pixel(M, N, index)
        Q = Q[:,i,j]
@@ -92,10 +92,12 @@ def main():
     else:
        Q = Q[index,:,0]
        U = U[index,:,1]
-    
-    lambda2, lambda2_ref, phi, phi_r = pre_proc.calculate_phi()
+    """
+    W, K = pre_proc.calculate_W_K(sigma)
 
-    W, K = pre_proc.calculate_W_K()
+    lambda2, lambda2_ref, phi, phi_r = pre_proc.calculate_phi(W, K)
+
+    #W, K = pre_proc.calculate_W_K()
 
     P = Q + 1j * U
 
@@ -104,34 +106,34 @@ def main():
     F = dft.backward(P)
 
     F_real = complex_to_real(F)
-    
-    lambda_l1 = 1e-5
+
+    lambda_l1 = 0.5
     lambda_tv = 0.0
-    F_func = [chi2(P, dft), TV(lambda_tv), L1(lambda_l1)]
-    f_func = [chi2(P, dft), TV(lambda_tv)]
-    g_func = [L1(lambda_l1)]
-    
-    proximal_function = prox_function(lambda_l1)
+    F_func = [chi2(P, dft, W), TV(lambda_tv), L1(lambda_l1)]
+    f_func = [chi2(P, dft, W)]
+    g_func = [TV(lambda_tv), L1(lambda_l1)]
+
+    proximal_functions = [soft_thresholding(lambda_l1), total_variation(lambda_tv)]
 
     F_obj = OFunction(F_func)
     f_obj = OFunction(f_func)
     g_obj = OFunction(g_func)
 
     print("Optimizing objetive function...")
-    opt = Optimizer(F_obj.evaluate, F_obj.calculate_gradient, F_real, 5, verbose=verbose)
+    opt = Optimizer(F_obj.evaluate, F_obj.calculate_gradient, F_real, maxiter=100, verbose=verbose)
 
-    obj, X = opt.FISTA(f_obj.evaluate, g_obj.evaluate, f_obj.calculate_gradient, proximal_function, 0.001)
-    print("Obj final: ", obj)
+    obj, X = opt.FISTA(f_obj.evaluate, g_obj.evaluate, f_obj.calculate_gradient, proximal_functions, 0.5)
+    print("Obj final: {0:0.5f}".format(obj))
 
     X = real_to_complex(X)
 
     plt.rc('text', usetex=True)
     plt.rc('font', family='serif')
-    
+
     #plt.axvline(x=50, color='darkgrey', linestyle='-')
-    plt.plot(lambda2, P.real, 'c-', label=r"Real part")
-    plt.plot(lambda2, P.imag, 'c-.', label=r"Imaginary part")
-    plt.plot(lambda2, np.abs(P), 'k-', label=r"Amplitude")
+    plt.plot(lambda2, P.real, 'c.', label=r"Real part")
+    plt.plot(lambda2, P.imag, 'c.', label=r"Imaginary part")
+    plt.plot(lambda2, np.abs(P), 'k.', label=r"Amplitude")
     plt.xlabel(r'$\phi$[rad m$^{-2}$]')
     plt.ylabel(r'Jy m$^2$ rad$^{-1}$')
     plt.legend(loc='upper right')
@@ -148,8 +150,8 @@ def main():
     plt.ylabel(r'Jy m$^2$ rad$^{-1}$')
     plt.legend(loc='upper right')
     plt.xlim([-500, 500])
-    #plt.ylim([-0.75, 1.25])
-    
+    plt.ylim([-0.75, 1.25])
+
 
     plt.figure(3)
     plt.plot(phi, X.real, 'c-', label=r"Real part")
@@ -159,8 +161,8 @@ def main():
     plt.ylabel(r'Jy m$^2$ rad$^{-1}$')
     plt.legend(loc='upper right')
     plt.xlim([-500, 500])
-    #plt.ylim([-0.75, 1.25])
-    
+    plt.ylim([-0.75, 1.25])
+
     plt.show()
 
 

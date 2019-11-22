@@ -24,7 +24,7 @@ class Optimizer:
     def gradient_based_method(self):
         ret = minimize(fun=self.obj, x0=self.i_guess, method=self.method, jac=self.grad, tol=self.tol, options={'maxiter':self.maxiter, 'disp':self.verbose})
         return ret
-    
+
     def FISTA(self, fx, gx, gradfx, prox, eta):
         ret, x = FISTA(self.i_guess, self.obj, fx, gx, gradfx, prox, eta, self.maxiter, self.tol, self.verbose)
         return ret, x
