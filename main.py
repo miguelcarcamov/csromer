@@ -18,16 +18,25 @@ from priors import TV, L1, chi2
 from optimizer import Optimizer
 from utilities import real_to_complex, complex_to_real, find_pixel
 
+
 def getopt():
      # initiate the parser
-    parser = argparse.ArgumentParser(description='This is a program to blablabla')
-    parser.add_argument("-V", "--version", help="show program version", action="store_true")
-    parser.add_argument("-v", "--verbose", help="Print output", action="store_true")
-    parser.add_argument("-i", "--images", nargs='*', help="Input Stokes polarized images (Q,U FITS images) separated by a space", required=True)
-    parser.add_argument("-f", "--freq-file", help="Text file with frequency values")
-    parser.add_argument("-o", "--output", nargs="*", help="Path/s and/or name/s of the output file/s in FITS/npy format", required=True)
-    parser.add_argument("-l", "--lambdas", nargs='*', help="Regularization parameters separated by space")
-    parser.add_argument("-I", "--index", nargs='?', help="Selected index of the pixel on where the minimization is done", const=int, default=0)
+    parser = argparse.ArgumentParser(
+        description='This is a program to blablabla')
+    parser.add_argument("-V", "--version",
+                        help="show program version", action="store_true")
+    parser.add_argument("-v", "--verbose",
+                        help="Print output", action="store_true")
+    parser.add_argument("-i", "--images", nargs='*',
+                        help="Input Stokes polarized images (Q,U FITS images) separated by a space", required=True)
+    parser.add_argument("-f", "--freq-file",
+                        help="Text file with frequency values")
+    parser.add_argument("-o", "--output", nargs="*",
+                        help="Path/s and/or name/s of the output file/s in FITS/npy format", required=True)
+    parser.add_argument("-l", "--lambdas", nargs='*',
+                        help="Regularization parameters separated by space")
+    parser.add_argument("-I", "--index", nargs='?',
+                        help="Selected index of the pixel on where the minimization is done", const=int, default=0)
 
     # read arguments from the command line
     args = parser.parse_args()
@@ -44,12 +53,13 @@ def getopt():
         sys.exit(1)
     return images, freq_f, reg_terms, output, index, verbose
 
+
 def main():
 
     images, freq_f, reg_terms, output, index, verbose = getopt()
     index = int(index)
     imag_counter = len(images)
-    
+
     """
     if imag_counter > 1:
         reader = Read(images[0], images[1], freq_f)
@@ -66,11 +76,10 @@ def main():
     """
     file = images[0]
     r_file = np.loadtxt(file)
-    lambda2 = r_file[:,0]
-    Q = r_file[:,1]
-    sigma = r_file[:,2]
-    U = r_file[:,3]
-
+    lambda2 = r_file[:, 0]
+    Q = r_file[:, 1]
+    sigma = r_file[:, 2]
+    U = r_file[:, 3]
 
    #freqs = reader.getFileNFrequencies()
     pre_proc = PreProcessor(lambda2=lambda2)
@@ -84,7 +93,7 @@ def main():
        Q = Q[index,:,0]
        U = U[index,:,1]
     """
-    
+
     lambda2, lambda2_ref, phi, phi_r = pre_proc.calculate_phi()
 
     W, K = pre_proc.calculate_W_K(sigma)
@@ -97,7 +106,7 @@ def main():
     F = dft.backward(P)
 
     F_real = complex_to_real(F)
-    
+
     lambda_l1 = 0.1
     lambda_tv = 0.0
     F_i = [chi2(P, dft), L1(lambda_l1), TV(lambda_tv)]
@@ -105,7 +114,8 @@ def main():
     objf = OFunction(F_i)
 
     print("Optimizing objetive function...")
-    opt = Optimizer(objf.evaluate, objf.calculate_gradient, F_real, 10000, method='CG', verbose=verbose)
+    opt = Optimizer(objf.evaluate, objf.calculate_gradient,
+                    F_real, 10000, method='CG', verbose=verbose)
 
     res = opt.gradient_based_method()
 
@@ -113,7 +123,7 @@ def main():
 
     plt.rc('text', usetex=True)
     plt.rc('font', family='serif')
-    
+
     #plt.axvline(x=50, color='darkgrey', linestyle='-')
     plt.plot(lambda2, P.real, 'c.', label=r"Real part")
     plt.plot(lambda2, P.imag, 'c.', label=r"Imaginary part")
@@ -135,7 +145,6 @@ def main():
     plt.legend(loc='upper right')
     plt.xlim([-500, 500])
     plt.ylim([-0.75, 1.25])
-    
 
     plt.figure(3)
     plt.plot(phi, X.real, 'c-', label=r"Real part")
@@ -146,9 +155,8 @@ def main():
     plt.legend(loc='upper right')
     plt.xlim([-500, 500])
     plt.ylim([-0.75, 1.25])
-    
-    plt.show()
 
+    plt.show()
 
 
 if __name__ == '__main__':

@@ -14,6 +14,9 @@ Created on Tue Nov  5 13:26:28 2019
 @author: miguel
 """
 
+
+
+
 import argparse
 import numpy as np
 from io_functions import Read, Write
@@ -26,17 +29,24 @@ from priors import chi2, TV, L1
 from optimizer import Optimizer
 from utilities import real_to_complex, complex_to_real, find_pixel
 from prox_functions import soft_thresholding, total_variation
-
 def getopt():
      # initiate the parser
-    parser = argparse.ArgumentParser(description='This is a program to blablabla')
-    parser.add_argument("-V", "--version", help="show program version", action="store_true")
-    parser.add_argument("-v", "--verbose", help="Print output", action="store_true")
-    parser.add_argument("-i", "--images", nargs='*', help="Input Stokes polarized images (Q,U FITS images) separated by a space", required=True)
-    parser.add_argument("-f", "--freq-file", help="Text file with frequency values")
-    parser.add_argument("-o", "--output", nargs="*", help="Path/s and/or name/s of the output file/s in FITS/npy format", required=True)
-    parser.add_argument("-l", "--lambdas", nargs='*', help="Regularization parameters separated by space")
-    parser.add_argument("-I", "--index", nargs='?', help="Selected index of the pixel on where the minimization is done", const=int, default=0)
+    parser = argparse.ArgumentParser(
+        description='This is a program to blablabla')
+    parser.add_argument("-V", "--version",
+                        help="show program version", action="store_true")
+    parser.add_argument("-v", "--verbose",
+                        help="Print output", action="store_true")
+    parser.add_argument("-i", "--images", nargs='*',
+                        help="Input Stokes polarized images (Q,U FITS images) separated by a space", required=True)
+    parser.add_argument("-f", "--freq-file",
+                        help="Text file with frequency values")
+    parser.add_argument("-o", "--output", nargs="*",
+                        help="Path/s and/or name/s of the output file/s in FITS/npy format", required=True)
+    parser.add_argument("-l", "--lambdas", nargs='*',
+                        help="Regularization parameters separated by space")
+    parser.add_argument("-I", "--index", nargs='?',
+                        help="Selected index of the pixel on where the minimization is done", const=int, default=0)
 
     # read arguments from the command line
     args = parser.parse_args()
@@ -52,6 +62,7 @@ def getopt():
         print("this is myprogram version 0.1")
         sys.exit(1)
     return images, freq_f, reg_terms, output, index, verbose
+
 
 def main():
 
@@ -75,11 +86,10 @@ def main():
     """
     file = images[0]
     r_file = np.loadtxt(file)
-    lambda2 = r_file[:,0]
-    Q = r_file[:,1]
-    sigma = r_file[:,2]
-    U = r_file[:,3]
-
+    lambda2 = r_file[:, 0]
+    Q = r_file[:, 1]
+    sigma = r_file[:, 2]
+    U = r_file[:, 3]
 
     #freqs = reader.getFileNFrequencies()
     pre_proc = PreProcessor(lambda2=lambda2)
@@ -113,16 +123,19 @@ def main():
     f_func = [chi2(P, dft, W)]
     g_func = [TV(lambda_tv), L1(lambda_l1)]
 
-    proximal_functions = [soft_thresholding(lambda_l1), total_variation(lambda_tv)]
+    proximal_functions = [soft_thresholding(
+        lambda_l1), total_variation(lambda_tv)]
 
     F_obj = OFunction(F_func)
     f_obj = OFunction(f_func)
     g_obj = OFunction(g_func)
 
     print("Optimizing objetive function...")
-    opt = Optimizer(F_obj.evaluate, F_obj.calculate_gradient, F_real, maxiter=100, verbose=verbose)
+    opt = Optimizer(F_obj.evaluate, F_obj.calculate_gradient,
+                    F_real, maxiter=100, verbose=verbose)
 
-    obj, X = opt.FISTA(f_obj.evaluate, g_obj.evaluate, f_obj.calculate_gradient, proximal_functions, 0.5)
+    obj, X = opt.FISTA(f_obj.evaluate, g_obj.evaluate,
+                       f_obj.calculate_gradient, proximal_functions, 0.5)
     print("Obj final: {0:0.5f}".format(obj))
 
     X = real_to_complex(X)
@@ -152,7 +165,6 @@ def main():
     plt.xlim([-500, 500])
     plt.ylim([-0.75, 1.25])
 
-
     plt.figure(3)
     plt.plot(phi, X.real, 'c-', label=r"Real part")
     plt.plot(phi, X.imag, 'c-.', label=r"Imaginary part")
@@ -164,7 +176,6 @@ def main():
     plt.ylim([-0.75, 1.25])
 
     plt.show()
-
 
 
 if __name__ == '__main__':
