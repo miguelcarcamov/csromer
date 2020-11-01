@@ -30,6 +30,31 @@ class TV:
             dx[i] = np.sign(x[i] - x[i - 1]) - np.sign(x[i + 1] - x[i])
         return dx
 
+    def calculate_prox(self, x, nu):
+        # This derivative is calculated using fixed point method
+
+        if self.reg != 0.0:
+            n = len(x)
+            xt1 = np.zeros(n, dtype=x.dtype)
+            xt = x
+            maxiter = 500
+            tol = 1e-6
+            e = 1
+            iter = 0
+            while e > tol and iter < maxiter:
+                for i in range(1, n - 1):
+                    xt1[i] = nu[i] - self.reg * \
+                        (np.sign(xt[i] - xt[i - 1]) -
+                         np.sign(xt[i + 1] - xt[i]))
+                e = np.linalg.norm(xt - xt1)
+                xt = xt1
+                #print("Iter: ", iter, " - Norm: ", e)
+                iter = iter + 1
+        else:
+            xt1 = nu
+
+        return xt1
+
 
 class L1:
     reg = 0.0
@@ -48,6 +73,11 @@ class L1:
         dx[idx] = np.sign(x[idx])
         dx[idx_0] = 0.0
         return dx
+
+    def calculate_prox(self, x, nu=0):
+        # print(x)
+        x = np.sign(x) * np.maximum(0, np.abs(x) - self.reg)
+        return x
 
 
 class chi2:
@@ -71,3 +101,9 @@ class chi2:
         res = x - complex_to_real(self.F_dirty)
 
         return res
+
+    def calculate_prox(self, x, nu=0):
+        a_transpose_b = complex_to_real(self.F_dirty)
+        lambda_plus_one = self.reg + 1.0
+        one_over_lambda1 = 1.0 / lambda_plus_one
+        return one_over_lambda1 * (self.reg * a_transpose_b + nu)
