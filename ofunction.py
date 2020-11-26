@@ -17,6 +17,7 @@ class OFunction:
 
     def evaluate(self, x):
         ret = 0.0
+
         for f_i in self.F:
             ret += f_i.reg * f_i.evaluate(x)
 
@@ -28,3 +29,7 @@ class OFunction:
             res += f_i.reg * f_i.calculate_gradient(x)
 
         return res
+
+    def calc_prox(self, x, nu=0, id=0):
+        f_i = self.F[id]
+        return f_i.calculate_prox(x, nu)

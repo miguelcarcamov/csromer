@@ -36,11 +36,12 @@ def sdmm(x_init, fx, g, mu, niter, rho=[]):
     uk = np.zeros((M, n))
     for k in range(1, niter + 1):
 
-        xk = fx.prox(xk - sum_operation(mu, xk, zk, uk, rho))
+        xk = fx.calculate_prox(xk - sum_operation(mu, xk, zk, uk, rho))
         zk_old = zk
         for i in range(0, M):
-            zk[i] = g[i].prox(xk + uk[i])
+            zk[i] = g[i].calculate_prox(xk + uk[i])
             uk[i] = uk[i] + xk - zk[i]
             end_condition_array[i] = end_condition(xk, zk, zk_old, rho[i])
         if end_condition_array.all():
             break
+    return xk

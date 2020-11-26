@@ -8,6 +8,7 @@ Created on Thu Nov  7 13:13:51 2019
 
 from scipy.optimize import minimize
 from fista import FISTA
+from sdmm import sdmm
 
 
 class Optimizer:
@@ -28,7 +29,7 @@ class Optimizer:
                        tol=self.tol, options={'maxiter': self.maxiter, 'disp': self.verbose})
         return ret
 
-    def FISTA(self, fx, gx, gradfx, prox, eta):
-        ret, x = FISTA(self.i_guess, self.obj, fx, gx, gradfx,
-                       prox, eta, self.maxiter, self.tol, self.verbose)
+    def FISTA(self, fx, gx, gradfx, g_prox, eta):
+        ret, x = FISTA(self.i_guess, self.obj, fx, gx, gradfx, g_prox,
+                       eta, self.maxiter, self.tol, self.verbose)
         return ret, x

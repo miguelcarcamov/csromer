@@ -14,7 +14,7 @@ def calc_Q(x, y, L, fx, gx, grad):
     return res
 
 
-def FISTA(x_init, F, fx, gx, grad, prox, eta, max_iter, tol, verbose):
+def FISTA(x_init, F, fx, gx, grad, g_prox, eta, max_iter, tol, verbose):
 
     x_old = x_init
     y_old = x_init
@@ -25,7 +25,9 @@ def FISTA(x_init, F, fx, gx, grad, prox, eta, max_iter, tol, verbose):
         while True:
             # temp_prox.set_reg(prox.reg/Lbar)
             y_eval = y_old - Lbar * grad(y_old)
-            zk = prox[0].calculate(prox[1].calculate(y_old, y_eval))
+            zk = g_prox.calc_prox(g_prox.calc_prox(
+                y_old, y_eval, 0), id=1)
+
             F_ret = fx(zk)
             Q = calc_Q(zk, y_old, Lbar, fx, gx, grad)
 
