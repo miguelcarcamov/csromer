@@ -82,6 +82,11 @@ class Read:
             sys.exit(1)
         freqs = np.array(freqs)
         return freqs
+     
+    def readFreqsNumpyFile(self):
+    	filename = self.freq_file_name
+    	freqs = np.load(filename)
+    	return freqs
 
 
 class Write:
