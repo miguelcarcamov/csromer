@@ -11,11 +11,7 @@ import numpy as np
 
 
 class PreProcessor:
-    m = 0
-    freqs = []
-    lambda2 = []
-
-    def __init__(self, freqs=[], lambda2=[]):
+    def __init__(self, m=0, freqs=[], lambda2=[]):
         self.freqs = freqs
 
         if len(lambda2):
@@ -26,6 +22,25 @@ class PreProcessor:
             self.lambda2 = (c / self.freqs)**2
             self.lambda2 = self.lambda2[::-1]
 
+    def calculate_max(self, image=None):
+        max = np.amax(image)
+        where_max = np.unravel_index(np.argmax(image, axis=None), image.shape)
+        return max, where_max
+
+    def calculate_min(self, image=None, axis=0):
+        min = np.amin(image)
+        where_min = np.unravel_index(np.argmax(image, axis=None), image.shape)
+        return min, where_min
+
+    def calculate_sigmas(self, image=None, x0=0, xn=0, y0=0, yn=0):
+        sigmas = np.zeros(len(self.freqs))
+
+        for i in range(len(self.freqs)):
+            sigmas[i] = np.sqrt(np.mean(image[i, y0:yn, x0:xn]**2))
+
+        return sigmas
+
+
     def calculate_phi(self, W, K, times=4):
 
         l2 = self.lambda2
@@ -33,7 +48,7 @@ class PreProcessor:
         l2_max = l2[-1]
         l2_min = l2[0]
 
-        l2_ref = np.sum(W * self.lambda2) / K
+        l2_ref = (1./K) * np.sum(W * self.lambda2)
 
         delta_l2 = np.abs(l2[1] - l2[0])
 
@@ -56,12 +71,14 @@ class PreProcessor:
 
         return l2, l2_ref, phi, phi_r
 
-    def calculate_W_K(self, sigma=[]):
+
+    def calculate_W_K(self, sigma=np.array([])):
+
         if not len(sigma):
             W = np.ones(self.m)
         else:
-            W = np.array(1 / (sigma**2))
+            W = 1.0 /(sigma**2)
 
-        K = 1.0 / np.sum(W)
+        K = np.sum(W)
 
         return W, K

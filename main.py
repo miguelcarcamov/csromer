@@ -125,8 +125,8 @@ def main():
     plt.rc('font', family='serif')
 
     #plt.axvline(x=50, color='darkgrey', linestyle='-')
-    plt.plot(lambda2, P.real, 'c.', label=r"Real part")
-    plt.plot(lambda2, P.imag, 'c.', label=r"Imaginary part")
+    plt.plot(lambda2, P.real, 'c.', label=r"Stokes $Q$")
+    plt.plot(lambda2, P.imag, 'c.', label=r"Stokes $U$")
     plt.plot(lambda2, np.abs(P), 'k.', label=r"Amplitude")
     plt.xlabel(r'$\phi$[rad m$^{-2}$]')
     plt.ylabel(r'Jy m$^2$ rad$^{-1}$')

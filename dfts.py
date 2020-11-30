@@ -21,7 +21,7 @@ class DFT1D:
         m = len(self.lambda2)
         b = np.zeros(m) + 1j * np.zeros(m)
         for i in range(0, m):
-            b[i] = np.sum(x * np.exp(2j * self.phi *
+            b[i] = np.sum(x * np.exp(2 * 1j * self.phi *
                                      (self.lambda2[i] - self.lambda2_ref)))
         return self.W * b
 
@@ -30,17 +30,26 @@ class DFT1D:
         x = np.zeros(n) + 1j * np.zeros(n)
 
         for i in range(0, n):
-            x[i] = np.sum(self.W * b * np.exp(-2j * self.phi[i]
+            x[i] = np.sum(self.W * b * np.exp(-2 * 1j * self.phi[i]
                                               * (self.lambda2 - self.lambda2_ref)))
 
-        return self.K * x
+        return (1./self.K) * x
+
+    def RMTF(self):
+       n = len(self.phi)
+       x = np.zeros(n) + 1j * np.zeros(n)
+
+       for i in range(0, n):
+           x[i] = np.sum(self.W * np.exp(-2 * 1j * self.phi[i]
+                                             * (self.lambda2 - self.lambda2_ref)))
+       return (1./self.K) * x
 
     def backward_normalized(self, b):
         n = len(self.phi)
         x = np.zeros(n) + 1j * np.zeros(n)
 
         for i in range(0, n):
-            x[i] = np.sum(self.W * b * np.exp(-2j * self.phi[i]
+            x[i] = np.sum(self.W * b * np.exp(-2 * 1j * self.phi[i]
                                               * (self.lambda2 - self.lambda2_ref)))
 
         return x / n

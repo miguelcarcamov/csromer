@@ -11,43 +11,36 @@ import sys
 
 
 class Read:
-    Q_cube_name = ""
-    U_cube_name = ""
-    freq_file_name = ""
-    numpy_file = ""
-
-    def __init__(self, Q_cube_name=None, U_cube_name=None, freq_file_name=None, numpy_file=None):
+    def __init__(self, I_cube_name="", Q_cube_name="", U_cube_name="", freq_file_name="", numpy_file=""):
+        self.I_cube_name = I_cube_name
         self.Q_cube_name = Q_cube_name
         self.U_cube_name = U_cube_name
         self.freq_file_name = freq_file_name
         self.numpy_file = numpy_file
+    # this has to be separated
 
-    def readCube(self):
-        file1 = self.Q_cube_name
-        file2 = self.U_cube_name
-
+    def readCube(self, file=""):
         try:
-            hdu1 = fits.open(file1)
+            hdu = fits.open(file)
         except FileNotFoundError:
-            print("FileNotFoundError: The Q FITS file cannot be found")
+            print("FileNotFoundError: The I FITS file cannot be found")
             sys.exit(1)
 
-        try:
-            hdu2 = fits.open(file2)
-        except FileNotFoundError:
-            print("FileNotFoundError: The U FITS file cannot be found")
-            sys.exit(1)
+        print("FITS shape: ", hdu[0].data.shape)
 
-        print("FITS Q shape: ", hdu1[0].data.shape)
-        print("FITS U shape: ", hdu2[0].data.shape)
+        image = hdu[0].data
+        hdu.close()
+        return image
 
-        Q = hdu1[0].data
-        U = hdu2[0].data
+    def readIQU(self):
+        files = [self.I_cube_name, self.Q_cube_name, self.U_cube_name]
+        IQU = []
+        for file in files:
+            IQU.append(self.readCube(file=file))
 
-        hdu1.close()
-        hdu2.close()
+        return IQU[0], IQU[1], IQU[2]
 
-        return Q, U
+
 
     def readNumpyFile(self):
         try:
@@ -82,7 +75,7 @@ class Read:
             sys.exit(1)
         freqs = np.array(freqs)
         return freqs
-     
+
     def readFreqsNumpyFile(self):
     	filename = self.freq_file_name
     	freqs = np.load(filename)
