@@ -128,7 +128,8 @@ def main():
     #np.savetxt('A1314_south.txt', arrays, delimiter=' ', newline=os.linesep)
 
     #F = dft.backward(P)
-    Parallel(n_jobs=2)(delayed(calculateF)(dft, F, P, i, j) for i in range(M) for j in range(N))
+    F = Parallel(n_jobs=2)(delayed(calculateF)(dft, F, P, i, j) for i in range(M) for j in range(N))
+    print(F)
     """
     F_max = np.argmax(np.abs(F))
     print("Max RM: ", phi[F_max], "rad/m^2")
