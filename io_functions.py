@@ -91,5 +91,5 @@ class Write:
         hdulist[0].header['CDELT3'] = dphi
         hdulist[0].header['CUNIT3'] = 'rad/m/m'
         hdulist[0].header['CRVAL3'] = phi[0]
-	hdulist[0].data = cube
+        hdulist[0].data = cube
         hdulist.writeto(self.output, overwrite=True)

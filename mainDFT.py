@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 from ofunction import OFunction
 from priors import TV, L1, chi2
 from optimizer import Optimizer
-from utilities import real_to_complex, complex_to_real, find_pixel
+from utilities import real_to_complex, complex_to_real, find_pixel, make_mask
 from joblib import Parallel, delayed, load, dump
 import shutil
 
@@ -56,8 +56,11 @@ def getopt():
         sys.exit(1)
     return images, freq_f, reg_terms, output, index, verbose
 
-def calculateF(dftObject=None, F=np.array([]), P=np.array([]), i=0, j=0):
+def calculateF(dftObject=None, F=np.array([]), P=np.array([]), idx=np.array([]), i=0):
+    i = idx[0][i]
+    j = idx[1][i]
     F[:,i,j] = dftObject.backward(P[:,i,j])
+    return F
 
 def main():
 
@@ -69,7 +72,7 @@ def main():
     if imag_counter > 1:
         print("Reading images")
         reader = Read(images[0], images[1], images[2], freq_f)
-        I,Q,U = reader.readIQU(memmap=True)
+        I,Q,U = reader.readIQU()
         I = np.flipud(I)
         Q = np.flipud(Q)
         U = np.flipud(U)
@@ -99,9 +102,11 @@ def main():
     sigma = np.sqrt((sigma_Q**2 + sigma_U**2)/2)
     #print("Sigma: ", sigma)
 
+    mask_idx = make_mask(I[-1], 8.0*sigma_I[-1])
+
     W, K = pre_proc.calculate_W_K(sigma)
 
-    lambda2, lambda2_ref, phi, phi_r = pre_proc.calculate_phi(W, K, times=4)
+    lambda2, lambda2_ref, phi, phi_r = pre_proc.calculate_phi(W, K, times=8)
 
     print("Max I: ", pre_proc.calculate_max(I[len(lambda2)-1]))
 
@@ -118,8 +123,9 @@ def main():
     #North source
     #pix_source = 567,521
 
-    #P = P[:,270,583]
-    F = np.zeros((len(phi), M, N)) + 1j * np.zeros((len(phi), M, N))
+    #P = P[:,567,521]
+    #I = I[:,568,521]
+
     folder = './joblib_mmap'
     try:
        os.mkdir(folder)
@@ -127,20 +133,24 @@ def main():
        pass
     #data_file_mmap = os.path.join(folder, 'data_mmap')
     #dump(P, data_file_mmap)
-    
+
     output_file_mmap = os.path.join(folder, 'output_mmap')
     #P = load(data_file_mmap, mmap_mode="r")
-    F = np.memmap(output_file_mmap, dtype=F.dtype, shape=(len(phi), M, N), mode='w+')
+    #F = np.zeros((len(phi), M, N)) + 1j * np.zeros((len(phi), M, N))
+    F = np.memmap(output_file_mmap, dtype=np.complex128, shape=(len(phi), M, N), mode='w+')
 
-    
     #chi_degrees = np.arctan2(P.imag, P.real) * 180.0 / np.pi
-    #arrays = np.array([lambda2, P.real, sigma_Q, P.imag, sigma_U])
+
+    #arrays = np.array([lambda2, I, sigma_I, P.real, sigma_Q, P.imag, sigma_U])
     #arrays = np.transpose(arrays)
+    #np.savetxt('A1314_A.txt', arrays, delimiter=' ', newline=os.linesep)
 
     #np.savetxt('A1314_south.txt', arrays, delimiter=' ', newline=os.linesep)
 
     #F = dft.backward(P)
-    Parallel(n_jobs=-1, backend="multiprocessing", verbose=10)(delayed(calculateF)(dft, F, P, i, j) for i in range(M) for j in range(N))
+    total_pixels = len(mask_idx[0])
+    print("Pixels: ", total_pixels)
+    F = Parallel(n_jobs=4, verbose=10, backend="multiprocessing")(delayed(calculateF)(dft, F, P, mask_idx, i) for i in range(0,total_pixels))
     """
     F_max = np.argmax(np.abs(F))
     print("Max RM: ", phi[F_max], "rad/m^2")
@@ -154,7 +164,8 @@ def main():
     #plt.axvline(x=50, color='darkgrey', linestyle='-')
     plt.plot(lambda2, P.real, 'k.', label=r"Stokes $Q$")
     plt.plot(lambda2, P.imag, 'c.', label=r"Stokes $U$")
-    #plt.plot(lambda2, np.abs(P), 'k.', label=r"Amplitude")
+    plt.plot(lambda2, np.abs(P), 'g.', label=r"$|P|$")
+    #plt.plot(lambda2, I, 'r.', label=r"Stokes $I$")
     plt.xlabel(r'$\lambda^2$[m$^{2}$]')
     plt.ylabel(r'Jy/beam')
     plt.legend(loc='upper right')
@@ -194,6 +205,7 @@ def main():
 
     plt.figure(4)
 
+    plt.plot(lambda2, sigma_I, 'k.', label=r"$\sigma_I$")
     plt.plot(lambda2, sigma_Q, 'k.', label=r"$\sigma_Q$")
     plt.plot(lambda2, sigma_U, 'c.', label=r"$\sigma_U$")
     plt.xlabel(r'$\lambda^2$[m$^{2}$]')
@@ -226,6 +238,19 @@ def main():
     plt.tight_layout()
     #plt.xlim([-500, 500])
     #plt.ylim([-0.75, 1.25])
+
+    plt.figure(7)
+
+    #plt.axvline(x=50, color='darkgrey', linestyle='-')
+    plt.plot(lambda2, I, 'k.', label=r"Stokes $I$")
+    plt.xlabel(r'$\lambda^2$[m$^{2}$]')
+    plt.ylabel(r'Jy/beam')
+    plt.legend(loc='upper right')
+    plt.tight_layout()
+    #plt.xlim([-500, 500])
+    #plt.ylim([-0.75, 1.25])
+
+
 
     plt.show()
     """
