@@ -56,10 +56,10 @@ def getopt():
         sys.exit(1)
     return images, freq_f, reg_terms, output, index, verbose
 
-def calculateF(dftObject=None, F=np.array([]), P=np.array([]), idx=np.array([]), i=0):
-    i_idx = idx[0][i]
-    j_idx = idx[1][j]
-    F[:,i,j] = dftObject.backward(P[:,i_idx,j_idx])
+def calculateF(dftObject=None, F=np.array([]), P=np.array([]), idx=np.array([]), idx=0):
+    i = idx[0][idx]
+    j = idx[1][idx]
+    F[:,i,j] = dftObject.backward(P[:,i,j])
     return F
 
 def main():
@@ -150,7 +150,7 @@ def main():
     #F = dft.backward(P)
     total_pixels = len(mask_idx[0])
     print("Pixels: ", total_pixels)
-    F = Parallel(n_jobs=4, verbose=10, backend="multiprocessing")(delayed(calculateF)(dft, F, P, mask_idx, i) for i in range(0,total_pixels))
+    F = Parallel(n_jobs=-1, verbose=10, backend="multiprocessing")(delayed(calculateF)(dft, F, P, mask_idx, i) for i in range(0,total_pixels))
     """
     F_max = np.argmax(np.abs(F))
     print("Max RM: ", phi[F_max], "rad/m^2")
