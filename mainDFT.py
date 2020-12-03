@@ -56,9 +56,9 @@ def getopt():
         sys.exit(1)
     return images, freq_f, reg_terms, output, index, verbose
 
-def calculateF(dftObject=None, F=np.array([]), P=np.array([]), idx=np.array([]), idx=0):
-    i = idx[0][idx]
-    j = idx[1][idx]
+def calculateF(dftObject=None, F=np.array([]), P=np.array([]), idx_array=np.array([]), idx=0):
+    i = idx_array[0][idx]
+    j = idx_array[1][idx]
     F[:,i,j] = dftObject.backward(P[:,i,j])
     return F
 
