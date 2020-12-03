@@ -60,7 +60,6 @@ def calculateF(dftObject=None, F=np.array([]), P=np.array([]), idx_array=np.arra
     i = idx_array[0][idx]
     j = idx_array[1][idx]
     F[:,i,j] = dftObject.backward(P[:,i,j])
-    return F
 
 def main():
 
@@ -72,7 +71,7 @@ def main():
     if imag_counter > 1:
         print("Reading images")
         reader = Read(images[0], images[1], images[2], freq_f)
-        I,Q,U = reader.readIQU()
+        I,Q,U = reader.readIQU(memmap=True)
         I = np.flipud(I)
         Q = np.flipud(Q)
         U = np.flipud(U)
@@ -150,7 +149,7 @@ def main():
     #F = dft.backward(P)
     total_pixels = len(mask_idx[0])
     print("Pixels: ", total_pixels)
-    F = Parallel(n_jobs=-1, verbose=10, backend="multiprocessing")(delayed(calculateF)(dft, F, P, mask_idx, i) for i in range(0,total_pixels))
+    Parallel(n_jobs=-3, backend="multiprocessing", verbose=10)(delayed(calculateF)(dft, F, P, mask_idx, i) for i in range(0,total_pixels))
     """
     F_max = np.argmax(np.abs(F))
     print("Max RM: ", phi[F_max], "rad/m^2")
