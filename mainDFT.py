@@ -18,7 +18,8 @@ from ofunction import OFunction
 from priors import TV, L1, chi2
 from optimizer import Optimizer
 from utilities import real_to_complex, complex_to_real, find_pixel
-from joblib import Parallel, delayed
+from joblib import Parallel, delayed, load, dump
+import shutil
 
 
 def getopt():
@@ -57,7 +58,6 @@ def getopt():
 
 def calculateF(dftObject=None, F=np.array([]), P=np.array([]), i=0, j=0):
     F[:,i,j] = dftObject.backward(P[:,i,j])
-    return F
 
 def main():
 
@@ -69,7 +69,7 @@ def main():
     if imag_counter > 1:
         print("Reading images")
         reader = Read(images[0], images[1], images[2], freq_f)
-        I,Q,U = reader.readIQU()
+        I,Q,U = reader.readIQU(memmap=True)
         I = np.flipud(I)
         Q = np.flipud(Q)
         U = np.flipud(U)
@@ -101,7 +101,7 @@ def main():
 
     W, K = pre_proc.calculate_W_K(sigma)
 
-    lambda2, lambda2_ref, phi, phi_r = pre_proc.calculate_phi(W, K, times=8)
+    lambda2, lambda2_ref, phi, phi_r = pre_proc.calculate_phi(W, K, times=4)
 
     print("Max I: ", pre_proc.calculate_max(I[len(lambda2)-1]))
 
@@ -120,7 +120,19 @@ def main():
 
     #P = P[:,270,583]
     F = np.zeros((len(phi), M, N)) + 1j * np.zeros((len(phi), M, N))
+    folder = './joblib_mmap'
+    try:
+       os.mkdir(folder)
+    except FileExistsError:
+       pass
+    #data_file_mmap = os.path.join(folder, 'data_mmap')
+    #dump(P, data_file_mmap)
+    
+    output_file_mmap = os.path.join(folder, 'output_mmap')
+    #P = load(data_file_mmap, mmap_mode="r")
+    F = np.memmap(output_file_mmap, dtype=F.dtype, shape=(len(phi), M, N), mode='w+')
 
+    
     #chi_degrees = np.arctan2(P.imag, P.real) * 180.0 / np.pi
     #arrays = np.array([lambda2, P.real, sigma_Q, P.imag, sigma_U])
     #arrays = np.transpose(arrays)
@@ -128,8 +140,7 @@ def main():
     #np.savetxt('A1314_south.txt', arrays, delimiter=' ', newline=os.linesep)
 
     #F = dft.backward(P)
-    F = Parallel(n_jobs=2)(delayed(calculateF)(dft, F, P, i, j) for i in range(M) for j in range(N))
-    print(F)
+    Parallel(n_jobs=-1, backend="multiprocessing", verbose=10)(delayed(calculateF)(dft, F, P, i, j) for i in range(M) for j in range(N))
     """
     F_max = np.argmax(np.abs(F))
     print("Max RM: ", phi[F_max], "rad/m^2")
@@ -218,6 +229,13 @@ def main():
 
     plt.show()
     """
+    try:
+        shutil.rmtree(folder)
+    except:
+        print("Could not clean")
+    header = reader.readHeader(memmap=True)
+    writer = Write(output)
+    writer.writeCube(np.abs(F), header, len(phi), phi, np.abs(phi[1]-phi[0]))
 
 if __name__ == '__main__':
     main()

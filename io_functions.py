@@ -19,9 +19,9 @@ class Read:
         self.numpy_file = numpy_file
     # this has to be separated
 
-    def readCube(self, file=""):
+    def readCube(self, file="", memmap=False):
         try:
-            hdu = fits.open(file)
+            hdu = fits.open(file, memmap=memmap)
         except FileNotFoundError:
             print("FileNotFoundError: The I FITS file cannot be found")
             sys.exit(1)
@@ -32,11 +32,11 @@ class Read:
         hdu.close()
         return image
 
-    def readIQU(self):
+    def readIQU(self, memmap=False):
         files = [self.I_cube_name, self.Q_cube_name, self.U_cube_name]
         IQU = []
         for file in files:
-            IQU.append(self.readCube(file=file))
+            IQU.append(self.readCube(file=file, memmap=memmap))
 
         return IQU[0], IQU[1], IQU[2]
 
@@ -54,13 +54,11 @@ class Read:
 
         return Q, U
 
-    def readHeader(self):
+    def readHeader(self, memmap=False):
         f_filename = self.Q_cube_name
-        i_image = fits.open(f_filename)
-        i_header = i_image[0].header
+        hdul_image = fits.open(name=f_filename, memmap=memmap)
 
-        i_image.close()
-        return i_header
+        return hdul_image
 
     def getFileNFrequencies(self):
         f_filename = self.freq_file_name
@@ -83,17 +81,15 @@ class Read:
 
 
 class Write:
-    output = ""
 
-    def __init__(self, output=None):
+    def __init__(self, output=""):
         self.output = output
 
-    def writeCube(self, cube, header, nphi, phi, dphi):
-        header['NAXIS3'] = (nphi, 'Length of Faraday depth axis')
-        header['CTYPE3'] = 'Phi'
-        header['CDELT3'] = dphi
-        header['CUNIT3'] = 'rad/m/m'
-        header['CRVAL3'] = phi[0]
-
-        hdu_new = fits.PrimaryHDU(cube, header)
-        hdu_new.writeto(self.output, overwrite=True)
+    def writeCube(self, cube, hdulist, nphi, phi, dphi):
+        hdulist[0].header['NAXIS3'] = (nphi, 'Length of Faraday depth axis')
+        hdulist[0].header['CTYPE3'] = 'Phi'
+        hdulist[0].header['CDELT3'] = dphi
+        hdulist[0].header['CUNIT3'] = 'rad/m/m'
+        hdulist[0].header['CRVAL3'] = phi[0]
+	hdulist[0].data = cube
+        hdulist.writeto(self.output, overwrite=True)
