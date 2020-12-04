@@ -54,11 +54,12 @@ class Read:
 
         return Q, U
 
-    def readHeader(self, memmap=False):
+    def readHeader(self):
         f_filename = self.Q_cube_name
-        hdul_image = fits.open(name=f_filename, memmap=memmap)
-
-        return hdul_image
+        hdul_image = fits.open(name=f_filename)
+        header = hdul_image[0].header
+        hdul_image.close()
+        return header
 
     def getFileNFrequencies(self):
         f_filename = self.freq_file_name
@@ -85,11 +86,12 @@ class Write:
     def __init__(self, output=""):
         self.output = output
 
-    def writeCube(self, cube, hdulist, nphi, phi, dphi):
-        hdulist[0].header['NAXIS3'] = (nphi, 'Length of Faraday depth axis')
-        hdulist[0].header['CTYPE3'] = 'Phi'
-        hdulist[0].header['CDELT3'] = dphi
-        hdulist[0].header['CUNIT3'] = 'rad/m/m'
-        hdulist[0].header['CRVAL3'] = phi[0]
-        hdulist[0].data = cube
-        hdulist.writeto(self.output, overwrite=True)
+    def writeCube(self, cube, header, nphi, phi, dphi, memmap=False):
+        header['NAXIS3'] = (nphi, 'Length of Faraday depth axis')
+        header['CTYPE3'] = 'Phi'
+        header['CDELT3'] = dphi
+        header['CUNIT3'] = 'rad/m/m'
+        header['CRVAL3'] = phi[0]
+	
+        fits.writeto(self.output, data=cube, header=header,overwrite=True)
+ 

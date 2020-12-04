@@ -101,7 +101,7 @@ def main():
     sigma = np.sqrt((sigma_Q**2 + sigma_U**2)/2)
     #print("Sigma: ", sigma)
 
-    mask_idx = make_mask(I[-1], 8.0*sigma_I[-1])
+    mask_idx = make_mask(I[-1], 5.0*sigma_I[-1])
 
     W, K = pre_proc.calculate_W_K(sigma)
 
@@ -253,13 +253,17 @@ def main():
 
     plt.show()
     """
+    phi_output_idx = np.where((phi>-1000) & (phi<1000))
+    phi = phi[phi_output_idx]
+    F = F[phi_output_idx]
+    header = reader.readHeader()
+    writer = Write(output[0])
+    writer.writeCube(np.abs(F), header, len(phi), phi, np.abs(phi[1]-phi[0]))
+
     try:
         shutil.rmtree(folder)
     except:
         print("Could not clean")
-    header = reader.readHeader(memmap=True)
-    writer = Write(output)
-    writer.writeCube(np.abs(F), header, len(phi), phi, np.abs(phi[1]-phi[0]))
 
 if __name__ == '__main__':
     main()
