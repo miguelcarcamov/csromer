@@ -18,6 +18,7 @@ from ofunction import OFunction
 from priors import TV, L1, chi2
 from optimizer import Optimizer
 from utilities import real_to_complex, complex_to_real, find_pixel, make_mask
+from animations import animate
 from joblib import Parallel, delayed, load, dump
 import shutil
 
@@ -256,10 +257,10 @@ def main():
     phi_output_idx = np.where((phi>-1000) & (phi<1000))
     phi = phi[phi_output_idx]
     F = F[phi_output_idx]
-    header = reader.readHeader()
-    writer = Write(output[0])
-    writer.writeCube(np.abs(F), header, len(phi), phi, np.abs(phi[1]-phi[0]))
-
+    #header = reader.readHeader()
+    #writer = Write(output[0])
+    #writer.writeCube(np.abs(F), header, len(phi), phi, np.abs(phi[1]-phi[0]))
+    animate(cube=np.abs(F))
     try:
         shutil.rmtree(folder)
     except:
