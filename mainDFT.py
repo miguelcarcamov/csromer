@@ -18,7 +18,7 @@ from ofunction import OFunction
 from priors import TV, L1, chi2
 from optimizer import Optimizer
 from utilities import real_to_complex, complex_to_real, find_pixel, make_mask
-from animations import animate
+from animations import create_animation
 from joblib import Parallel, delayed, load, dump
 import shutil
 
@@ -260,7 +260,7 @@ def main():
     header = reader.readHeader()
     #writer = Write(output[0])
     #writer.writeCube(np.abs(F), header, len(phi), phi, np.abs(phi[1]-phi[0]))
-    animate(header=header, cube=np.abs(F))
+    create_animation(header=header, cube=np.abs(F))
     try:
         shutil.rmtree(folder)
     except:
