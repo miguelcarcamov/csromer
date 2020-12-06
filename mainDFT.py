@@ -102,7 +102,7 @@ def main():
     sigma = np.sqrt((sigma_Q**2 + sigma_U**2)/2)
     #print("Sigma: ", sigma)
 
-    mask_idx = make_mask(I[-1], 7.0*sigma_I[-1])
+    mask_idx = make_mask(I[-1], 8.0*sigma_I[-1])
 
     W, K = pre_proc.calculate_W_K(sigma)
 
@@ -260,7 +260,7 @@ def main():
     header = reader.readHeader()
     #writer = Write(output[0])
     #writer.writeCube(np.abs(F), header, len(phi), phi, np.abs(phi[1]-phi[0]))
-    create_animation(header=header, cube=np.abs(F))
+    create_animation(header=header, cube=np.abs(F), xlabel="Offset (degrees)", ylabel="Offset (degrees)", cblabel="Jy/beam", repeat=True)
     try:
         shutil.rmtree(folder)
     except:
