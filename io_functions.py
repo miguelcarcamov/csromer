@@ -96,5 +96,5 @@ class Write:
         fits.writeto(self.output, data=cube, header=header,overwrite=True)
 
     def writeNPCube(self, cube):
-	np.save(self.output, cube)
+        np.save(self.output, cube)
  

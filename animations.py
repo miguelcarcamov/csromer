@@ -27,13 +27,14 @@ def config_axes(data, header, units='degrees'):
 	y = np.arange(-y1, y1+dy, dy)
 	return [x, y, x1, y1]
 
-def colorbar(mappable):
+def colorbar(mappable, title="", location="right"):
     last_axes = plt.gca()
     ax = mappable.axes
     fig = ax.figure
     divider = make_axes_locatable(ax)
-    cax = divider.append_axes("right", size="5%", pad=0.05)
+    cax = divider.append_axes(location, size="5%", pad=0.05)
     cbar = fig.colorbar(mappable, cax=cax)
+    cbar.set_label(title)
     plt.sca(last_axes)
     return cbar
 
@@ -46,9 +47,8 @@ def create_animation(header, cube=np.array([]), xlabel="", ylabel="", cblabel=""
         axes = config_axes(cube[0], header)
         cv0 = cube[0]
         im = ax.imshow(cv0, origin='lower', aspect='equal', cmap='ocean_r', extent=[axes[2],-axes[2],-axes[3],axes[3]])
-        cb = colorbar(im)
-        cb.ax.set_xlabel(cblabel)
-        ax.set_title(title, pad=title_pad)
+        cb = colorbar(im, cblabel)
+        tx = ax.set_title(title, pad=title_pad)
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
         tick_locator = ticker.MaxNLocator(nbins=3)
