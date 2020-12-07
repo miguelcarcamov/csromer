@@ -27,22 +27,28 @@ def config_axes(data, header, units='degrees'):
 	y = np.arange(-y1, y1+dy, dy)
 	return [x, y, x1, y1]
 
+def colorbar(mappable):
+    last_axes = plt.gca()
+    ax = mappable.axes
+    fig = ax.figure
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    cbar = fig.colorbar(mappable, cax=cax)
+    plt.sca(last_axes)
+    return cbar
+
 def create_animation(header, cube=np.array([]), xlabel="", ylabel="", cblabel="", title="", title_pad=55.0, output_video="dynamic_images.mp4", fps=30, interval=50, repeat=False):
     ims = []
     num_ims = len(cube)
     if(num_ims != 0):
         fig = plt.figure()
         ax = plt.subplot(111)
-        div = make_axes_locatable(ax)
-        cax = div.append_axes('top', size='5%', pad=0.1)
         axes = config_axes(cube[0], header)
         cv0 = cube[0]
         im = ax.imshow(cv0, origin='lower', aspect='equal', cmap='ocean_r', extent=[axes[2],-axes[2],-axes[3],axes[3]])
-        cb = fig.colorbar(im, cax=cax, orientation='horizontal')
-        cb.ax.xaxis.set_label_position('top')
-        cb.ax.xaxis.set_ticks_position('top')
+        cb = colorbar(im)
         cb.ax.set_xlabel(cblabel)
-        ax.set_title(title, pad=title_pad)    
+        ax.set_title(title, pad=title_pad)
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
         tick_locator = ticker.MaxNLocator(nbins=3)
