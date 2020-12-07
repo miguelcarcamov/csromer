@@ -259,7 +259,7 @@ def main():
     F = F[phi_output_idx]
     header = reader.readHeader()
     #writer = Write(output[0])
-    #writer.writeCube(np.abs(F), header, len(phi), phi, np.abs(phi[1]-phi[0]))
+    #writer.writeFITSCube(np.abs(F), header, len(phi), phi, np.abs(phi[1]-phi[0]))
     create_animation(header=header, cube=np.abs(F), xlabel="Offset (degrees)", ylabel="Offset (degrees)", cblabel="Jy/beam", repeat=True)
     try:
         shutil.rmtree(folder)

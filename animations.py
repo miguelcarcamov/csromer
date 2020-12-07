@@ -56,6 +56,6 @@ def create_animation(header, cube=np.array([]), xlabel="", ylabel="", cblabel=""
             im.set_data(arr)
             im.set_clim(vmin, vmax)
 
-        ani = animation.FuncAnimation(fig, animate, frames=num_ims, interval=1000, repeat=repeat, blit=False, repeat_delay=1000)
-        ani.save(output_video, fps=fps)
+        ani = animation.FuncAnimation(fig, animate, frames=num_ims, interval=250, repeat=repeat, blit=False, repeat_delay=1000)
+        ani.save(output_video)
         #plt.show()

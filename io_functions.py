@@ -86,7 +86,7 @@ class Write:
     def __init__(self, output=""):
         self.output = output
 
-    def writeCube(self, cube, header, nphi, phi, dphi, memmap=False):
+    def writeFITSCube(self, cube, header, nphi, phi, dphi):
         header['NAXIS3'] = (nphi, 'Length of Faraday depth axis')
         header['CTYPE3'] = 'Phi'
         header['CDELT3'] = dphi
@@ -94,4 +94,7 @@ class Write:
         header['CRVAL3'] = phi[0]
 	
         fits.writeto(self.output, data=cube, header=header,overwrite=True)
+
+    def writeNPCube(self, cube):
+	np.save(self.output, cube)
  
