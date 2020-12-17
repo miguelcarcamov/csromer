@@ -38,7 +38,7 @@ def colorbar(mappable, title="", location="right"):
     plt.sca(last_axes)
     return cbar
 
-def create_animation(header, cube=np.array([]), xlabel="", ylabel="", cblabel="", title="", title_pad=55.0, output_video="dynamic_images.mp4", fps=30, interval=50, repeat=False):
+def create_animation(header, cube_axis=np.array([]), cube=np.array([]), xlabel="", ylabel="", cblabel="", title="", title_pad=55.0, output_video="dynamic_images.mp4", fps=30, interval=50, repeat=False):
     ims = []
     num_ims = len(cube)
     if(num_ims != 0):
@@ -49,6 +49,7 @@ def create_animation(header, cube=np.array([]), xlabel="", ylabel="", cblabel=""
         im = ax.imshow(cv0, origin='lower', aspect='equal', cmap='ocean_r', extent=[axes[2],-axes[2],-axes[3],axes[3]])
         cb = colorbar(im, cblabel)
         tx = ax.set_title(title, pad=title_pad)
+		time_text = ax.text(.5, .5, '', fontsize=15)
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
         tick_locator = ticker.MaxNLocator(nbins=3)
@@ -57,8 +58,10 @@ def create_animation(header, cube=np.array([]), xlabel="", ylabel="", cblabel=""
 
         def animate(i):
             arr = cube[i]
+			phi_i = phi_axis[i]
             vmax     = np.max(arr)
             vmin     = np.min(arr)
+			time_text.set_text(cube_axis[i])
             im.set_data(arr)
             im.set_clim(vmin, vmax)
 
