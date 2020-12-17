@@ -38,7 +38,7 @@ def colorbar(mappable, title="", location="right"):
     plt.sca(last_axes)
     return cbar
 
-def create_animation(header, cube_axis=np.array([]), cube=np.array([]), xlabel="", ylabel="", cblabel="", title="", title_pad=55.0, output_video="dynamic_images.mp4", fps=30, interval=50, repeat=False):
+def create_animation(header, cube_axis=np.array([]), cube=np.array([]), xlabel="", ylabel="", cblabel="", title="", title_pad=0.0, output_video="dynamic_images.mp4", fps=30, interval=50, repeat=False):
     ims = []
     num_ims = len(cube)
     if(num_ims != 0):

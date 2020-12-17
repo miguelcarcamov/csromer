@@ -260,7 +260,7 @@ def main():
     header = reader.readHeader()
     #writer = Write(output[0])
     #writer.writeFITSCube(np.abs(F), header, len(phi), phi, np.abs(phi[1]-phi[0]))
-    create_animation(header=header, cube_axis=phi, cube=np.abs(F), title="Faraday Depth Spectrum at {0}".format(phi[0]), xlabel="Offset (degrees)", ylabel="Offset (degrees)", cblabel="Jy/beam", repeat=True)
+    create_animation(header=header, cube_axis=phi, cube=np.abs(F), title='Faraday Depth Spectrum at {0}'.format(phi[0]), xlabel="Offset (degrees)", ylabel="Offset (degrees)", cblabel="Jy/beam", repeat=True)
     try:
         shutil.rmtree(folder)
     except:
