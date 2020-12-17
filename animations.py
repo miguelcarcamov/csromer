@@ -58,10 +58,10 @@ def create_animation(header, cube_axis=np.array([]), cube=np.array([]), xlabel="
 
         def animate(i):
             arr = cube[i]
-            phi_i = phi_axis[i]
+            phi_i = cube_axis[i]
             vmax     = np.max(arr)
             vmin     = np.min(arr)
-            time_text.set_text(cube_axis[i])
+            time_text.set_text("Phi: {0}".format(phi_i))
             im.set_data(arr)
             im.set_clim(vmin, vmax)
 
