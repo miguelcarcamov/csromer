@@ -49,7 +49,7 @@ def create_animation(header, cube_axis=np.array([]), cube=np.array([]), xlabel="
         im = ax.imshow(cv0, origin='lower', aspect='equal', cmap='ocean_r', extent=[axes[2],-axes[2],-axes[3],axes[3]])
         cb = colorbar(im, cblabel)
         tx = ax.set_title(title, pad=title_pad)
-        time_text = ax.text(.5, .5, '', fontsize=15)
+        #time_text = ax.text(.5, .5, '', fontsize=15)
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
         tick_locator = ticker.MaxNLocator(nbins=3)
@@ -61,7 +61,8 @@ def create_animation(header, cube_axis=np.array([]), cube=np.array([]), xlabel="
             phi_i = cube_axis[i]
             vmax     = np.max(arr)
             vmin     = np.min(arr)
-            time_text.set_text("Phi: {0}".format(phi_i))
+            tx.set_text('Faraday Depth Spectrum at {0}'.format(phi_i))
+            #time_text.set_text("Phi: {0}".format(phi_i))
             im.set_data(arr)
             im.set_clim(vmin, vmax)
 
