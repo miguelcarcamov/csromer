@@ -61,7 +61,7 @@ def create_animation(header, cube_axis=np.array([]), cube=np.array([]), xlabel="
             phi_i = cube_axis[i]
             vmax     = np.max(arr)
             vmin     = np.min(arr)
-            tx.set_text('Faraday Depth Spectrum at {0}'.format(phi_i))
+            tx.set_text('Faraday Depth Spectrum at {0:.4f} rad/m^2'.format(phi_i))
             #time_text.set_text("Phi: {0}".format(phi_i))
             im.set_data(arr)
             im.set_clim(vmin, vmax)
