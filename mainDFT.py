@@ -270,8 +270,8 @@ def main():
     hdu_faraday_depth = fits.PrimaryHDU(max_faraday_depth)
     hdul_intensity = fits.HDUList([hdu_intensity])
     hdul_faraday_depth = fits.HDUList([hdu_faraday_depth])
-    hdul_intensity.writeto('max_pol_intensity.fits')
-    hdul_faraday_depth.writeto('max_faraday_depth.fits')
+    hdul_intensity.writeto('max_pol_intensity.fits', overwrite=True)
+    hdul_faraday_depth.writeto('max_faraday_depth.fits', overwrite=True)
     try:
         shutil.rmtree(folder)
     except:
