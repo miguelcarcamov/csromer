@@ -9,7 +9,7 @@ Created on Tue Nov  5 13:26:28 2019
 import argparse
 import os
 import numpy as np
-from io_functions import Read, Write
+from io_functions import Reader, Writer
 import sys
 from pre_processing import PreProcessor
 from dfts import DFT1D
@@ -265,7 +265,7 @@ def main():
     max_intensity = np.amax(np.abs(F), axis=0)
     max_faraday_depth_pos = np.argmax(np.abs(F), axis=0)
     max_faraday_depth = np.where(max_intensity>0.0, phi[max_faraday_depth_pos], 0.0)
-    
+
     writer.writeFITS(max_intensity, header, "max_pol_intensity.fits", True)
     writer.writeFITS(max_faraday_depth, header, "max_faraday_depth.fits", True)
     try:
