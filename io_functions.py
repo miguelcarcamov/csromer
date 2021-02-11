@@ -8,7 +8,7 @@ Created on Tue Nov  5 15:45:42 2019
 import numpy as np
 from astropy.io import fits
 import sys
-
+from overloading import overload
 
 class Reader:
     def __init__(self, I_cube_name="", Q_cube_name="", U_cube_name="", freq_file_name="", numpy_file=""):
@@ -95,6 +95,7 @@ class Writer:
 
         fits.writeto(output, data=cube, header=header,overwrite=True)
 
+    @overload
     def writeFITSCube(self, cube, header, nphi, phi, dphi):
         header['NAXIS3'] = (nphi, 'Length of Faraday depth axis')
         header['CTYPE3'] = 'Phi'
@@ -107,6 +108,7 @@ class Writer:
     def writeNPCube(output, cube):
         np.save(output, cube)
 
+    @overload
     def writeNPCube(self, cube):
         self.writeFITSCube(self.output, cube)
 
@@ -115,5 +117,6 @@ class Writer:
         hdul = fits.HDUList([hdu])
         hdul.writeto(outfile, overwrite=overwrite)
 
+    @overload
     def writeFITS(data=None, header=None, overwrite=True):
         self.writeFITS(data=data, header=header, outfile=self.output, overwrite=overwrite)
