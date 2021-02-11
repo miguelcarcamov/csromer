@@ -85,7 +85,7 @@ class Writer:
     def __init__(self, output=""):
         self.output = output
 
-    def writeFITSCube(cube, header, nphi, phi, dphi, output=None, overwrite=True):
+    def writeFITSCube(self, cube, header, nphi, phi, dphi, output=None, overwrite=True):
         header['NAXIS3'] = (nphi, 'Length of Faraday depth axis')
         header['CTYPE3'] = 'Phi'
         header['CDELT3'] = dphi
@@ -97,7 +97,7 @@ class Writer:
         else:
             fits.writeto(output, data=cube, header=header,overwrite=overwrite)
 
-    def writeNPCube(cube, output=None):
+    def writeNPCube(self, cube, output=None):
         if output is None:
             np.save(self.output, cube)
         else:
@@ -106,7 +106,7 @@ class Writer:
         np.save(output, cube)
 
 
-    def writeFITS(data=None, header=None, output=None, overwrite=True):
+    def writeFITS(self, data=None, header=None, output=None, overwrite=True):
         hdu = fits.PrimaryHDU(data, header)
         hdul = fits.HDUList([hdu])
         if output is None:
