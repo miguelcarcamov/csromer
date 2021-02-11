@@ -10,7 +10,7 @@ from astropy.io import fits
 import sys
 
 
-class Read:
+class Reader:
     def __init__(self, I_cube_name="", Q_cube_name="", U_cube_name="", freq_file_name="", numpy_file=""):
         self.I_cube_name = I_cube_name
         self.Q_cube_name = Q_cube_name
@@ -81,10 +81,19 @@ class Read:
     	return freqs
 
 
-class Write:
+class Writer:
 
     def __init__(self, output=""):
         self.output = output
+
+    def writeFITSCube(output, cube, header, nphi, phi, dphi):
+        header['NAXIS3'] = (nphi, 'Length of Faraday depth axis')
+        header['CTYPE3'] = 'Phi'
+        header['CDELT3'] = dphi
+        header['CUNIT3'] = 'rad/m/m'
+        header['CRVAL3'] = phi[0]
+
+        fits.writeto(output, data=cube, header=header,overwrite=True)
 
     def writeFITSCube(self, cube, header, nphi, phi, dphi):
         header['NAXIS3'] = (nphi, 'Length of Faraday depth axis')
@@ -92,9 +101,19 @@ class Write:
         header['CDELT3'] = dphi
         header['CUNIT3'] = 'rad/m/m'
         header['CRVAL3'] = phi[0]
-	
-        fits.writeto(self.output, data=cube, header=header,overwrite=True)
+
+        self.writeFITSCube(self.output, data=cube, header=header,overwrite=True)
+
+    def writeNPCube(output, cube):
+        np.save(output, cube)
 
     def writeNPCube(self, cube):
-        np.save(self.output, cube)
- 
+        self.writeFITSCube(self.output, cube)
+
+    def writeFITS(data=None, header=None, outfile=None, overwrite=True):
+        hdu = fits.PrimaryHDU(data, header)
+        hdul = fits.HDUList([hdu])
+        hdul.writeto(outfile, overwrite=overwrite)
+
+    def writeFITS(data=None, header=None, overwrite=True):
+        self.writeFITS(data=data, header=header, outfile=self.output, overwrite=overwrite)

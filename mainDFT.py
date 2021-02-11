@@ -72,7 +72,7 @@ def main():
 
     if imag_counter > 1:
         print("Reading images")
-        reader = Read(images[0], images[1], images[2], freq_f)
+        reader = Reader(images[0], images[1], images[2], freq_f)
         I,Q,U = reader.readIQU(memmap=True)
         I = np.flipud(I)
         Q = np.flipud(Q)
@@ -80,7 +80,7 @@ def main():
         M = I.shape[1]
         N = I.shape[2]
     else:
-        reader = Read(freq_file_name=freq_f, numpy_file=images[0])
+        reader = Reader(freq_file_name=freq_f, numpy_file=images[0])
         Q,U = reader.readNumpyFile()
         Q = np.flipud(Q)
         U = np.flipud(U)
@@ -259,19 +259,15 @@ def main():
     phi = phi[phi_output_idx]
     F = F[phi_output_idx]
     header = reader.readHeader()
-    #writer = Write(output[0])
+    writer = Writer()
     #writer.writeFITSCube(np.abs(F), header, len(phi), phi, np.abs(phi[1]-phi[0]))
     create_animation(header=header, cube_axis=phi, cube=np.abs(F), title='Faraday Depth Spectrum at {0:.4f} rad/m^2'.format(phi[0]), xlabel="Offset (degrees)", ylabel="Offset (degrees)", cblabel="Jy/beam", repeat=True)
     max_intensity = np.amax(np.abs(F), axis=0)
     max_faraday_depth_pos = np.argmax(np.abs(F), axis=0)
     max_faraday_depth = np.where(max_intensity>0.0, phi[max_faraday_depth_pos], 0.0)
-
-    hdu_intensity = fits.PrimaryHDU(max_intensity)
-    hdu_faraday_depth = fits.PrimaryHDU(max_faraday_depth)
-    hdul_intensity = fits.HDUList([hdu_intensity])
-    hdul_faraday_depth = fits.HDUList([hdu_faraday_depth])
-    hdul_intensity.writeto('max_pol_intensity.fits', overwrite=True)
-    hdul_faraday_depth.writeto('max_faraday_depth.fits', overwrite=True)
+    
+    writer.writeFITS(max_intensity, header, "max_pol_intensity.fits", True)
+    writer.writeFITS(max_faraday_depth, header, "max_faraday_depth.fits", True)
     try:
         shutil.rmtree(folder)
     except:
