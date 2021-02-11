@@ -97,12 +97,6 @@ class Writer:
 
     @overload
     def writeFITSCube(self, cube, header, nphi, phi, dphi):
-        header['NAXIS3'] = (nphi, 'Length of Faraday depth axis')
-        header['CTYPE3'] = 'Phi'
-        header['CDELT3'] = dphi
-        header['CUNIT3'] = 'rad/m/m'
-        header['CRVAL3'] = phi[0]
-
         self.writeFITSCube(self.output, data=cube, header=header,overwrite=True)
 
     def writeNPCube(output, cube):
