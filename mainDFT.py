@@ -262,13 +262,13 @@ def main():
     writer = Writer()
     #writer.writeFITSCube(np.abs(F), header, len(phi), phi, np.abs(phi[1]-phi[0]))
     create_animation(header=header, cube_axis=phi, cube=np.abs(F), title='Faraday Depth Spectrum at {0:.4f} rad/m^2'.format(phi[0]), xlabel="Offset (degrees)", ylabel="Offset (degrees)", cblabel="Jy/beam", repeat=True)
-    max_intensity = np.amax(np.abs(F), axis=0)
+    polarized_percentage = np.amax(np.abs(F), axis=0) / np.sum(np.abs(F), axis=0)
     max_faraday_depth_pos = np.argmax(np.abs(F), axis=0)
-    faraday_percentage = np.where(max_intensity>0.0, phi[max_faraday_depth_pos], 0.0) / np.sum(np.abs(F), axis=0)
+    max_faraday_depth = np.where(max_intensity>0.0, phi[max_faraday_depth_pos], 0.0)
 
 
-    writer.writeFITS(data=max_intensity, header=header, output="max_pol_intensity.fits")
-    writer.writeFITS(data=faraday_percentage, header=header, output="faraday_percentage.fits")
+    writer.writeFITS(data=polarized_percentage, header=header, output="max_pol_percentage.fits")
+    writer.writeFITS(data=max_faraday_depth, header=header, output="max_faraday_depth.fits")
     try:
         shutil.rmtree(folder)
     except:
