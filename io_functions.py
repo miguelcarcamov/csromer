@@ -8,7 +8,6 @@ Created on Tue Nov  5 15:45:42 2019
 import numpy as np
 from astropy.io import fits
 import sys
-from overloading import overload
 
 class Reader:
     def __init__(self, I_cube_name="", Q_cube_name="", U_cube_name="", freq_file_name="", numpy_file=""):
@@ -86,31 +85,31 @@ class Writer:
     def __init__(self, output=""):
         self.output = output
 
-    def writeFITSCube(output, cube, header, nphi, phi, dphi):
+    def writeFITSCube(cube, header, nphi, phi, dphi, output=None, overwrite=True):
         header['NAXIS3'] = (nphi, 'Length of Faraday depth axis')
         header['CTYPE3'] = 'Phi'
         header['CDELT3'] = dphi
         header['CUNIT3'] = 'rad/m/m'
         header['CRVAL3'] = phi[0]
 
-        fits.writeto(output, data=cube, header=header,overwrite=True)
+        if output is None:
+            fits.writeto(self.output, data=cube, header=header,overwrite=overwrite)
+        else:
+            fits.writeto(output, data=cube, header=header,overwrite=overwrite)
 
-    @overload
-    def writeFITSCube(self, cube, header, nphi, phi, dphi):
-        self.writeFITSCube(self.output, data=cube, header=header,overwrite=True)
+    def writeNPCube(cube, output=None):
+        if output is None:
+            np.save(self.output, cube)
+        else:
+            np.save(output, cube)
 
-    def writeNPCube(output, cube):
         np.save(output, cube)
 
-    @overload
-    def writeNPCube(self, cube):
-        self.writeFITSCube(self.output, cube)
 
-    def writeFITS(data=None, header=None, outfile=None, overwrite=True):
+    def writeFITS(data=None, header=None, output=None, overwrite=True):
         hdu = fits.PrimaryHDU(data, header)
         hdul = fits.HDUList([hdu])
-        hdul.writeto(outfile, overwrite=overwrite)
-
-    @overload
-    def writeFITS(data=None, header=None, overwrite=True):
-        self.writeFITS(data=data, header=header, outfile=self.output, overwrite=overwrite)
+        if output is None:
+            hdul.writeto(self.output, overwrite=overwrite)
+        else:
+            hdul.writeto(output, overwrite=overwrite)
