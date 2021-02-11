@@ -20,6 +20,7 @@ from optimizer import Optimizer
 from utilities import real_to_complex, complex_to_real, find_pixel, make_mask
 from animations import create_animation
 from joblib import Parallel, delayed, load, dump
+from astropy.io import fits
 import shutil
 
 
