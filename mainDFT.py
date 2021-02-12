@@ -263,14 +263,11 @@ def main():
     abs_F = np.abs(F)
     #writer.writeFITSCube(np.abs(F), header, len(phi), phi, np.abs(phi[1]-phi[0]))
     create_animation(header=header, cube_axis=phi, cube=abs_F, title='Faraday Depth Spectrum at {0:.4f} rad/m^2'.format(phi[0]), xlabel="Offset (degrees)", ylabel="Offset (degrees)", cblabel="Jy/beam", repeat=True)
-    max_intensity = np.amax(abs_F, axis=0)
-    sum_intensity = np.sum(abs_F, axis=0)
-    print(sum_intensity.shape)
-    polarized_percentage = np.where(sum_intensity>0.0, 100.0 * max_intensity / sum_intensity, 0.0)
+    max_rotated_intensity = np.amax(abs_F, axis=0)
     max_faraday_depth_pos = np.argmax(abs_F, axis=0)
-    max_faraday_depth = np.where(max_intensity>0.0, phi[max_faraday_depth_pos], 0.0)
+    max_faraday_depth = np.where(max_rotated_intensity>0.0, phi[max_faraday_depth_pos], 0.0)
 
-    writer.writeFITS(data=polarized_percentage, header=header, output="max_pol_percentage.fits")
+    writer.writeFITS(data=max_rotated_intensity, header=header, output="pol_rotated_intensity.fits")
     writer.writeFITS(data=max_faraday_depth, header=header, output="max_faraday_depth.fits")
 
     try:
