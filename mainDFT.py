@@ -107,7 +107,7 @@ def main():
     print("SigmaI: ", sigma_I)
     print("I shape: ", I.shape)
     mask_idx = make_mask(I, 2.0*sigma_I)
-    print("Mask shape: ", mask_idx.shape)
+    print("Mask: ", mask_idx)
 
     sigma = np.sqrt((sigma_Q**2 + sigma_U**2)/2)
     W, K = pre_proc.calculate_W_K(sigma)
