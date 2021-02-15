@@ -88,6 +88,7 @@ def main():
         Q = np.flipud(Q)
         U = np.flipud(U)
 
+    print(pol_percentage)
     pol_percentage_header, pol_percentage_data = reader.readImage(name=pol_percentage)
     freqs = reader.readFreqsNumpyFile()
     pre_proc = PreProcessor(freqs=freqs)

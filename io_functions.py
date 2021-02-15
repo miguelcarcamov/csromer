@@ -40,10 +40,10 @@ class Reader:
         return IQU[0], IQU[1], IQU[2]
 
     def readImage(self, name=None):
-        hdu = fits.open(name = name)
-        header = hdu[0].header
-        data = hdu[0].data
-        hdu.close()
+        hdul = fits.open(name = name)
+        header = hdul[0].header
+        data = hdul[0].data
+        hdul.close()
         return header, data
 
     def readNumpyFile(self):
