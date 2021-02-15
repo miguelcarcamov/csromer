@@ -46,7 +46,7 @@ class Reader:
             filename = name
         hdul = fits.open(name = filename)
         header = hdul[0].header
-        data = hdul[0].data
+        data = np.squeeze(hdul[0].data)
         hdul.close()
         return header, data
 
