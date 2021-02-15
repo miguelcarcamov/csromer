@@ -107,7 +107,7 @@ def main():
     sigma = np.sqrt((sigma_Q**2 + sigma_U**2)/2)
     print("SigmaI: ", sigma_I)
 
-    mask_idx = make_mask(I, 8.0*sigma_I)
+    mask_idx = make_mask(I, 4.0*sigma_I)
 
     W, K = pre_proc.calculate_W_K(sigma)
 
@@ -269,8 +269,8 @@ def main():
     create_animation(header=header, cube_axis=phi, cube=abs_F, title='Faraday Depth Spectrum at {0:.4f} rad/m^2'.format(phi[0]), xlabel="Offset (degrees)", ylabel="Offset (degrees)", cblabel="Jy/beam", repeat=True)
     max_rotated_intensity = np.amax(abs_F, axis=0)
     max_faraday_depth_pos = np.argmax(abs_F, axis=0)
-    max_faraday_depth = np.where(I>=8.0*sigma_I, phi[max_faraday_depth_pos], 0.0)
-    masked_pol_percentage = np.where(I>=8.0*sigma_I, pol_percentage_data, 0.0)
+    max_faraday_depth = np.where(I>=4.0*sigma_I, phi[max_faraday_depth_pos], 0.0)
+    masked_pol_percentage = np.where(I>=4.0*sigma_I, pol_percentage_data, 0.0)
 
     writer.writeFITS(data=masked_pol_percentage, header=pol_percentage_header, output="masked_pol_percentage.fits")
     writer.writeFITS(data=max_rotated_intensity, header=header, output="pol_rotated_intensity.fits")
