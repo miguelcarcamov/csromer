@@ -32,7 +32,7 @@ class PreProcessor:
         where_min = np.unravel_index(np.argmax(image, axis=None), image.shape)
         return min, where_min
 
-    def calculate_sigmas(self, image=None, x0=0, xn=0, y0=0, yn=0):
+    def calculate_sigmas_cube(self, image=None, x0=0, xn=0, y0=0, yn=0):
         sigmas = np.zeros(len(self.freqs))
 
         for i in range(len(self.freqs)):
@@ -40,6 +40,10 @@ class PreProcessor:
 
         return sigmas
 
+    def calculate_sigma(self, image=None, x0=0, xn=0, y0=0, yn=0):
+        sigma = np.sqrt(np.mean(image[i, y0:yn, x0:xn]**2))
+
+        return sigma
 
     def calculate_phi(self, W, K, times=4):
 

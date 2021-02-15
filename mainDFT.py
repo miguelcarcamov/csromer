@@ -75,9 +75,8 @@ def main():
 
     if imag_counter > 1:
         print("Reading images")
-        reader = Reader(images[0], images[1], images[2], freq_f)
-        I,Q,U = reader.readIQU(memmap=True)
-        I = np.flipud(I)
+        reader = Reader(images[1], images[2], freq_f)
+        Q,U = reader.readQU(memmap=True)
         Q = np.flipud(Q)
         U = np.flipud(U)
         M = I.shape[1]
@@ -88,6 +87,7 @@ def main():
         Q = np.flipud(Q)
         U = np.flipud(U)
 
+    I_header, I = reader.readImage(images[0])
     pol_percentage_header, pol_percentage_data = reader.readImage(name=pol_percentage)
     freqs = reader.readFreqsNumpyFile()
     pre_proc = PreProcessor(freqs=freqs)
@@ -100,14 +100,14 @@ def main():
        Q = Q[index,:,0]
        U = U[index,:,1]
     """
-    sigma_I = pre_proc.calculate_sigmas(image=I, x0=0, xn=197, y0=0, yn=184)
-    sigma_Q = pre_proc.calculate_sigmas(image=Q, x0=0, xn=197, y0=0, yn=184)
-    sigma_U = pre_proc.calculate_sigmas(image=U, x0=0, xn=197, y0=0, yn=184)
+    sigma_I = pre_proc.calculate_sigma(image=I, x0=0, xn=197, y0=0, yn=184)
+    sigma_Q = pre_proc.calculate_sigmas_cube(image=Q, x0=0, xn=197, y0=0, yn=184)
+    sigma_U = pre_proc.calculate_sigmas_cube(image=U, x0=0, xn=197, y0=0, yn=184)
 
     sigma = np.sqrt((sigma_Q**2 + sigma_U**2)/2)
     #print("Sigma: ", sigma)
 
-    mask_idx = make_mask(I[-1], 8.0*sigma_I[-1])
+    mask_idx = make_mask(I, 8.0*sigma_I)
 
     W, K = pre_proc.calculate_W_K(sigma)
 
