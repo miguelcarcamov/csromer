@@ -106,7 +106,6 @@ def main():
 
     sigma = np.sqrt((sigma_Q**2 + sigma_U**2)/2)
     print("SigmaI: ", sigma_I)
-    print("SigmaQU: ", sigma)
 
     mask_idx = make_mask(I, 8.0*sigma_I)
 
