@@ -10,7 +10,8 @@ from astropy.io import fits
 import sys
 
 class Reader:
-    def __init__(self, Q_cube_name="", U_cube_name="", freq_file_name="", numpy_file=""):
+    def __init__(self, stokes_I_name="", Q_cube_name="", U_cube_name="", freq_file_name="", numpy_file=""):
+        self.stokes_I_name = stokes_I_name
         self.Q_cube_name = Q_cube_name
         self.U_cube_name = U_cube_name
         self.freq_file_name = freq_file_name
@@ -39,7 +40,11 @@ class Reader:
         return IQU[0], IQU[1]
 
     def readImage(self, name=None):
-        hdul = fits.open(name = name)
+        if name is None:
+            filename = self.stokes_I_name
+        else:
+            filename = name
+        hdul = fits.open(name = filename)
         header = hdul[0].header
         data = hdul[0].data
         hdul.close()

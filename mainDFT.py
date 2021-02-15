@@ -75,7 +75,7 @@ def main():
 
     if imag_counter > 1:
         print("Reading images")
-        reader = Reader(images[1], images[2], freq_f)
+        reader = Reader(images[0], images[1], images[2], freq_f)
         Q,U = reader.readQU(memmap=True)
         Q = np.flipud(Q)
         U = np.flipud(U)
@@ -87,7 +87,7 @@ def main():
         Q = np.flipud(Q)
         U = np.flipud(U)
 
-    I_header, I = reader.readImage(images[0])
+    I_header, I = reader.readImage()
     pol_percentage_header, pol_percentage_data = reader.readImage(name=pol_percentage)
     freqs = reader.readFreqsNumpyFile()
     pre_proc = PreProcessor(freqs=freqs)
@@ -100,15 +100,14 @@ def main():
        Q = Q[index,:,0]
        U = U[index,:,1]
     """
-    sigma_I = pre_proc.calculate_sigma(image=I, x0=0, xn=60, y0=0, yn=60)
+    sigma_I = pre_proc.calculate_sigma(image=I, x0=0, xn=197, y0=0, yn=184)
     sigma_Q = pre_proc.calculate_sigmas_cube(image=Q, x0=0, xn=197, y0=0, yn=184)
     sigma_U = pre_proc.calculate_sigmas_cube(image=U, x0=0, xn=197, y0=0, yn=184)
 
-    sigma = np.sqrt((sigma_Q**2 + sigma_U**2)/2)
     print("SigmaI: ", sigma_I)
-
     mask_idx = make_mask(I, 4.0*sigma_I)
 
+    sigma = np.sqrt((sigma_Q**2 + sigma_U**2)/2)
     W, K = pre_proc.calculate_W_K(sigma)
 
     lambda2, lambda2_ref, phi, phi_r = pre_proc.calculate_phi(W, K, times=8)
@@ -265,7 +264,7 @@ def main():
     header = reader.readHeader()
     writer = Writer()
     abs_F = np.abs(F)
-    #writer.writeFITSCube(np.abs(F), header, len(phi), phi, np.abs(phi[1]-phi[0]))
+    writer.writeFITSCube(np.abs(F), header, len(phi), phi, np.abs(phi[1]-phi[0]), output="abs_F.fits")
     create_animation(header=header, cube_axis=phi, cube=abs_F, title='Faraday Depth Spectrum at {0:.4f} rad/m^2'.format(phi[0]), xlabel="Offset (degrees)", ylabel="Offset (degrees)", cblabel="Jy/beam", repeat=True)
     max_rotated_intensity = np.amax(abs_F, axis=0)
     max_faraday_depth_pos = np.argmax(abs_F, axis=0)
