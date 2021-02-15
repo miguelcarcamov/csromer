@@ -79,8 +79,8 @@ def main():
         Q,U = reader.readQU(memmap=True)
         Q = np.flipud(Q)
         U = np.flipud(U)
-        M = I.shape[1]
-        N = I.shape[2]
+        M = Q.shape[1]
+        N = Q.shape[2]
     else:
         reader = Reader(freq_file_name=freq_f, numpy_file=images[0])
         Q,U = reader.readNumpyFile()
