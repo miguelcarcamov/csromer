@@ -36,6 +36,8 @@ def getopt():
                         help="Input Stokes polarized images (I,Q,U FITS images) separated by a space", required=True)
     parser.add_argument("-p", "--pol_percentage",
                         help="Input polarization percentage", required=True)
+    parser.add_argument("-s", "--sigmas",
+                        help="Number of sigmas above on which calculation is done", required=False, default=8.0, type=float)
     parser.add_argument("-f", "--freq-file",
                         help="Text file with frequency values")
     parser.add_argument("-o", "--output", nargs="*",
