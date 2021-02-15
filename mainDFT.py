@@ -69,6 +69,7 @@ def calculateF(dftObject=None, F=np.array([]), P=np.array([]), idx_array=np.arra
 def main():
 
     images, pol_percentage, freq_f, reg_terms, output, index, verbose = getopt()
+    pol_percentage = pol_percentage[0]
     index = int(index)
     imag_counter = len(images)
 
