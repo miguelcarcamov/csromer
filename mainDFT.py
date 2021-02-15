@@ -34,9 +34,9 @@ def getopt():
                         help="Print output", action="store_true")
     parser.add_argument("-i", "--images", nargs=3,
                         help="Input Stokes polarized images (I,Q,U FITS images) separated by a space", required=True)
-    parser.add_argument("-p", "--pol_percentage", nargs=1,
+    parser.add_argument("-p", "--pol_percentage",
                         help="Input polarization percentage", required=True)
-    parser.add_argument("-f", "--freq-file", nargs=1,
+    parser.add_argument("-f", "--freq-file",
                         help="Text file with frequency values")
     parser.add_argument("-o", "--output", nargs="*",
                         help="Path/s and/or name/s of the output file/s in FITS/npy format", required=True)
@@ -69,7 +69,6 @@ def calculateF(dftObject=None, F=np.array([]), P=np.array([]), idx_array=np.arra
 def main():
 
     images, pol_percentage, freq_f, reg_terms, output, index, verbose = getopt()
-    pol_percentage = pol_percentage[0]
     index = int(index)
     imag_counter = len(images)
 
@@ -89,7 +88,6 @@ def main():
         Q = np.flipud(Q)
         U = np.flipud(U)
 
-    print(pol_percentage)
     pol_percentage_header, pol_percentage_data = reader.readImage(name=pol_percentage)
     freqs = reader.readFreqsNumpyFile()
     pre_proc = PreProcessor(freqs=freqs)
