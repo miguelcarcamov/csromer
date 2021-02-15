@@ -30,7 +30,7 @@ class Reader:
         hdu.close()
         return image
 
-    def readIQU(self, memmap=False):
+    def readQU(self, memmap=False):
         files = [self.Q_cube_name, self.U_cube_name]
         IQU = []
         for file in files:
