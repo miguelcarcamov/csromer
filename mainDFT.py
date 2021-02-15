@@ -113,7 +113,7 @@ def main():
 
     lambda2, lambda2_ref, phi, phi_r = pre_proc.calculate_phi(W, K, times=8)
 
-    print("Max I: ", pre_proc.calculate_max(I[len(lambda2)-1]))
+    print("Max I: ", pre_proc.calculate_max(I))
 
     P = Q + 1j * U
 
