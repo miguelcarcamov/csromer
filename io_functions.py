@@ -39,7 +39,12 @@ class Reader:
 
         return IQU[0], IQU[1], IQU[2]
 
-
+    def readImage(self, name=None):
+        hdu = fits.open(name = name)
+        header = hdu[0].header
+        data = hdu[0].data
+        hdu.close()
+        return header, data
 
     def readNumpyFile(self):
         try:
@@ -53,8 +58,11 @@ class Reader:
 
         return Q, U
 
-    def readHeader(self):
-        f_filename = self.Q_cube_name
+    def readHeader(self, name=None):
+        if name is None:
+            f_filename = self.I_cube_name
+        else:
+            f_filename = name
         hdul_image = fits.open(name=f_filename)
         header = hdul_image[0].header
         hdul_image.close()
