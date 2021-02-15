@@ -32,11 +32,11 @@ def getopt():
                         help="show program version", action="store_true")
     parser.add_argument("-v", "--verbose",
                         help="Print output", action="store_true")
-    parser.add_argument("-i", "--images", nargs='3',
+    parser.add_argument("-i", "--images", nargs=3,
                         help="Input Stokes polarized images (I,Q,U FITS images) separated by a space", required=True)
-    parser.add_argument("-p", "--pol_percentage", nargs='1',
+    parser.add_argument("-p", "--pol_percentage", nargs=1,
                         help="Input polarization percentage", required=True)
-    parser.add_argument("-f", "--freq-file", nargs='1',
+    parser.add_argument("-f", "--freq-file", nargs=1,
                         help="Text file with frequency values")
     parser.add_argument("-o", "--output", nargs="*",
                         help="Path/s and/or name/s of the output file/s in FITS/npy format", required=True)
