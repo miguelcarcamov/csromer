@@ -29,7 +29,7 @@ class PreProcessor:
 
     def calculate_min(self, image=None, axis=0):
         min = np.amin(image)
-        where_min = np.unravel_index(np.argmax(image, axis=None), image.shape)
+        where_min = np.unravel_index(np.argmin(image, axis=None), image.shape)
         return min, where_min
 
     def calculate_sigmas_cube(self, image=None, x0=0, xn=0, y0=0, yn=0):

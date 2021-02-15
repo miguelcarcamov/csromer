@@ -105,7 +105,9 @@ def main():
     sigma_U = pre_proc.calculate_sigmas_cube(image=U, x0=0, xn=197, y0=0, yn=184)
 
     print("SigmaI: ", sigma_I)
+    print("I shape: ", I.shape)
     mask_idx = make_mask(I, 2.0*sigma_I)
+    print("Mask shape: ", mask_idx.shape)
 
     sigma = np.sqrt((sigma_Q**2 + sigma_U**2)/2)
     W, K = pre_proc.calculate_W_K(sigma)
