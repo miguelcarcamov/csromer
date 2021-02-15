@@ -57,11 +57,12 @@ def getopt():
     output = vars(args)['output']
     index = vars(args)['index']
     verbose = vars(args)['verbose']
+    nsigma = vars(args)['sigmas']
     # check for --version or -V
     if args.version:
         print("this is myprogram version 0.1")
         sys.exit(1)
-    return images, pol_percentage, freq_f, reg_terms, output, index, verbose
+    return images, pol_percentage, freq_f, reg_terms, output, index, nsigma, verbose
 
 def calculateF(dftObject=None, F=np.array([]), P=np.array([]), idx_array=np.array([]), idx=0):
     i = idx_array[0][idx]
@@ -70,7 +71,7 @@ def calculateF(dftObject=None, F=np.array([]), P=np.array([]), idx_array=np.arra
 
 def main():
 
-    images, pol_percentage, freq_f, reg_terms, output, index, verbose = getopt()
+    images, pol_percentage, freq_f, reg_terms, output, index, nsigma, verbose = getopt()
     index = int(index)
     imag_counter = len(images)
 
@@ -108,7 +109,7 @@ def main():
 
     print("SigmaI: ", sigma_I)
     print("I shape: ", I.shape)
-    mask_idx = make_mask(I, 8.0*sigma_I)
+    mask_idx = make_mask(I, nsigma*sigma_I)
 
     sigma = np.sqrt((sigma_Q**2 + sigma_U**2)/2)
     W, K = pre_proc.calculate_W_K(sigma)
@@ -272,8 +273,8 @@ def main():
 
     max_rotated_intensity = np.amax(abs_F, axis=0)
     max_faraday_depth_pos = np.argmax(abs_F, axis=0)
-    max_faraday_depth = np.where(I>=8.0*sigma_I, phi[max_faraday_depth_pos], 0.0)
-    masked_pol_percentage = np.where(I>=8.0*sigma_I, pol_percentage_data, 0.0)
+    max_faraday_depth = np.where(I>=nsigma*sigma_I, phi[max_faraday_depth_pos], 0.0)
+    masked_pol_percentage = np.where(I>=nsigma*sigma_I, pol_percentage_data, 0.0)
 
     writer.writeFITS(data=masked_pol_percentage, header=pol_percentage_header, output="masked_pol_percentage.fits")
     writer.writeFITS(data=max_rotated_intensity, header=header, output="pol_rotated_intensity.fits")
