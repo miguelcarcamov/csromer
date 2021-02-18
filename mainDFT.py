@@ -273,10 +273,10 @@ def main():
 
     max_rotated_intensity = np.amax(abs_F, axis=0)
     max_faraday_depth_pos = np.argmax(abs_F, axis=0)
-    max_faraday_depth = np.where(I>=nsigma*sigma_I, phi[max_faraday_depth_pos], 0.0)
-    masked_pol_percentage = np.where(I>=nsigma*sigma_I, pol_percentage_data, 0.0)
+    max_faraday_depth = np.where(I>=nsigma*sigma_I, phi[max_faraday_depth_pos], np.nan)
+    masked_pol_percentage = np.where(I>=nsigma*sigma_I, pol_percentage_data, np.nan)
 
-    writer.writeFITS(data=masked_pol_percentage, header=pol_percentage_header, output="masked_pol_percentage.fits")
+    writer.writeFITS(data=masked_pol_percentage, header=pol_percentage_header, output="masked_pol_fraction.fits")
     writer.writeFITS(data=max_rotated_intensity, header=header, output="pol_rotated_intensity.fits")
     writer.writeFITS(data=max_faraday_depth, header=header, output="max_faraday_depth.fits")
 
