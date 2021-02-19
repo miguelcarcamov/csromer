@@ -288,7 +288,7 @@ def main():
     plt.tight_layout()
     plt.savefig("SNRvsPolFraction.png", bbox_inches ="tight", dpi=100)
 
-    SNRvsPol = mp.where(I>=nsigma*sigma_I, SNR_image/pol_fraction_data, np.nan)
+    SNRvsPol = np.where(I>=nsigma*sigma_I, SNR_image/pol_fraction_data, np.nan)
     writer.writeFITS(data=np.where(I>=nsigma*sigma_I, SNR_image, np.nan), header=pol_fraction_header, output="SNR.fits")
     writer.writeFITS(data=SNRvsPol, header=pol_fraction_header, output="SNRvsPolFraction.fits")
     writer.writeFITS(data=masked_pol_fraction, header=pol_fraction_header, output="masked_pol_fraction.fits")
