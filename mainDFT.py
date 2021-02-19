@@ -285,8 +285,7 @@ def main():
     #plt.plot(pol_fraction_data_vector, 'k.', label="Polarization fraction")
     plt.scatter(pol_fraction_data_vector, SNR_image_vector)
     plt.xlabel("Polarization fraction")
-    plt.ylabel("Signal-to-noise ration")
-    plt.legend(loc='upper right')
+    plt.ylabel("Signal-to-noise ratio")
     plt.tight_layout()
     plt.savefig("SNRvsPolFraction.png", bbox_inches ="tight", dpi=100)
 
