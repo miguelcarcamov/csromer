@@ -276,17 +276,17 @@ def main():
     max_faraday_depth = np.where(I>=nsigma*sigma_I, phi[max_faraday_depth_pos], np.nan)
     masked_pol_fraction = np.where(I>=nsigma*sigma_I, pol_fraction_data, np.nan)
 
-	SNR_image = I/sigma_I
-	SNR_image_vector = SNR_image.flatten()
-	pol_fraction_data_vector = pol_fraction_data.flatten()
+    SNR_image = I/sigma_I
+    SNR_image_vector = SNR_image.flatten()
+    pol_fraction_data_vector = pol_fraction_data.flatten()
 
-	plt.figure()
-	plt.plot(SNR_image_vector, 'c.', label="SNR")
-	plt.plot(pol_fraction_data_vector, 'k.', label="Polarization fraction")
-	plt.xlabel("Pixels")
-	plt.legend(loc='upper right')
-	plt.tight_layout()
-	plt.savefig("SNRvsPolFraction.eps", bbox_inches ="tight")
+    plt.figure()
+    plt.plot(SNR_image_vector, 'c.', label="SNR")
+    plt.plot(pol_fraction_data_vector, 'k.', label="Polarization fraction")
+    plt.xlabel("Pixels")
+    plt.legend(loc='upper right')
+    plt.tight_layout()
+    plt.savefig("SNRvsPolFraction.eps", bbox_inches ="tight")
 
 	writer.writeFITS(data=np.abs(SNR_image-pol_fraction_data), header=pol_fraction_header, output="SNRvsPolFraction.fits")
     writer.writeFITS(data=masked_pol_fraction, header=pol_fraction_header, output="masked_pol_fraction.fits")
