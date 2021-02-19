@@ -288,7 +288,7 @@ def main():
     plt.tight_layout()
     plt.savefig("SNRvsPolFraction.eps", bbox_inches ="tight")
 
-	writer.writeFITS(data=np.abs(SNR_image-pol_fraction_data), header=pol_fraction_header, output="SNRvsPolFraction.fits")
+    writer.writeFITS(data=np.abs(SNR_image-pol_fraction_data), header=pol_fraction_header, output="SNRvsPolFraction.fits")
     writer.writeFITS(data=masked_pol_fraction, header=pol_fraction_header, output="masked_pol_fraction.fits")
     writer.writeFITS(data=max_rotated_intensity, header=header, output="pol_rotated_intensity.fits")
     writer.writeFITS(data=max_faraday_depth, header=header, output="max_faraday_depth.fits")
