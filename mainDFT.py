@@ -34,8 +34,8 @@ def getopt():
                         help="Print output", action="store_true")
     parser.add_argument("-i", "--images", nargs=3,
                         help="Input Stokes polarized images (I,Q,U FITS images) separated by a space", required=True)
-    parser.add_argument("-p", "--pol_percentage",
-                        help="Input polarization percentage", required=True)
+    parser.add_argument("-p", "--pol_fraction",
+                        help="Input polarization fraction image", required=True)
     parser.add_argument("-s", "--sigmas",
                         help="Number of sigmas above on which calculation is done", required=False, default=8.0, type=float)
     parser.add_argument("-f", "--freq-file",
@@ -52,7 +52,7 @@ def getopt():
 
     reg_terms = vars(args)['lambdas']
     images = vars(args)['images']
-    pol_percentage = vars(args)['pol_percentage']
+    pol_fraction = vars(args)['pol_fraction']
     freq_f = vars(args)['freq_file']
     output = vars(args)['output']
     index = vars(args)['index']
@@ -62,7 +62,7 @@ def getopt():
     if args.version:
         print("this is myprogram version 0.1")
         sys.exit(1)
-    return images, pol_percentage, freq_f, reg_terms, output, index, nsigma, verbose
+    return images, pol_fraction, freq_f, reg_terms, output, index, nsigma, verbose
 
 def calculateF(dftObject=None, F=np.array([]), P=np.array([]), idx_array=np.array([]), idx=0):
     i = idx_array[0][idx]
@@ -71,7 +71,7 @@ def calculateF(dftObject=None, F=np.array([]), P=np.array([]), idx_array=np.arra
 
 def main():
 
-    images, pol_percentage, freq_f, reg_terms, output, index, nsigma, verbose = getopt()
+    images, pol_fraction, freq_f, reg_terms, output, index, nsigma, verbose = getopt()
     index = int(index)
     imag_counter = len(images)
 
@@ -91,7 +91,7 @@ def main():
         U = np.flipud(U)
 
     I_header, I = reader.readImage()
-    pol_percentage_header, pol_percentage_data = reader.readImage(name=pol_percentage)
+    pol_fraction_header, pol_fraction_data = reader.readImage(name=pol_fraction)
     freqs = reader.readFreqsNumpyFile()
     pre_proc = PreProcessor(freqs=freqs)
     """
@@ -274,9 +274,22 @@ def main():
     max_rotated_intensity = np.amax(abs_F, axis=0)
     max_faraday_depth_pos = np.argmax(abs_F, axis=0)
     max_faraday_depth = np.where(I>=nsigma*sigma_I, phi[max_faraday_depth_pos], np.nan)
-    masked_pol_percentage = np.where(I>=nsigma*sigma_I, pol_percentage_data, np.nan)
+    masked_pol_fraction = np.where(I>=nsigma*sigma_I, pol_fraction_data, np.nan)
 
-    writer.writeFITS(data=masked_pol_percentage, header=pol_percentage_header, output="masked_pol_fraction.fits")
+	SNR_image = I/sigma_I
+	SNR_image_vector = SNR_image.flatten()
+	pol_fraction_data_vector = pol_fraction_data.flatten()
+
+	plt.figure()
+	plt.plot(SNR_image_vector, 'c.', label="SNR")
+	plt.plot(pol_fraction_data_vector, 'k.', label="Polarization fraction")
+	plt.xlabel("Pixels")
+	plt.legend(loc='upper right')
+	plt.tight_layout()
+	plt.savefig("SNRvsPolFraction.eps", bbox_inches ="tight")
+
+	writer.writeFITS(data=np.abs(SNR_image-pol_fraction_data), header=pol_fraction_header, output="SNRvsPolFraction.fits")
+    writer.writeFITS(data=masked_pol_fraction, header=pol_fraction_header, output="masked_pol_fraction.fits")
     writer.writeFITS(data=max_rotated_intensity, header=header, output="pol_rotated_intensity.fits")
     writer.writeFITS(data=max_faraday_depth, header=header, output="max_faraday_depth.fits")
 
