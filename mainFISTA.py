@@ -165,11 +165,11 @@ def main():
 
     X = real_to_complex(X)
 
-    plt.rc('text', usetex=True)
-    plt.rc('font', family='serif')
+    #plt.rc('text', usetex=True)
+    #plt.rc('font', family='serif')
 
-    plt.rc('text', usetex=True)
-    plt.rc('font', family='serif')
+    #plt.rc('text', usetex=True)
+    #plt.rc('font', family='serif')
 
     plt.figure(1)
 
