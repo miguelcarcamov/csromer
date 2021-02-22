@@ -145,9 +145,11 @@ def main():
 
     lambda_l1 = 0.5
     lambda_tv = 1e-4
-    F_func = [chi2(P, dft, W), TV(lambda_tv), L1(lambda_l1)]
+    F_func = [chi2(P, dft, W), L1(lambda_l1)]
+    #F_func = [chi2(P, dft, W), TV(lambda_tv), L1(lambda_l1)]
     f_func = [chi2(P, dft, W)]
-    g_func = [TV(lambda_tv), L1(lambda_l1)]
+    #g_func = [TV(lambda_tv), L1(lambda_l1)]
+    g_func = [L1(lambda_l1)]
 
     F_obj = OFunction(F_func)
     f_obj = OFunction(f_func)
@@ -166,37 +168,53 @@ def main():
     plt.rc('text', usetex=True)
     plt.rc('font', family='serif')
 
+    plt.rc('text', usetex=True)
+    plt.rc('font', family='serif')
+
+    plt.figure(1)
+
     #plt.axvline(x=50, color='darkgrey', linestyle='-')
-    plt.plot(lambda2, P.real, 'c.', label=r"Real part")
-    plt.plot(lambda2, P.imag, 'c.', label=r"Imaginary part")
-    plt.plot(lambda2, np.abs(P), 'k.', label=r"Amplitude")
-    plt.xlabel(r'$\phi$[rad m$^{-2}$]')
-    plt.ylabel(r'Jy m$^2$ rad$^{-1}$')
+    plt.plot(lambda2, P.real, 'k.', label=r"Stokes $Q$")
+    plt.plot(lambda2, P.imag, 'c.', label=r"Stokes $U$")
+    plt.plot(lambda2, np.abs(P), 'g.', label=r"$|P|$")
+    #plt.plot(lambda2, I, 'r.', label=r"Stokes $I$")
+    plt.xlabel(r'$\lambda^2$[m$^{2}$]')
+    plt.ylabel(r'Jy/beam')
     plt.legend(loc='upper right')
+    plt.tight_layout()
+    plt.savefig("stokes.eps", bbox_inches ="tight")
     #plt.xlim([-500, 500])
     #plt.ylim([-0.75, 1.25])
 
     plt.figure(2)
 
     #plt.axvline(x=50, color='darkgrey', linestyle='-')
-    plt.plot(phi, F.real, 'c-', label=r"Real part")
-    plt.plot(phi, F.imag, 'c-.', label=r"Imaginary part")
+    plt.plot(phi, F.real, 'c--', label=r"Real part")
+    plt.plot(phi, F.imag, 'c:', label=r"Imaginary part")
     plt.plot(phi, np.abs(F), 'k-', label=r"Amplitude")
     plt.xlabel(r'$\phi$[rad m$^{-2}$]')
     plt.ylabel(r'Jy m$^2$ rad$^{-1}$')
     plt.legend(loc='upper right')
-    plt.xlim([-500, 500])
-    plt.ylim([-0.75, 1.25])
+    plt.xlim([-1000, 1000])
+    plt.tight_layout()
+    plt.savefig("FDS.eps", bbox_inches ="tight")
+    #plt.ylim([-0.75, 1.25])
 
     plt.figure(3)
-    plt.plot(phi, X.real, 'c-', label=r"Real part")
-    plt.plot(phi, X.imag, 'c-.', label=r"Imaginary part")
+
+    #plt.axvline(x=50, color='darkgrey', linestyle='-')
+    plt.plot(phi, X.real, 'c--', label=r"Real part")
+    plt.plot(phi, X.imag, 'c:', label=r"Imaginary part")
     plt.plot(phi, np.abs(X), 'k-', label=r"Amplitude")
     plt.xlabel(r'$\phi$[rad m$^{-2}$]')
     plt.ylabel(r'Jy m$^2$ rad$^{-1}$')
     plt.legend(loc='upper right')
-    plt.xlim([-500, 500])
-    plt.ylim([-0.75, 1.25])
+    plt.xlim([-1000, 1000])
+    plt.tight_layout()
+    plt.savefig("fista_recon.eps", bbox_inches ="tight")
+    #plt.ylim([-0.75, 1.25])
+
+
 
     plt.show()
 
