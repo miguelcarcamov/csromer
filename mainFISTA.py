@@ -18,16 +18,22 @@ Created on Tue Nov  5 13:26:28 2019
 
 
 import argparse
+import os
 import numpy as np
-from io_functions import Read, Write
+from io_functions import Reader, Writer
 import sys
 from pre_processing import PreProcessor
 from dfts import DFT1D
 import matplotlib.pyplot as plt
 from ofunction import OFunction
-from priors import chi2, TV, L1
+from priors import TV, L1, chi2
 from optimizer import Optimizer
-from utilities import real_to_complex, complex_to_real, find_pixel
+from utilities import real_to_complex, complex_to_real, find_pixel, make_mask
+from animations import create_animation
+from joblib import Parallel, delayed, load, dump
+from astropy.io import fits
+import shutil
+
 def getopt():
      # initiate the parser
     parser = argparse.ArgumentParser(
