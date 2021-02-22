@@ -143,7 +143,7 @@ def main():
 
     F_real = complex_to_real(F)
 
-    lambda_l1 = 0.5
+    lambda_l1 = 0.005
     lambda_tv = 0.0
     #F_func = [chi2(P, dft, W), L1(lambda_l1)]
     F_func = [chi2(P, dft, W), TV(lambda_tv), L1(lambda_l1)]
