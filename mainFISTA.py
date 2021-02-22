@@ -144,12 +144,12 @@ def main():
     F_real = complex_to_real(F)
 
     lambda_l1 = 0.5
-    lambda_tv = 1e-4
-    F_func = [chi2(P, dft, W), L1(lambda_l1)]
-    #F_func = [chi2(P, dft, W), TV(lambda_tv), L1(lambda_l1)]
+    lambda_tv = 0.0
+    #F_func = [chi2(P, dft, W), L1(lambda_l1)]
+    F_func = [chi2(P, dft, W), TV(lambda_tv), L1(lambda_l1)]
     f_func = [chi2(P, dft, W)]
-    #g_func = [TV(lambda_tv), L1(lambda_l1)]
-    g_func = [L1(lambda_l1)]
+    g_func = [TV(lambda_tv), L1(lambda_l1)]
+    #g_func = [L1(lambda_l1)]
 
     F_obj = OFunction(F_func)
     f_obj = OFunction(f_func)
