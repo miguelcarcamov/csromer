@@ -43,7 +43,7 @@ def FISTA(x_init, F, fx, gx, grad, g_prox, eta, max_iter, tol, verbose):
 
         t_min = min(1.0, eta / (1 / L))
         dif = x_new - x_old
-        e = 2 * (np.linalg.norm(dif)**2) / (t_min * (iter + 1)**2)
+        e = 2.0 * (np.linalg.norm(dif)**2) / (t_min * (iter + 1)**2)
         # check stop criteria
         if e <= tol:
             print("Exit due to tolerance: ", e, " < ", tol)
