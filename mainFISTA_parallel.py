@@ -76,7 +76,7 @@ def calculateF(F_obj=None, f_obj=None, g_obj=None, dftObject=None, F=np.array([]
     obj, X = opt.FISTA(f_obj.evaluate, g_obj.evaluate,
                        f_obj.calculate_gradient, g_obj, 0.5)
 
-    F[:,i,j] = real_to_complex(F_real)
+    F[:,i,j] = real_to_complex(X)
 
 def main():
 
@@ -168,8 +168,8 @@ def main():
     total_pixels = len(mask_idx[0])
     print("Pixels: ", total_pixels)
 
-    lambda_l1 = 0.5
-    lambda_tv = 1e-4
+    lambda_l1 = 1e-5
+    lambda_tv = 0.0
     #F_func = [chi2(P, dft, W), TV(lambda_tv), L1(lambda_l1)]
     F_func = [chi2(P, dft, W), L1(lambda_l1)]
     f_func = [chi2(P, dft, W)]
@@ -311,7 +311,7 @@ def main():
     plt.savefig("SNRvsPolFraction.png", bbox_inches ="tight", dpi=100)
 
     #SNRvsPol = np.where(I>=nsigma*sigma_I, SNR_image/pol_fraction_data, np.nan)
-    #writer.writeFITS(data=np.where(I>=nsigma*sigma_I, SNR_image, np.nan), header=pol_fraction_header, output="SNR.fits")
+    writer.writeFITS(data=np.where(I>=nsigma*sigma_I, SNR_image, np.nan), header=pol_fraction_header, output="SNR.fits")
     #writer.writeFITS(data=SNRvsPol, header=pol_fraction_header, output="SNRvsPolFraction.fits")
     writer.writeFITS(data=masked_pol_fraction, header=pol_fraction_header, output="masked_pol_fraction.fits")
     writer.writeFITS(data=max_rotated_intensity, header=header, output="pol_rotated_intensity.fits")
