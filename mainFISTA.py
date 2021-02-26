@@ -146,8 +146,8 @@ def main():
     lambda_l1 = 1e-3
     lambda_tv = 0.0
     #F_func = [chi2(P, dft, W), L1(lambda_l1)]
-    F_func = [chi2(P, dft), TV(lambda_tv), L1(lambda_l1)]
-    f_func = [chi2(P, dft)]
+    F_func = [chi2(b=P, dft_obj=dft, w=W), TV(lambda_tv), L1(lambda_l1)]
+    f_func = [chi2(b=P, dft_obj=dft, w=W)]
     g_func = [TV(lambda_tv), L1(lambda_l1)]
     #g_func = [L1(lambda_l1)]
 

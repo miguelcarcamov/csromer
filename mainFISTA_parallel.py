@@ -64,11 +64,20 @@ def getopt():
         sys.exit(1)
     return images, pol_fraction, freq_f, reg_terms, output, index, nsigma, verbose
 
-def calculateF(F_obj=None, f_obj=None, g_obj=None, dftObject=None, F=np.array([]), P=np.array([]), idx_array=np.array([]), idx=0):
+def calculateF(dftObject=None, W=np.array([]), F=np.array([]), P=np.array([]), idx_array=np.array([]), idx=0):
     i = idx_array[0][idx]
     j = idx_array[1][idx]
     F[:,i,j] = dftObject.backward(P[:,i,j])
     F_real = complex_to_real(F[:,i,j])
+
+    lambda_l1 = 1e-5
+    F_func = [chi2(b=[:,i,j], dft_obj=dft, w=W), TV(0.0), L1(lambda_l1)]
+    f_func = [chi2(dft_obj=dft, w=W)]
+    g_func = [TV(0.0), L1(lambda_l1)]
+
+    F_obj = OFunction(F_func)
+    f_obj = OFunction(f_func)
+    g_obj = OFunction(g_func)
 
     opt = Optimizer(F_obj.evaluate, F_obj.calculate_gradient,
                     F_real, maxiter=100, verbose=verbose)
@@ -168,18 +177,18 @@ def main():
     total_pixels = len(mask_idx[0])
     print("Pixels: ", total_pixels)
 
-    lambda_l1 = 1e-5
-    lambda_tv = 0.0
+    #lambda_l1 = 1e-5
+    #lambda_tv = 0.0
     #F_func = [chi2(P, dft, W), TV(lambda_tv), L1(lambda_l1)]
-    F_func = [chi2(P, dft, W), L1(lambda_l1)]
-    f_func = [chi2(P, dft, W)]
-    g_func = [L1(lambda_l1)]
+    #F_func = [chi2(dft_obj=dft, w=W), TV(lambda_tv), L1(lambda_l1)]
+    #f_func = [chi2(dft_obj=dft, w=W)]
+    #g_func = [TV(lambda_tv), L1(lambda_l1)]
     #g_func = [TV(lambda_tv), L1(lambda_l1)]
 
-    F_obj = OFunction(F_func)
-    f_obj = OFunction(f_func)
-    g_obj = OFunction(g_func)
-    Parallel(n_jobs=-3, backend="multiprocessing", verbose=10)(delayed(calculateF)(F_func, f_func, g_func, dft, F, P, mask_idx, i) for i in range(0,total_pixels))
+    #F_obj = OFunction(F_func)
+    #f_obj = OFunction(f_func)
+    #g_obj = OFunction(g_func)
+    Parallel(n_jobs=-3, backend="multiprocessing", verbose=10)(delayed(calculateF)(dft, W, F, P, mask_idx, i) for i in range(0,total_pixels))
     """
     F_max = np.argmax(np.abs(F))
     print("Max RM: ", phi[F_max], "rad/m^2")
