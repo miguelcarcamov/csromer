@@ -265,6 +265,38 @@ def main():
     phi_output_idx = np.where((phi>-1000) & (phi<1000))
     phi = phi[phi_output_idx]
     F = F[phi_output_idx]
+
+
+    # Plot pixels of interest
+    #============ Extended Source 1============
+    #(279, 528)
+    #============ Center Source============
+    #(616, 507)
+    #============ South East Source============
+    #(309, 329)
+    #============ North West Source============
+    #(820, 751)
+    #============ Center West Source============
+    #(527, 887)
+    #============ N-W Extended Source 2============
+    #(574, 886)
+    y_pix = [279,616,309,820,527,574]
+    x_pix = [528,507,329,751,887,886]
+    names = ["extended-source-1", "center-source", "south-east-source", "north-west-source", "center-west-source", "n-w-extended-source-2"]
+    for i in range(0, len(names)):
+        plt.figure()
+        #plt.axvline(x=50, color='darkgrey', linestyle='-')
+        plt.plot(phi, F[:,y_pix[i], x_pix[i]].real, 'c--', label=r"Real part")
+        plt.plot(phi, F[:,y_pix[i], x_pix[i]].imag, 'c:', label=r"Imaginary part")
+        plt.plot(phi, np.abs(F[:y_pix[i], x_pix[i]]), 'k-', label=r"Amplitude")
+        plt.xlabel(r'$\phi$[rad m$^{-2}$]')
+        plt.ylabel(r'Jy m$^2$ rad$^{-1}$')
+        plt.legend(loc='upper right')
+        plt.xlim([-1000, 1000])
+        plt.tight_layout()
+        plt.savefig(names[i]+_"faraday_recon.eps", bbox_inches ="tight")
+        #plt.ylim([-0.75, 1.25])
+
     header = reader.readHeader()
     writer = Writer()
     abs_F = np.abs(F)
