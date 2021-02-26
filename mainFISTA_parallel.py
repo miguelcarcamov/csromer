@@ -311,7 +311,7 @@ def main():
         plt.legend(loc='upper right')
         plt.xlim([-1000, 1000])
         plt.tight_layout()
-        plt.savefig(names[i]+_"faraday_recon.eps", bbox_inches ="tight")
+        plt.savefig(names[i]+"_faradayrecon.eps", bbox_inches ="tight")
         #plt.ylim([-0.75, 1.25])
 
 
