@@ -71,7 +71,7 @@ def calculateF(dftObject=None, W=np.array([]), F=np.array([]), P=np.array([]), i
     F_real = complex_to_real(F[:,i,j])
 
     lambda_l1 = 1e-5
-    F_func = [chi2(b=[:,i,j], dft_obj=dft, w=W), TV(0.0), L1(lambda_l1)]
+    F_func = [chi2(b=P[:,i,j], dft_obj=dft, w=W), TV(0.0), L1(lambda_l1)]
     f_func = [chi2(dft_obj=dft, w=W)]
     g_func = [TV(0.0), L1(lambda_l1)]
 
