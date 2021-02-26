@@ -83,22 +83,22 @@ class L1:
 class chi2:
     reg = 1.0
 
-    def __init__(self, b=None, dft_obj=None, w=1.0, reg=1.0):
+    def __init__(self, b=np.array([]), dft_obj=None, w=1.0, reg=1.0):
         self.b = b
         self.dft = dft_obj
-        if self.b != None:
+        if len(self.b) != 0:
             self.F_dirty = self.dft.backward(self.b)
-        else:
-            self.F_dirty = None
         self.reg = reg
         self.w = w
 
-    def setb(self, b=None):
+    def setb(self, b=np.array([])):
         self.b = b
+        if len(self.b) != 0:
+            self.F_dirty = self.dft.backward(self.b)
 
     def setFdirty(self, F_dirty=None):
         self.F_dirty = F_dirty
-        
+
     def evaluate(self, x):
         x_complex = real_to_complex(x)
 
