@@ -299,7 +299,8 @@ def main():
     #(574, 886)
     y_pix = [279,616,309,820,527,574]
     x_pix = [528,507,329,751,887,886]
-    names = ["extended-source-1", "center-source", "south-east-source", "north-west-source", "center-west-source", "n-w-extended-source-2"]
+    file_names = ["extended-source-1", "center-source", "south-east-source", "north-west-source", "center-west-source", "n-w-extended-source-2"]
+    names = ["Extended Source 1", "Center Source", "South East Source", "North West Source", "Center West Source", "N-W Extended Source 2"]
     for i in range(0, len(names)):
         plt.figure()
         #plt.axvline(x=50, color='darkgrey', linestyle='-')
@@ -310,8 +311,9 @@ def main():
         plt.ylabel(r'Jy m$^2$ rad$^{-1}$')
         plt.legend(loc='upper right')
         plt.xlim([-1000, 1000])
+        plt.title(names[i])
         plt.tight_layout()
-        plt.savefig(names[i]+"_faradayrecon.eps", bbox_inches ="tight")
+        plt.savefig(file_names[i]+"_faradayrecon.eps", bbox_inches ="tight")
         #plt.ylim([-0.75, 1.25])
 
 
