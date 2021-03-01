@@ -42,10 +42,9 @@ def create_animation(header, cube_axis=np.array([]), cube=np.array([]), xlabel="
     ims = []
     num_ims = len(cube)
     if(num_ims != 0):
-
-		if(vmin is None and vmax is None):
-			vmax = np.amax(np.amax(cube, axis=0))
-			vmin = np.amin(np.amin(cube, axis=0))
+        if(vmin is None and vmax is None):
+            vmax = np.amax(np.amax(cube, axis=0))
+            vmin = np.amin(np.amin(cube, axis=0))
 
         fig = plt.figure()
         ax = plt.subplot(111)
