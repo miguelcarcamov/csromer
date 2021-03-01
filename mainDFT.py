@@ -267,7 +267,7 @@ def main():
     F = F[phi_output_idx]
 
     results_folder = "dft/"
-    os.mkdir(results_folder)
+    os.makedirs(results_folder, exist_ok=True)
     # Plot pixels of interest
     #============ Extended Source 1============
     #(279, 528)

@@ -286,7 +286,7 @@ def main():
 
 
     results_folder = "FISTA/"
-    os.mkdir(results_folder)
+    os.makedirs(results_folder, exist_ok=True)
     # Plot pixels of interest
     #============ Extended Source 1============
     #(279, 528)
