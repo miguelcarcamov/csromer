@@ -56,7 +56,7 @@ def create_animation(header, cube_axis=np.array([]), cube=np.array([]), xlabel="
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
         tick_locator = ticker.MaxNLocator(nbins=3)
-		cb = colorbar(im, cblabel)
+        cb = colorbar(im, cblabel)
         cb.locator = tick_locator
         cb.update_ticks()
 
