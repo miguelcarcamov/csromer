@@ -286,7 +286,7 @@ def main():
 
 
     results_folder = "FISTA/"
-    os.mdkir(folder)
+    os.mkdir(folder)
     # Plot pixels of interest
     #============ Extended Source 1============
     #(279, 528)
