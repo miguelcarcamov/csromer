@@ -266,7 +266,8 @@ def main():
     phi = phi[phi_output_idx]
     F = F[phi_output_idx]
 
-
+    results_folder = "dft/"
+    os.mdkir(folder)
     # Plot pixels of interest
     #============ Extended Source 1============
     #(279, 528)
@@ -296,14 +297,14 @@ def main():
         plt.xlim([-1000, 1000])
         plt.title(names[i])
         plt.tight_layout()
-        plt.savefig(file_names[i]+"_faradayrecon.eps", bbox_inches ="tight")
+        plt.savefig(results_folder+file_names[i]+"_faradayrecon.eps", bbox_inches ="tight")
         #plt.ylim([-0.75, 1.25])
 
     header = reader.readHeader()
     writer = Writer()
     abs_F = np.abs(F)
-    writer.writeFITSCube(abs_F, header, len(phi), phi, np.abs(phi[1]-phi[0]), output="abs_F.fits")
-    create_animation(header=header, cube_axis=phi, cube=abs_F, title='Faraday Depth Spectrum at {0:.4f} rad/m^2'.format(phi[0]), xlabel="Offset (degrees)", ylabel="Offset (degrees)", cblabel="Jy/beam", repeat=True)
+    writer.writeFITSCube(abs_F, header, len(phi), phi, np.abs(phi[1]-phi[0]), output=results_folder+"abs_F.fits")
+    create_animation(header=header, cube_axis=phi, cube=abs_F, title='Faraday Depth Spectrum at {0:.4f} rad/m^2'.format(phi[0]), xlabel="Offset (degrees)", ylabel="Offset (degrees)", cblabel="Jy/beam", output_video=results_folder+"animation.mp4",repeat=True)
 
     max_rotated_intensity = np.amax(abs_F, axis=0)
     max_faraday_depth_pos = np.argmax(abs_F, axis=0)
@@ -321,14 +322,14 @@ def main():
     plt.xlabel("Polarization fraction")
     plt.ylabel("Signal-to-noise ratio")
     plt.tight_layout()
-    plt.savefig("SNRvsPolFraction.png", bbox_inches ="tight", dpi=100)
+    plt.savefig(results_folder+"SNRvsPolFraction.png", bbox_inches ="tight", dpi=100)
 
     #SNRvsPol = np.where(I>=nsigma*sigma_I, SNR_image/pol_fraction_data, np.nan)
-    writer.writeFITS(data=np.where(I>=nsigma*sigma_I, SNR_image, np.nan), header=pol_fraction_header, output="SNR.fits")
+    writer.writeFITS(data=np.where(I>=nsigma*sigma_I, SNR_image, np.nan), header=pol_fraction_header, output=results_folder+"SNR.fits")
     #writer.writeFITS(data=SNRvsPol, header=pol_fraction_header, output="SNRvsPolFraction.fits")
-    writer.writeFITS(data=masked_pol_fraction, header=pol_fraction_header, output="masked_pol_fraction.fits")
-    writer.writeFITS(data=np.where(I>=nsigma*sigma_I, max_rotated_intensity/I, np.nan), header=header, output="leakage_map.fits")
-    writer.writeFITS(data=max_faraday_depth, header=header, output="max_faraday_depth.fits")
+    writer.writeFITS(data=masked_pol_fraction, header=pol_fraction_header, output=results_folder+"masked_pol_fraction.fits")
+    writer.writeFITS(data=np.where(I>=nsigma*sigma_I, max_rotated_intensity/I, np.nan), header=header, output=results_folder+"leakage_map.fits")
+    writer.writeFITS(data=max_faraday_depth, header=header, output=results_folder+"max_faraday_depth.fits")
 
     try:
         shutil.rmtree(folder)

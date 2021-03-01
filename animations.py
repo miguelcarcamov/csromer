@@ -38,21 +38,26 @@ def colorbar(mappable, title="", location="right"):
     plt.sca(last_axes)
     return cbar
 
-def create_animation(header, cube_axis=np.array([]), cube=np.array([]), xlabel="", ylabel="", cblabel="", title="", title_pad=0.0, output_video="dynamic_images.mp4", fps=30, interval=50, repeat=False):
+def create_animation(header, cube_axis=np.array([]), cube=np.array([]), xlabel="", ylabel="", cblabel="", title="", title_pad=0.0, vmin=None, vmax=None, output_video="dynamic_images.mp4", fps=30, interval=50, repeat=False):
     ims = []
     num_ims = len(cube)
     if(num_ims != 0):
+
+		if(vmin is None and vmax is None):
+			vmax = np.amax(np.amax(cube, axis=0))
+			vmin = np.amin(np.amin(cube, axis=0))
+
         fig = plt.figure()
         ax = plt.subplot(111)
         axes = config_axes(cube[0], header)
         cv0 = cube[0]
         im = ax.imshow(cv0, origin='lower', aspect='equal', cmap='ocean_r', extent=[axes[2],-axes[2],-axes[3],axes[3]])
-        cb = colorbar(im, cblabel)
         tx = ax.set_title(title, pad=title_pad)
         #time_text = ax.text(.5, .5, '', fontsize=15)
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
         tick_locator = ticker.MaxNLocator(nbins=3)
+		cb = colorbar(im, cblabel)
         cb.locator = tick_locator
         cb.update_ticks()
 
