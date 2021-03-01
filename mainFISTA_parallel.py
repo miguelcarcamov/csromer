@@ -306,7 +306,7 @@ def main():
         #plt.axvline(x=50, color='darkgrey', linestyle='-')
         plt.plot(phi, F[:,y_pix[i], x_pix[i]].real, 'c--', label=r"Real part")
         plt.plot(phi, F[:,y_pix[i], x_pix[i]].imag, 'c:', label=r"Imaginary part")
-        plt.plot(phi, np.abs(F[:y_pix[i], x_pix[i]]), 'k-', label=r"Amplitude")
+        plt.plot(phi, np.abs(F[:,y_pix[i], x_pix[i]]), 'k-', label=r"Amplitude")
         plt.xlabel(r'$\phi$[rad m$^{-2}$]')
         plt.ylabel(r'Jy m$^2$ rad$^{-1}$')
         plt.legend(loc='upper right')
