@@ -28,16 +28,18 @@ class Reader:
         print("FITS shape: ", hdu[0].data.shape)
 
         image = hdu[0].data
+        header = hdu[0].header
         hdu.close()
-        return image
+        return header, image
 
     def readQU(self, memmap=False):
         files = [self.Q_cube_name, self.U_cube_name]
         IQU = []
         for file in files:
-            IQU.append(self.readCube(file=file, memmap=memmap))
+            header, QU = self.readCube(file=file, memmap=memmap)
+            IQU.append(QU)
 
-        return IQU[0], IQU[1]
+        return IQU[0], IQU[1], header
 
     def readImage(self, name=None):
         if name is None:

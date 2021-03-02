@@ -300,16 +300,17 @@ def main():
     #(527, 887)
     #============ N-W Extended Source 2============
     #(574, 886)
-    x_pix = [279,616,309,820,527,574]
-    y_pix = [528,507,329,751,887,886]
+    y_pix = [279,616,309,820,527,574]
+    x_pix = [528,507,329,751,887,886]
     file_names = ["extended-source-1", "center-source", "south-east-source", "north-west-source", "center-west-source", "n-w-extended-source-2"]
     names = ["Extended Source 1", "Center Source", "South East Source", "North West Source", "Center West Source", "N-W Extended Source 2"]
     for i in range(0, len(names)):
+        F_plot = F[:,y_pix[i], x_pix[i]]
         plt.figure()
         #plt.axvline(x=50, color='darkgrey', linestyle='-')
-        plt.plot(phi, F[:,y_pix[i], x_pix[i]].real, 'c--', label=r"Real part")
-        plt.plot(phi, F[:,y_pix[i], x_pix[i]].imag, 'c:', label=r"Imaginary part")
-        plt.plot(phi, np.abs(F[:,y_pix[i], x_pix[i]]), 'k-', label=r"Amplitude")
+        plt.plot(phi, F_plot.real, 'c--', label=r"Real part")
+        plt.plot(phi, F_plot.imag, 'c:', label=r"Imaginary part")
+        plt.plot(phi, np.abs(F_plot), 'k-', label=r"Amplitude")
         plt.xlabel(r'$\phi$[rad m$^{-2}$]')
         plt.ylabel(r'Jy m$^2$ rad$^{-1}$')
         plt.legend(loc='upper right')

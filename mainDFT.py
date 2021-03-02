@@ -79,7 +79,7 @@ def main():
     if imag_counter > 1:
         print("Reading images")
         reader = Reader(images[0], images[1], images[2], freq_f)
-        Q,U = reader.readQU(memmap=True)
+        Q,U,QU_header = reader.readQU(memmap=True)
         Q = np.flipud(Q)
         U = np.flipud(U)
         M = Q.shape[1]
@@ -109,7 +109,8 @@ def main():
 
     print("SigmaI: ", sigma_I)
     print("I shape: ", I.shape)
-    mask_idx = make_mask(I, nsigma*sigma_I)
+    mask_idx = make_mask(I, nsigma*sigma_I, I_header, QU_header)
+    sys.exit(-1)
 
     sigma = np.sqrt((sigma_Q**2 + sigma_U**2)/2)
     W, K = pre_proc.calculate_W_K(sigma)
