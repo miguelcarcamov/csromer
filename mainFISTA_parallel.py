@@ -300,8 +300,8 @@ def main():
     #(527, 887)
     #============ N-W Extended Source 2============
     #(574, 886)
-    y_pix = [279,616,309,820,527,574]
-    x_pix = [528,507,329,751,887,886]
+    x_pix = [279,616,309,820,527,574]
+    y_pix = [528,507,329,751,887,886]
     file_names = ["extended-source-1", "center-source", "south-east-source", "north-west-source", "center-west-source", "n-w-extended-source-2"]
     names = ["Extended Source 1", "Center Source", "South East Source", "North West Source", "Center West Source", "N-W Extended Source 2"]
     for i in range(0, len(names)):
