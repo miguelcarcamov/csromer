@@ -25,4 +25,5 @@ def find_pixel(M, N, contiguous_id):
 
 def make_mask(I=np.array([]), sigma=0.0):
     indexes = np.where(I >= sigma)
-    return indexes
+    masked_values = np.where(I < sigma)
+    return indexes, masked_values

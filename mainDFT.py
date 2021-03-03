@@ -109,7 +109,7 @@ def main():
 
     print("SigmaI: ", sigma_I)
     print("I shape: ", I.shape)
-    mask_idx = make_mask(I, nsigma*sigma_I)
+    mask_idx, masked_values = make_mask(I, nsigma*sigma_I)
 
     sigma = np.sqrt((sigma_Q**2 + sigma_U**2)/2)
     W, K = pre_proc.calculate_W_K(sigma)
@@ -146,7 +146,7 @@ def main():
     #P = load(data_file_mmap, mmap_mode="r")
     #F = np.zeros((len(phi), M, N)) + 1j * np.zeros((len(phi), M, N))
     F = np.memmap(output_file_mmap, dtype=np.complex128, shape=(len(phi), M, N), mode='w+')
-
+    F[: masked_values[0], masked_values[1]] = np.nan
     #chi_degrees = np.arctan2(P.imag, P.real) * 180.0 / np.pi
 
     #arrays = np.array([lambda2, I, sigma_I, P.real, sigma_Q, P.imag, sigma_U])
@@ -319,8 +319,8 @@ def main():
     writer.writeFITSCube(abs_F, header, len(phi), phi, np.abs(phi[1]-phi[0]), output=results_folder+"abs_F.fits")
     create_animation(header=header, cube_axis=phi, cube=abs_F, title='Faraday Depth Spectrum at {0:.4f} rad/m^2'.format(phi[0]), xlabel="Offset (degrees)", ylabel="Offset (degrees)", cblabel="Jy/beam", output_video=results_folder+"animation.mp4",repeat=True)
 
-    max_rotated_intensity = np.amax(abs_F, axis=0)
-    max_faraday_depth_pos = np.argmax(abs_F, axis=0)
+    max_rotated_intensity = np.nanmax(abs_F, axis=0)
+    max_faraday_depth_pos = np.nanargmax(abs_F, axis=0)
     max_faraday_depth = np.where(I>=nsigma*sigma_I, phi[max_faraday_depth_pos], np.nan)
     masked_pol_fraction = np.where(I>=nsigma*sigma_I, pol_fraction_data, np.nan)
 
