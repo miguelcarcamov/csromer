@@ -269,22 +269,35 @@ def main():
     results_folder = "dft/"
     os.makedirs(results_folder, exist_ok=True)
     # Plot pixels of interest
-    #============ Extended Source 1============
-    #(279, 528)
-    #============ Center Source============
-    #(616, 507)
-    #============ South East Source============
-    #(309, 329)
-    #============ North West Source============
-    #(820, 751)
-    #============ Center West Source============
-    #(527, 887)
-    #============ N-W Extended Source 2============
-    #(574, 886)
-    y_pix = [279,616,309,820,527,574]
-    x_pix = [528,507,329,751,887,886]
-    file_names = ["extended-source-1", "center-source", "south-east-source", "north-west-source", "center-west-source", "n-w-extended-source-2"]
-    names = ["Extended Source 1", "Center Source", "South East Source", "North West Source", "Center West Source", "N-W Extended Source 2"]
+    #============ Center-Source============
+    #(568, 521)
+    #=============Value===================
+    #78.852776
+    #============ North-West Source============
+    #(772, 765)
+    #=============Value===================
+    #31.632423
+    #============ Center-West Source============
+    #(478, 901)
+    #=============Value===================
+    #66.87205
+    #============ South-East Source============
+    #(261, 343)
+    #=============Value===================
+    #27.568705
+    #============ Center-South Extended Source============
+    #(231, 542)
+    #=============Value===================
+    #105.13219
+    #============ Center-West Extended Source============
+    #(525, 900)
+    #=============Value===================
+    #353.85233
+
+    x_pix = [521,765,901,343,542,900]
+    y_pix = [568,772,478,261,231,525]
+    file_names = ["center-source", "north-west-source", "center-west-source", "south-east-source", "center-south extended-source", "center-west extended-source"]
+    names = ["Center Source", "North West Source", "Center West Source", "South East Source", "Center-South Extended Source", "Center-West Extended Source"]
     for i in range(0, len(names)):
         plt.figure()
         #plt.axvline(x=50, color='darkgrey', linestyle='-')
