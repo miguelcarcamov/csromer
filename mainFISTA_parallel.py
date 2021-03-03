@@ -152,7 +152,6 @@ def main():
     #P = load(data_file_mmap, mmap_mode="r")
     #F = np.zeros((len(phi), M, N)) + 1j * np.zeros((len(phi), M, N))
     F = np.memmap(output_file_mmap, dtype=np.complex128, shape=(len(phi), M, N), mode='w+')
-    F[:, masked_values[0], masked_values[1]] = np.nan
 
     #chi_degrees = np.arctan2(P.imag, P.real) * 180.0 / np.pi
 
@@ -338,6 +337,7 @@ def main():
     header = reader.readHeader()
     writer = Writer()
     abs_F = np.abs(F)
+    abs_F[:, masked_values[0], masked_values[1]] = np.nan
     writer.writeFITSCube(abs_F, header, len(phi), phi, np.abs(phi[1]-phi[0]), output=results_folder+"abs_F.fits")
     create_animation(header=header, cube_axis=phi, cube=abs_F, title='Faraday Depth Spectrum at {0:.4f} rad/m^2'.format(phi[0]), xlabel="Offset (degrees)", ylabel="Offset (degrees)", cblabel="Jy/beam", output_video=results_folder+"animation.mp4", repeat=True)
 
