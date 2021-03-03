@@ -50,7 +50,7 @@ def create_animation(header, cube_axis=np.array([]), cube=np.array([]), xlabel="
         ax = plt.subplot(111)
         axes = config_axes(cube[0], header)
         cv0 = cube[0]
-        im = ax.imshow(cv0, origin='lower', aspect='equal', cmap='spectral', extent=[axes[2],-axes[2],-axes[3],axes[3]])
+        im = ax.imshow(cv0, origin='lower', aspect='equal', cmap='Spectral', extent=[axes[2],-axes[2],-axes[3],axes[3]])
         tx = ax.set_title(title, pad=title_pad)
         #time_text = ax.text(.5, .5, '', fontsize=15)
         ax.set_xlabel(xlabel)
