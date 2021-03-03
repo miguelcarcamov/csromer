@@ -152,6 +152,7 @@ def main():
     #P = load(data_file_mmap, mmap_mode="r")
     #F = np.zeros((len(phi), M, N)) + 1j * np.zeros((len(phi), M, N))
     F = np.memmap(output_file_mmap, dtype=np.complex128, shape=(len(phi), M, N), mode='w+')
+    F[:, masked_values[0], masked_values[1]] = np.nan
 
     #chi_degrees = np.arctan2(P.imag, P.real) * 180.0 / np.pi
 
