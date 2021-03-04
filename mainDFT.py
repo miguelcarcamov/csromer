@@ -341,9 +341,12 @@ def main():
     writer.writeFITS(data=np.where(I>=nsigma*sigma_I, max_rotated_intensity/I, np.nan), header=header, output=results_folder+"leakage_map.fits")
     writer.writeFITS(data=max_faraday_depth, header=header, output=results_folder+"max_faraday_depth.fits")
 
+    vmax = np.amax(np.amax(abs_F, axis=0))
+    vmin = np.amin(np.amin(abs_F, axis=0))
+
     abs_F[:, masked_values[0], masked_values[1]] = np.nan
     writer.writeFITSCube(abs_F, header, len(phi), phi, np.abs(phi[1]-phi[0]), output=results_folder+"abs_F.fits")
-    create_animation(header=header, cube_axis=phi, cube=abs_F, title='Faraday Depth Spectrum at {0:.4f} rad/m^2'.format(phi[0]), xlabel="Offset (degrees)", ylabel="Offset (degrees)", cblabel="Jy/beam", output_video=results_folder+"animation.mp4",repeat=True)
+    create_animation(header=header, cube_axis=phi, cube=abs_F, title='Faraday Depth Spectrum at {0:.4f} rad/m^2'.format(phi[0]), xlabel="Offset (degrees)", ylabel="Offset (degrees)", cblabel="Jy/beam", vmin=vmin, vmax=vmax, output_video=results_folder+"animation.mp4",repeat=True)
 
     try:
         shutil.rmtree(folder)
