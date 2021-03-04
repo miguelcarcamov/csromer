@@ -315,12 +315,9 @@ def main():
     header = reader.readHeader()
     writer = Writer()
     abs_F = np.abs(F)
-    abs_F[:, masked_values[0], masked_values[1]] = np.nan
-    writer.writeFITSCube(abs_F, header, len(phi), phi, np.abs(phi[1]-phi[0]), output=results_folder+"abs_F.fits")
-    create_animation(header=header, cube_axis=phi, cube=abs_F, title='Faraday Depth Spectrum at {0:.4f} rad/m^2'.format(phi[0]), xlabel="Offset (degrees)", ylabel="Offset (degrees)", cblabel="Jy/beam", output_video=results_folder+"animation.mp4",repeat=True)
 
-    max_rotated_intensity = np.nanmax(abs_F, axis=0)
-    max_faraday_depth_pos = np.nanargmax(abs_F, axis=0)
+    max_rotated_intensity = np.amax(abs_F, axis=0)
+    max_faraday_depth_pos = np.argmax(abs_F, axis=0)
     max_faraday_depth = np.where(I>=nsigma*sigma_I, phi[max_faraday_depth_pos], np.nan)
     masked_pol_fraction = np.where(I>=nsigma*sigma_I, pol_fraction_data, np.nan)
 
@@ -343,6 +340,10 @@ def main():
     writer.writeFITS(data=masked_pol_fraction, header=pol_fraction_header, output=results_folder+"masked_pol_fraction.fits")
     writer.writeFITS(data=np.where(I>=nsigma*sigma_I, max_rotated_intensity/I, np.nan), header=header, output=results_folder+"leakage_map.fits")
     writer.writeFITS(data=max_faraday_depth, header=header, output=results_folder+"max_faraday_depth.fits")
+
+    abs_F[:, masked_values[0], masked_values[1]] = np.nan
+    writer.writeFITSCube(abs_F, header, len(phi), phi, np.abs(phi[1]-phi[0]), output=results_folder+"abs_F.fits")
+    create_animation(header=header, cube_axis=phi, cube=abs_F, title='Faraday Depth Spectrum at {0:.4f} rad/m^2'.format(phi[0]), xlabel="Offset (degrees)", ylabel="Offset (degrees)", cblabel="Jy/beam", output_video=results_folder+"animation.mp4",repeat=True)
 
     try:
         shutil.rmtree(folder)
