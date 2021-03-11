@@ -318,12 +318,11 @@ def main():
     file_names = ["center-source", "north-west-source", "center-west-source", "south-east-source", "center-south extended-source", "center-west extended-source"]
     names = ["Center Source", "North West Source", "Center West Source", "South East Source", "Center-South Extended Source", "Center-West Extended Source"]
     for i in range(0, len(names)):
-        F_plot = F[:,y_pix[i], x_pix[i]]
-        plt.figure(1)
+        plt.figure()
         #plt.axvline(x=50, color='darkgrey', linestyle='-')
-        plt.plot(phi, F_plot.real, 'c--', label=r"Real part")
-        plt.plot(phi, F_plot.imag, 'c:', label=r"Imaginary part")
-        plt.plot(phi, np.abs(F_plot), 'k-', label=r"Amplitude")
+        plt.plot(phi, F[:,y_pix[i], x_pix[i]].real, 'c--', label=r"Real part")
+        plt.plot(phi, F[:,y_pix[i], x_pix[i]].imag, 'c:', label=r"Imaginary part")
+        plt.plot(phi, np.abs(F[:, y_pix[i], x_pix[i]]), 'k-', label=r"Amplitude")
         plt.xlabel(r'$\phi$[rad m$^{-2}$]')
         plt.ylabel(r'Jy/beam m$^2$ rad$^{-1}$')
         plt.legend(loc='upper right')
@@ -333,7 +332,9 @@ def main():
         plt.savefig(results_folder+file_names[i]+"_faradayrecon.eps", bbox_inches ="tight")
         #plt.ylim([-0.75, 1.25])
 
-        plt.figure(2)
+        plt.clf()
+
+        plt.figure()
         #plt.axvline(x=50, color='darkgrey', linestyle='-')
         plt.plot(lambda2, P[:,y_pix[i], x_pix[i]].real, 'k.', label=r"Stokes Q")
         plt.plot(lambda2, P[:,y_pix[i], x_pix[i]].imag, 'c.', label=r"Stokes U")
@@ -343,6 +344,8 @@ def main():
         plt.title(names[i])
         plt.tight_layout()
         plt.savefig(results_folder+file_names[i]+"_polintensity.eps", bbox_inches ="tight")
+
+        plt.clf()
 
     header = reader.readHeader()
     writer = Writer()
