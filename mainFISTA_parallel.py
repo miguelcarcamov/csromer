@@ -318,7 +318,7 @@ def main():
     file_names = ["center-source", "north-west-source", "center-west-source", "south-east-source", "center-south extended-source", "center-west extended-source"]
     names = ["Center Source", "North West Source", "Center West Source", "South East Source", "Center-South Extended Source", "Center-West Extended Source"]
     for i in range(0, len(names)):
-        plt.figure()
+        fig1 = plt.figure(1)
         #plt.axvline(x=50, color='darkgrey', linestyle='-')
         plt.plot(phi, F[:,y_pix[i], x_pix[i]].real, 'c--', label=r"Real part")
         plt.plot(phi, F[:,y_pix[i], x_pix[i]].imag, 'c:', label=r"Imaginary part")
@@ -332,9 +332,9 @@ def main():
         plt.savefig(results_folder+file_names[i]+"_faradayrecon.eps", bbox_inches ="tight")
         #plt.ylim([-0.75, 1.25])
 
-        plt.clf()
+        plt.close(fig1)
 
-        plt.figure()
+        fig2 = plt.figure(2)
         #plt.axvline(x=50, color='darkgrey', linestyle='-')
         plt.plot(lambda2, P[:,y_pix[i], x_pix[i]].real, 'k.', label=r"Stokes Q")
         plt.plot(lambda2, P[:,y_pix[i], x_pix[i]].imag, 'c.', label=r"Stokes U")
@@ -345,7 +345,7 @@ def main():
         plt.tight_layout()
         plt.savefig(results_folder+file_names[i]+"_polintensity.eps", bbox_inches ="tight")
 
-        plt.clf()
+        plt.close(fig2)
 
     header = reader.readHeader()
     writer = Writer()
@@ -368,6 +368,7 @@ def main():
     plt.ylabel("Signal-to-noise ratio")
     plt.tight_layout()
     plt.savefig(results_folder+"SNRvsPolFraction.png", bbox_inches ="tight", dpi=100)
+    plt.close()
 
     #SNRvsPol = np.where(I>=nsigma*sigma_I, SNR_image/pol_fraction_data, np.nan)
     writer.writeFITS(data=np.where(I>=nsigma*sigma_I, SNR_image, np.nan), header=pol_fraction_header, output=results_folder+"SNR.fits")
