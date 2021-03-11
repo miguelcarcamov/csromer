@@ -70,7 +70,7 @@ def calculateF(dftObject=None, W=np.array([]), F=np.array([]), P=np.array([]), i
     F[:,i,j] = dftObject.backward(P[:,i,j])
     F_real = complex_to_real(F[:,i,j])
 
-    lambda_l1 = 1e-5
+    lambda_l1 = 1e-4
     F_func = [chi2(b=P[:,i,j], dft_obj=dftObject, w=W), TV(0.0), L1(lambda_l1)]
     f_func = [chi2(b=P[:,i,j], dft_obj=dftObject, w=W)]
     g_func = [TV(0.0), L1(lambda_l1)]
@@ -97,7 +97,7 @@ def main():
     if imag_counter > 1:
         print("Reading images")
         reader = Reader(images[0], images[1], images[2], freq_f)
-        Q,U = reader.readQU(memmap=True)
+        Q,U,QU_header = reader.readQU(memmap=True)
         Q = np.flipud(Q)
         U = np.flipud(U)
         M = Q.shape[1]
