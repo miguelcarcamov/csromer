@@ -335,9 +335,8 @@ def main():
 
         plt.figure(2)
         #plt.axvline(x=50, color='darkgrey', linestyle='-')
-        plt.plot(lambda2, P[:,y_pix[i], x_pix[i]].real, 'c--', label=r"Real part")
-        plt.plot(lambda2, P[:,y_pix[i], x_pix[i]].imag, 'c:', label=r"Imaginary part")
-        plt.plot(lambda2, np.abs(P[:, y_pix[i], x_pix[i]]), 'k-', label=r"Amplitude")
+        plt.plot(lambda2, P[:,y_pix[i], x_pix[i]].real, 'k.', label=r"Stokes Q")
+        plt.plot(lambda2, P[:,y_pix[i], x_pix[i]].imag, 'c.', label=r"Stokes U")
         plt.xlabel(r'$\lambda^2$[m$^{2}$]')
         plt.ylabel(r'Jy/beam')
         plt.legend(loc='upper right')
