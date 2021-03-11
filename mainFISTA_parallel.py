@@ -341,7 +341,6 @@ def main():
         plt.xlabel(r'$\lambda^2$[m$^{2}$]')
         plt.ylabel(r'Jy/beam')
         plt.legend(loc='upper right')
-        plt.xlim([-500, 500])
         plt.title(names[i])
         plt.tight_layout()
         plt.savefig(results_folder+file_names[i]+"_polintensity.eps", bbox_inches ="tight")
