@@ -127,7 +127,7 @@ def main():
 
     print("SigmaI: ", sigma_I)
     print("I shape: ", I.shape)
-    mask_idx = make_mask(I, nsigma*sigma_I)
+    mask_idx, masked_values = make_mask(I, nsigma*sigma_I)
 
     sigma = np.sqrt((sigma_Q**2 + sigma_U**2)/2)
     W, K = pre_proc.calculate_W_K(sigma)
@@ -368,7 +368,6 @@ def main():
     plt.ylabel("Signal-to-noise ratio")
     plt.tight_layout()
     plt.savefig(results_folder+"SNRvsPolFraction.png", bbox_inches ="tight", dpi=100)
-    plt.close()
 
     #SNRvsPol = np.where(I>=nsigma*sigma_I, SNR_image/pol_fraction_data, np.nan)
     writer.writeFITS(data=np.where(I>=nsigma*sigma_I, SNR_image, np.nan), header=pol_fraction_header, output=results_folder+"SNR.fits")
@@ -382,7 +381,7 @@ def main():
 
     abs_F[:, masked_values[0], masked_values[1]] = np.nan
     writer.writeFITSCube(abs_F, header, len(phi), phi, np.abs(phi[1]-phi[0]), output=results_folder+"abs_F.fits")
-    create_animation(header=header, cube_axis=phi, cube=abs_F, title='Faraday Depth Spectrum at {0:.4f} rad/m^2'.format(phi[0]), xlabel="Offset (degrees)", ylabel="Offset (degrees)", cblabel="Jy/beam", vmin=vmin, vmax=vmax, output_video=results_folder+"animation.mp4", repeat=True)
+    create_animation(header=header, cube_axis=phi, cube=abs_F, title='Faraday Depth Spectrum at {0:.4f} rad/m^2'.format(phi[0]), xlabel="Offset (degrees)", ylabel="Offset (degrees)", cblabel="Jy/beam", vmin=vmin, vmax=vmax, output_video=results_folder+"animation.mp4",repeat=True)
 
     try:
         shutil.rmtree(folder)
