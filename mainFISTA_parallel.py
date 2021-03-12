@@ -42,8 +42,8 @@ def getopt():
                         help="Text file with frequency values")
     parser.add_argument("-o", "--output", nargs="*",
                         help="Path/s and/or name/s of the output file/s in FITS/npy format", required=True)
-    parser.add_argument("-l", "--lambdas", nargs='*',
-                        help="Regularization parameters separated by space")
+    parser.add_argument("-l", "--lambda",
+                        help="Regularization parameters separated by space", required=False, default=1e-5, type=float)
     parser.add_argument("-I", "--index", nargs='?',
                         help="Selected index of the pixel on where the minimization is done", const=int, default=0)
 
@@ -58,22 +58,22 @@ def getopt():
     index = vars(args)['index']
     verbose = vars(args)['verbose']
     nsigma = vars(args)['sigmas']
+    lambda_reg = vars(args)['lambda']
     # check for --version or -V
     if args.version:
         print("this is myprogram version 0.1")
         sys.exit(1)
-    return images, pol_fraction, freq_f, reg_terms, output, index, nsigma, verbose
+    return images, pol_fraction, freq_f, reg_terms, output, index, nsigma, lambda_reg, verbose
 
-def calculateF(dftObject=None, W=np.array([]), F=np.array([]), P=np.array([]), idx_array=np.array([]), idx=0):
+def calculateF(dftObject=None, W=np.array([]), F=np.array([]), P=np.array([]), idx_array=np.array([]), lambda_reg=1e-5, idx=0):
     i = idx_array[0][idx]
     j = idx_array[1][idx]
     F[:,i,j] = dftObject.backward(P[:,i,j])
     F_real = complex_to_real(F[:,i,j])
 
-    lambda_l1 = 1e-4
-    F_func = [chi2(b=P[:,i,j], dft_obj=dftObject, w=W), TV(0.0), L1(lambda_l1)]
+    F_func = [chi2(b=P[:,i,j], dft_obj=dftObject, w=W), TV(0.0), L1(lambda_reg)]
     f_func = [chi2(b=P[:,i,j], dft_obj=dftObject, w=W)]
-    g_func = [TV(0.0), L1(lambda_l1)]
+    g_func = [TV(0.0), L1(lambda_reg)]
 
     F_obj = OFunction(F_func)
     f_obj = OFunction(f_func)
@@ -89,7 +89,7 @@ def calculateF(dftObject=None, W=np.array([]), F=np.array([]), P=np.array([]), i
 
 def main():
 
-    images, pol_fraction, freq_f, reg_terms, output, index, nsigma, verbose = getopt()
+    images, pol_fraction, freq_f, reg_terms, output, index, nsigma, lambda_reg, verbose = getopt()
     index = int(index)
     imag_counter = len(images)
 
@@ -176,7 +176,7 @@ def main():
     #F_obj = OFunction(F_func)
     #f_obj = OFunction(f_func)
     #g_obj = OFunction(g_func)
-    Parallel(n_jobs=-3, backend="multiprocessing", verbose=10)(delayed(calculateF)(dft, W, F, P, mask_idx, i) for i in range(0,total_pixels))
+    Parallel(n_jobs=-3, backend="multiprocessing", verbose=10)(delayed(calculateF)(dft, W, F, P, mask_idx, lambda_reg, i) for i in range(0,total_pixels))
     """
     F_max = np.argmax(np.abs(F))
     print("Max RM: ", phi[F_max], "rad/m^2")
