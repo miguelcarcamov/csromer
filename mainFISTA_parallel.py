@@ -50,7 +50,6 @@ def getopt():
     # read arguments from the command line
     args = parser.parse_args()
 
-    reg_terms = vars(args)['lambdas']
     images = vars(args)['images']
     pol_fraction = vars(args)['pol_fraction']
     freq_f = vars(args)['freq_file']
