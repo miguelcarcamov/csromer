@@ -62,7 +62,7 @@ def getopt():
     if args.version:
         print("this is myprogram version 0.1")
         sys.exit(1)
-    return images, pol_fraction, freq_f, reg_terms, output, index, nsigma, lambda_reg, verbose
+    return images, pol_fraction, freq_f, output, index, nsigma, lambda_reg, verbose
 
 def calculateF(dftObject=None, W=np.array([]), F=np.array([]), P=np.array([]), idx_array=np.array([]), lambda_reg=1e-5, idx=0):
     i = idx_array[0][idx]
@@ -88,7 +88,7 @@ def calculateF(dftObject=None, W=np.array([]), F=np.array([]), P=np.array([]), i
 
 def main():
 
-    images, pol_fraction, freq_f, reg_terms, output, index, nsigma, lambda_reg, verbose = getopt()
+    images, pol_fraction, freq_f, output, index, nsigma, lambda_reg, verbose = getopt()
     index = int(index)
     imag_counter = len(images)
 
