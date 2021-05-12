@@ -9,30 +9,40 @@ import numpy as np
 from astropy.io import fits
 import sys
 
+
 class Reader:
-    def __init__(self, stokes_I_name="", Q_cube_name="", U_cube_name="", freq_file_name="", numpy_file=""):
+    def __init__(self, stokes_I_name=None, stokes_Q_name=None, stokes_U_name=None, Q_cube_name=None, U_cube_name=None,
+                 freq_file_name=None, numpy_file=None):
         self.stokes_I_name = stokes_I_name
+        self.stokes_Q_name = stokes_Q_name
+        self.stokes_U_name = stokes_U_name
         self.Q_cube_name = Q_cube_name
         self.U_cube_name = U_cube_name
         self.freq_file_name = freq_file_name
         self.numpy_file = numpy_file
+
     # this has to be separated
 
-    def readCube(self, file="", memmap=False):
+    def readCube(self, file=None, stokes=None, memmap=True):
+        if stokes is not None and file is None:
+            if stokes == "Q":
+                file = self.Q_cube_name
+            else:
+                file = self.U_cube_name
         try:
             hdu = fits.open(file, memmap=memmap)
         except FileNotFoundError:
             print("FileNotFoundError: The I FITS file cannot be found")
             sys.exit(1)
 
-        print("FITS shape: ", hdu[0].data.shape)
+        print("FITS shape: ", hdu[0].data.squeeze().shape)
 
-        image = hdu[0].data
+        image = hdu[0].data.squeeze()
         header = hdu[0].header
         hdu.close()
         return header, image
 
-    def readQU(self, memmap=False):
+    def readQU(self, memmap=True):
         files = [self.Q_cube_name, self.U_cube_name]
         IQU = []
         for file in files:
@@ -41,12 +51,18 @@ class Reader:
 
         return IQU[0], IQU[1], header
 
-    def readImage(self, name=None):
-        if name is None:
-            filename = self.stokes_I_name
+    def readImage(self, name=None, stokes=None):
+        if name is None and stokes is not None:
+            if stokes == "I":
+                filename = self.stokes_I_name
+            elif stokes == "Q":
+                filename = self.stokes_Q_name
+            else:
+                filename = self.stokes_U_name
         else:
             filename = name
-        hdul = fits.open(name = filename)
+
+        hdul = fits.open(name=filename)
         header = hdul[0].header
         data = np.squeeze(hdul[0].data)
         hdul.close()
@@ -89,9 +105,9 @@ class Reader:
         return freqs
 
     def readFreqsNumpyFile(self):
-    	filename = self.freq_file_name
-    	freqs = np.load(filename)
-    	return freqs
+        filename = self.freq_file_name
+        freqs = np.load(filename)
+        return freqs
 
 
 class Writer:
@@ -107,9 +123,9 @@ class Writer:
         header['CRVAL3'] = phi[0]
 
         if output is None:
-            fits.writeto(self.output, data=cube, header=header,overwrite=overwrite)
+            fits.writeto(self.output, data=cube, header=header, overwrite=overwrite)
         else:
-            fits.writeto(output, data=cube, header=header,overwrite=overwrite)
+            fits.writeto(output, data=cube, header=header, overwrite=overwrite)
 
     def writeNPCube(self, cube, output=None):
         if output is None:
@@ -118,7 +134,6 @@ class Writer:
             np.save(output, cube)
 
         np.save(output, cube)
-
 
     def writeFITS(self, data=None, header=None, output=None, overwrite=True):
         hdu = fits.PrimaryHDU(data, header)

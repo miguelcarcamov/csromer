@@ -9,24 +9,23 @@ import numpy as np
 
 
 def calc_Q(x, y, L, fx, gx, grad):
-    res = fx(y) + np.dot(x - y, grad(y)) + gx(x) + \
-        (1 / (2 * L)) * (np.linalg.norm(x - y)**2)
+    res = fx(y) + np.dot(x - y, grad(y)) + gx(x) + L/2 * (np.sqrt(np.sum((x - y)**2)))
     return res
 
 
-def FISTA(x_init, F, fx, gx, grad, g_prox, eta, max_iter, tol, verbose):
+def FISTA_algorithm(x_init, F, fx, gx, grad, g_prox, eta, max_iter, tol, L0, verbose):
 
     x_old = x_init
     y_old = x_init
-    L = 1
+    t_old = 1
+    L = L0
 
     for iter in range(0, max_iter):
         Lbar = L
         while True:
             # temp_prox.set_reg(prox.reg/Lbar)
-            y_eval = y_old - Lbar * grad(y_old)
-            zk = g_prox.calc_prox(g_prox.calc_prox(
-                y_old, y_eval, 0), id=1)
+            y_eval = y_old - 1/Lbar * grad(y_old)
+            zk = g_prox.calc_prox(y_old, y_eval, 0)
 
             F_ret = fx(zk)
             Q = calc_Q(zk, y_old, Lbar, fx, gx, grad)
@@ -36,24 +35,22 @@ def FISTA(x_init, F, fx, gx, grad, g_prox, eta, max_iter, tol, verbose):
             else:
                 Lbar = Lbar * eta
                 L = Lbar
-        # print("L value: ", L)
-        # prox.set_reg(prox.reg/L)
-        x_new = zk
-        # t_new = 0.5*(1+ np.sqrt(1 + 4*t_old**2))
 
-        t_min = min(1.0, eta / (1 / L))
-        dif = x_new - x_old
-        e = 2.0 * (np.linalg.norm(dif)**2) / (t_min * (iter + 1)**2)
-        # check stop criteria
+        g_prox.setLambda(reg=g_prox.getLambda()/L)
+        y_eval = y_old - 1/Lbar * grad(y_old)
+        x_new = g_prox.calc_prox(y_old, y_eval, 0)
+
+        t_new = 0.5*(1 + np.sqrt(1 + 4*t_old**2));
+        y_new = x_new + (t_old - 1)/t_new * (x_new - x_old);
+
+        e = np.sum(np.abs(x_new-x_old))/len(x_new)
         if e <= tol:
             print("Exit due to tolerance: ", e, " < ", tol)
             break
 
-        # If stop criteria is not met then update variables
-        k_iter = iter / (iter + 3)
-        y_new = x_new + k_iter * dif
-        x_old = x_new
-        y_old = y_new
+        x_old = x_new;
+        t_old = t_new;
+        y_old = y_new;
 
         if verbose and iter % 50 == 0:
             cost = F(x_new)
