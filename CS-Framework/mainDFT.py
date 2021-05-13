@@ -311,21 +311,21 @@ def main():
     plt.savefig(results_folder + "SNRvsPolFraction.png", bbox_inches="tight", dpi=100)
 
     # SNRvsPol = np.where(I>=nsigma*sigma_I, SNR_image/pol_fraction_data, np.nan)
-    writer.writeFITS(data=np.where(I_mfs >= nsigmas[0] * sigma_I, SNR_image, np.nan), header=pol_fraction_header,
+    writer.writeFITS(data=np.where(I_mfs >= nsigmas[0] * sigma_I, SNR_image, np.nan), header=I_header,
                      output=results_folder + "SNR.fits")
     # writer.writeFITS(data=SNRvsPol, header=pol_fraction_header, output="SNRvsPolFraction.fits")
-    writer.writeFITS(data=masked_pol_fraction, header=pol_fraction_header,
+    writer.writeFITS(data=masked_pol_fraction, header=I_header,
                      output=results_folder + "masked_pol_fraction.fits")
-    writer.writeFITS(data=np.where(I_mfs >= nsigmas[0] * sigma_I, max_rotated_intensity / I_mfs, np.nan), header=header,
+    writer.writeFITS(data=np.where(I_mfs >= nsigmas[0] * sigma_I, max_rotated_intensity / I_mfs, np.nan), header=I_header,
                      output=results_folder + "leakage_map.fits")
-    writer.writeFITS(data=max_faraday_depth, header=header, output=results_folder + "max_faraday_depth.fits")
+    writer.writeFITS(data=max_faraday_depth, header=I_header, output=results_folder + "max_faraday_depth.fits")
 
     vmax = np.amax(np.amax(abs_F, axis=0))
     vmin = np.amin(np.amin(abs_F, axis=0))
 
     abs_F[:, masked_values[0], masked_values[1]] = np.nan
-    writer.writeFITSCube(abs_F, header, len(phi), phi, np.abs(phi[1] - phi[0]), output=results_folder + "abs_F.fits")
-    create_animation(header=header, cube_axis=phi, cube=abs_F,
+    writer.writeFITSCube(abs_F, I_header, len(phi), phi, np.abs(phi[1] - phi[0]), output=results_folder + "abs_F.fits")
+    create_animation(header=I_header, cube_axis=phi, cube=abs_F,
                      title='Faraday Depth Spectrum at {0:.4f} rad/m^2'.format(phi[0]), xlabel="Offset (degrees)",
                      ylabel="Offset (degrees)", cblabel="Jy/beam", vmin=vmin, vmax=vmax,
                      output_video=results_folder + "animation.mp4", repeat=True)

@@ -23,8 +23,8 @@ def config_axes(data, header, units='degrees'):
     dy = header['cdelt2'] * u_factor
     x = ar(range(x)) * dx
     y = ar(range(y)) * dy
-    x1 = header['crpix1'] * np.abs(dx)
-    y1 = header['crpix2'] * dy
+    x1 = (header['crpix1'] - 1.0) * np.abs(dx)
+    y1 = (header['crpix2'] - 1.0) * dy
     x = np.arange(x1, -x1 - dx, -dx)
     y = np.arange(-y1, y1 + dy, dy)
     return [x, y, x1, y1]
@@ -47,8 +47,8 @@ def create_animation(header, cube_axis=np.array([]), cube=np.array([]), xlabel="
                      repeat=False):
     ims = []
     num_ims = len(cube)
-    if (num_ims != 0):
-        if (vmin is None and vmax is None):
+    if num_ims != 0:
+        if vmin is None and vmax is None:
             vmax = np.amax(np.amax(cube, axis=0))
             vmin = np.amin(np.amin(cube, axis=0))
 
