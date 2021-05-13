@@ -313,7 +313,8 @@ def main():
     # SNRvsPol = np.where(I>=nsigma*sigma_I, SNR_image/pol_fraction_data, np.nan)
     writer.writeFITS(data=np.where(I_mfs >= nsigmas[0] * sigma_I, SNR_image, np.nan), header=I_header,
                      output=results_folder + "SNR.fits")
-    # writer.writeFITS(data=SNRvsPol, header=pol_fraction_header, output="SNRvsPolFraction.fits")
+    writer.writeFITS(data=max_rotated_intensity, header=I_header, output="max_rotated_intensity.fits")
+    writer.writeFITS(data=np.abs(max_rotated_intensity), header=I_header, output="abs_max_rotated_intensity.fits")
     writer.writeFITS(data=masked_pol_fraction, header=I_header,
                      output=results_folder + "masked_pol_fraction.fits")
     writer.writeFITS(data=np.where(I_mfs >= nsigmas[0] * sigma_I, max_rotated_intensity / I_mfs, np.nan), header=I_header,
