@@ -84,7 +84,7 @@ def main():
     if imag_counter > 1:
         print("Reading images")
         reader = Reader(images[0], images[1], images[2], freq_f)
-        Q, U, QU_header = reader.readQU(memmap=True)
+        Q, U, QU_header = reader.readQU()
         Q = np.flipud(Q)
         U = np.flipud(U)
         M = Q.shape[1]

@@ -34,4 +34,4 @@ class Gaussian(Function1D, ABC):
             self.sigma = fwhm / val
 
     def run(self):
-        return self.amplitude * np.exp(-((self.x - self.mu) / self.sigma) ** 2)
+        return self.amplitude * np.exp(-0.5*((self.x - self.mu) / self.sigma) ** 2)

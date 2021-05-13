@@ -291,6 +291,7 @@ def main():
     writer = Writer()
     abs_F = np.abs(F)
 
+
     max_rotated_intensity = np.amax(abs_F, axis=0)
     max_faraday_depth_pos = np.argmax(abs_F, axis=0)
     max_rotated_intensity_image = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P), max_rotated_intensity, np.nan)
@@ -298,7 +299,7 @@ def main():
                                  phi[max_faraday_depth_pos], np.nan)
     masked_pol_fraction = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P), pol_fraction, np.nan)
 
-    F_at_peak = F[max_faraday_depth_pos]
+    F_at_peak = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P), F[max_faraday_depth_pos, :, :], np.nan)
     abs_F_at_peak = np.abs(F_at_peak)
 
     SNR_image = I_mfs / sigma_I
@@ -314,7 +315,6 @@ def main():
     plt.tight_layout()
     plt.savefig(results_folder + "SNRvsPolFraction.png", bbox_inches="tight", dpi=100)
 
-    # SNRvsPol = np.where(I>=nsigma*sigma_I, SNR_image/pol_fraction_data, np.nan)
     writer.writeFITS(data=np.where(I_mfs >= nsigmas[0] * sigma_I, SNR_image, np.nan), header=I_header,
                      output=results_folder + "SNR.fits")
     writer.writeFITS(data=max_rotated_intensity_image, header=I_header, output="max_rotated_intensity.fits")
