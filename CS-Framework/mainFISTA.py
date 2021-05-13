@@ -83,7 +83,7 @@ def main():
 
     if imag_counter > 1:
         print("Reading images")
-        reader = Reader(images[0], images[1], images[2], freq_f)
+        reader = Reader(stokes_I_name=images[0], Q_cube_name=images[1], U_cube_name=images[2], freq_file_name=freq_f)
         Q, U, QU_header = reader.readQU()
         Q = np.flipud(Q)
         U = np.flipud(U)
@@ -95,8 +95,8 @@ def main():
         Q = np.flipud(Q)
         U = np.flipud(U)
 
-    I_header, I = reader.readImage()
-    pol_fraction_header, pol_fraction_data = reader.readImage(name=pol_fraction)
+    I_header, I = reader.readImage(stokes="I")
+    # pol_fraction_header, pol_fraction_data = reader.readImage(name=pol_fraction)
     freqs = reader.readFreqsNumpyFile()
     pre_proc = PreProcessor(freqs=freqs)
     """
@@ -122,8 +122,8 @@ def main():
 
     sigma_noise = np.std(sigma)
 
-    W, K = pre_proc.calculate_W_K(sigma)
-    #W, K = pre_proc.calculate_W_K()
+    W, K = pre_proc.calculate_W_K(sigma=sigma)
+    # W, K = pre_proc.calculate_W_K()
 
     lambda2, lambda2_ref, phi, phi_r = pre_proc.calculate_phi(W, K, times=7, verbose=True)
 
@@ -164,7 +164,7 @@ def main():
     # print(lambda_test1)
     # print(lambda_test2)
     lambda_l1 = 5.5e-4
-    # lambda_l1 = lambda_test2
+    #lambda_l1 = lambda_test2
     lambda_tv = 0.05
 
     chi2 = Chi2(b=P, dft_obj=dft, w=W)
@@ -181,7 +181,7 @@ def main():
     g_obj = OFunction(g_func)
 
     # print("Optimizing objetive function...")
-    opt = FISTA(F_obj=F_obj, i_guess=F_real, maxiter=300, verbose=True, fx=f_obj, gx=g_obj)
+    opt = FISTA(F_obj=F_obj, i_guess=F_real, maxiter=400, verbose=True, fx=f_obj, gx=g_obj)
     # opt = GradientBasedMethod(F_obj=F_obj, i_guess=F_real, maxiter=10, verbose=verbose)
     obj, X = opt.run()
 
@@ -191,70 +191,108 @@ def main():
     X = real_to_complex(X)
 
     P_hat = dft.forward_normalized(X) * W
-    #P_hat = W*P
-    #res = P - P_hat
+    # P_hat = W*P
+    # res = P - P_hat
 
-    #X_res = dft.backward(res)
+    # X_res = dft.backward(res)
 
-    #recon = (signal.convolve(X, clean_beam, mode='same', method='auto') / np.sum(clean_beam)) + X_res
-
-    plt.rc('text', usetex=True)
-    plt.rc('font', family='serif')
+    # recon = (signal.convolve(X, clean_beam, mode='same', method='auto') / np.sum(clean_beam)) + X_res
 
     plt.rc('text', usetex=True)
     plt.rc('font', family='serif')
 
-    plt.figure(1)
+    plt.rc('text', usetex=True)
+    plt.rc('font', family='serif')
+
+
+
+    fig, axes = plt.subplots(2, 2)
+    
+    # plt.axvline(x=50, color='darkgrey', linestyle='-')
+    axes[0, 0].plot(lambda2, W * P.real, 'k.', label=r"Stokes $Q$")
+    axes[0, 0].plot(lambda2, W * P.imag, 'c.', label=r"Stokes $U$")
+    axes[0, 0].plot(lambda2, W * np.abs(P), 'g.', label=r"$|P|$")
+    
+    # plt.plot(lambda2, I, 'r.', label=r"Stokes $I$")
+    axes[0, 0].set_xlabel(r'$\lambda^2$[m$^{2}$]')
+    axes[0, 0].set_ylabel(r'Jy/beam')
+    axes[0, 0].legend(loc='upper right')
+    axes[0, 0].tick_params(axis='x', labelsize=12)
+    axes[0, 0].tick_params(axis='y', labelsize=12)
+    #axes[0, 0].tight_layout()
+    # plt.savefig("stokes.eps", bbox_inches="tight")
+    # plt.xlim([-500, 500])
+    # plt.ylim([-0.75, 1.25])
+
+    # plt.figure(2)
+    
+    # plt.axvline(x=50, color='darkgrey', linestyle='-')
+    axes[1, 1].plot(phi, X.real, 'c--', label=r"Real part")
+    axes[1, 1].plot(phi, X.imag, 'c:', label=r"Imaginary part")
+    axes[1, 1].plot(phi, np.abs(X), 'k-', label=r"Amplitude")
+    # plt.plot(lambda2, I, 'r.', label=r"Stokes $I$")
+    axes[1, 1].set_xlabel(r'$\phi$[rad m$^{-2}$]')
+    axes[1, 1].set_ylabel(r'Jy m$^2$ rad$^{-1}$')
+    axes[1, 1].legend(loc='upper right')
+    #axes[1, 1].tight_layout()
+    #axes[1, 1].savefig("X.eps", bbox_inches="tight")
+    axes[1, 1].set_xlim([-1000, 1000])
+    # plt.ylim([-0.75, 1.25])
+
+    #plt.figure(3)
 
     # plt.axvline(x=50, color='darkgrey', linestyle='-')
-    plt.plot(lambda2, W*P.real, 'k.', label=r"Stokes $Q$")
-    plt.plot(lambda2, W*P.imag, 'c.', label=r"Stokes $U$")
-    plt.plot(lambda2, W*np.abs(P), 'g.', label=r"$|P|$")
+    axes[1, 0].plot(phi, F.real, 'c--', label=r"Real part")
+    axes[1, 0].plot(phi, F.imag, 'c:', label=r"Imaginary part")
+    axes[1, 0].plot(phi, np.abs(F), 'k-', label=r"Amplitude")
+    axes[1, 0].set_xlabel(r'$\phi$[rad m$^{-2}$]')
+    axes[1, 0].set_ylabel(r'Jy m$^2$ rad$^{-1}$')
+    axes[1, 0].legend(loc='upper right')
+    axes[1, 0].tick_params(axis='x', labelsize=12)
+    axes[1, 0].tick_params(axis='y', labelsize=12)
+    axes[1, 0].set_xlim([-1000, 1000])
+    #plt.tight_layout()
+    #plt.savefig("FDS.eps", bbox_inches="tight")
+    # plt.ylim([-0.75, 1.25])
+
+    #plt.figure(5)
+
+    # plt.axvline(x=50, color='darkgrey', linestyle='-')
+    axes[0, 1].plot(lambda2, P_hat.real, 'k.', label=r"Stokes $Q$")
+    axes[0, 1].plot(lambda2, P_hat.imag, 'c.', label=r"Stokes $U$")
+    axes[0, 1].plot(lambda2, np.abs(P_hat), 'g.', label=r"$|P|$")
+    # plt.plot(lambda2, I, 'r.', label=r"Stokes $I$")
+    axes[0, 1].set_xlabel(r'$\lambda^2$[m$^{2}$]')
+    axes[0, 1].set_ylabel(r'Jy/beam')
+    axes[0, 1].legend(loc='upper right')
+    axes[0, 1].tick_params(axis='x', labelsize=12)
+    axes[0, 1].tick_params(axis='y', labelsize=12)
+    #axes[0, 1].tight_layout()
+    #plt.savefig("stokes.eps", bbox_inches="tight")
+    # plt.xlim([-500, 500])
+    # plt.ylim([-0.75, 1.25])
+
+
+    plt.figure(2)
+    # plt.axvline(x=50, color='darkgrey', linestyle='-')
+    plt.plot(lambda2, W * P.real, 'k.', label=r"Stokes $Q$")
+    plt.plot(lambda2, W * P.imag, 'c.', label=r"Stokes $U$")
+    plt.plot(lambda2, W * np.abs(P), 'g.', label=r"$|P|$")
+    plt.plot(lambda2, P_hat.real, 'k.', label=r"Reconstructed Stokes $Q$")
+    plt.plot(lambda2, P_hat.imag, 'c.', label=r"Reconstructed Stokes $U$")
+    plt.plot(lambda2, np.abs(P_hat), 'g.', label=r"Reconstructed $|P|$")
     # plt.plot(lambda2, I, 'r.', label=r"Stokes $I$")
     plt.xlabel(r'$\lambda^2$[m$^{2}$]')
     plt.ylabel(r'Jy/beam')
     plt.legend(loc='upper right')
     plt.xticks(size=12)
     plt.yticks(size=12)
-    plt.tight_layout()
-    plt.savefig("stokes.eps", bbox_inches="tight")
+    # axes[0, 0].tight_layout()
+    # plt.savefig("stokes.eps", bbox_inches="tight")
     # plt.xlim([-500, 500])
     # plt.ylim([-0.75, 1.25])
 
-
-    plt.figure(2)
-
-    #plt.axvline(x=50, color='darkgrey', linestyle='-')
-    plt.plot(phi, X.real, 'c--', label=r"Real part")
-    plt.plot(phi, X.imag, 'c:', label=r"Imaginary part")
-    plt.plot(phi, np.abs(X), 'k-', label=r"Amplitude")
-    #plt.plot(lambda2, I, 'r.', label=r"Stokes $I$")
-    plt.xlabel(r'$\phi$[rad m$^{-2}$]')
-    plt.ylabel(r'Jy m$^2$ rad$^{-1}$')
-    plt.legend(loc='upper right')
-    plt.tight_layout()
-    plt.savefig("X.eps", bbox_inches ="tight")
-    plt.xlim([-1000, 1000])
-    #plt.ylim([-0.75, 1.25])
-
-
     plt.figure(3)
-
-    # plt.axvline(x=50, color='darkgrey', linestyle='-')
-    plt.plot(phi, F.real, 'c--', label=r"Real part")
-    plt.plot(phi, F.imag, 'c:', label=r"Imaginary part")
-    plt.plot(phi, np.abs(F), 'k-', label=r"Amplitude")
-    plt.xlabel(r'$\phi$[rad m$^{-2}$]')
-    plt.ylabel(r'Jy m$^2$ rad$^{-1}$')
-    plt.legend(loc='upper right')
-    plt.xticks(size=12)
-    plt.yticks(size=12)
-    plt.xlim([-1000, 1000])
-    plt.tight_layout()
-    plt.savefig("FDS.eps", bbox_inches="tight")
-    # plt.ylim([-0.75, 1.25])
-
-    plt.figure(4)
 
     # plt.axvline(x=50, color='darkgrey', linestyle='-')
     plt.plot(phi, R.real, 'c--', label=r"Real part")
@@ -269,23 +307,6 @@ def main():
     plt.xlim([-1000, 1000])
     plt.tight_layout()
     plt.savefig("R.eps", bbox_inches="tight")
-    # plt.ylim([-0.75, 1.25])
-
-    plt.figure(5)
-
-    # plt.axvline(x=50, color='darkgrey', linestyle='-')
-    plt.plot(lambda2, P_hat.real, 'k.', label=r"Stokes $Q$")
-    plt.plot(lambda2, P_hat.imag, 'c.', label=r"Stokes $U$")
-    plt.plot(lambda2, np.abs(P_hat), 'g.', label=r"$|P|$")
-    # plt.plot(lambda2, I, 'r.', label=r"Stokes $I$")
-    plt.xlabel(r'$\lambda^2$[m$^{2}$]')
-    plt.ylabel(r'Jy/beam')
-    plt.legend(loc='upper right')
-    plt.xticks(size=12)
-    plt.yticks(size=12)
-    plt.tight_layout()
-    plt.savefig("stokes.eps", bbox_inches="tight")
-    # plt.xlim([-500, 500])
     # plt.ylim([-0.75, 1.25])
     """
 

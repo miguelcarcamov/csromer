@@ -52,6 +52,7 @@ class Reader:
         return IQU[0], IQU[1], header
 
     def readImage(self, name=None, stokes=None):
+        filename = ""
         if name is None and stokes is not None:
             if stokes == "I":
                 filename = self.stokes_I_name

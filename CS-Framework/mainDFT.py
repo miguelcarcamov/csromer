@@ -125,7 +125,7 @@ def main():
     print("I shape: ", I_mfs.shape)
 
     P_mfs = np.sqrt(Q_mfs ** 2 + U_mfs ** 2)
-    pol_fraction = P_mfs/I_mfs
+    pol_fraction = P_mfs / I_mfs
     mask_idx, masked_values = make_mask_faraday(I_mfs, P_mfs, nsigmas[0] * sigma_I, nsigmas[1] * sigma_P)
 
     sigma = np.sqrt((sigma_Q_cube ** 2 + sigma_U_cube ** 2) / 2)
@@ -291,20 +291,24 @@ def main():
     writer = Writer()
     abs_F = np.abs(F)
 
-
     max_rotated_intensity = np.amax(abs_F, axis=0)
     max_faraday_depth_pos = np.argmax(abs_F, axis=0)
-    max_rotated_intensity_image = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P), max_rotated_intensity, np.nan)
+    max_rotated_intensity_image = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P),
+                                           max_rotated_intensity, np.nan)
     max_faraday_depth = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P),
                                  phi[max_faraday_depth_pos], np.nan)
-    masked_pol_fraction = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P), pol_fraction, np.nan)
+    masked_pol_fraction = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P), pol_fraction,
+                                   np.nan)
 
-    F_at_peak = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P), F[max_faraday_depth_pos, :, :], np.nan)
+    F_x, F_y = np.indices((M, N))
+    F_at_peak = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P),
+                         F[max_faraday_depth_pos, F_x, F_y], np.nan)
     abs_F_at_peak = np.abs(F_at_peak)
 
     SNR_image = I_mfs / sigma_I
     SNR_image_vector = SNR_image[np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P))].flatten()
-    pol_fraction_data_vector = pol_fraction[np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P))].flatten()
+    pol_fraction_data_vector = pol_fraction[
+        np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P))].flatten()
 
     plt.figure()
     # plt.plot(SNR_image_vector, 'c.', label="SNR")
@@ -323,7 +327,8 @@ def main():
     writer.writeFITS(data=abs_F_at_peak, header=I_header, output="P_abs.fits")
     writer.writeFITS(data=masked_pol_fraction, header=I_header,
                      output=results_folder + "masked_pol_fraction.fits")
-    writer.writeFITS(data=np.where(I_mfs >= nsigmas[0] * sigma_I, max_rotated_intensity / I_mfs, np.nan), header=I_header,
+    writer.writeFITS(data=np.where(I_mfs >= nsigmas[0] * sigma_I, max_rotated_intensity / I_mfs, np.nan),
+                     header=I_header,
                      output=results_folder + "leakage_map.fits")
     writer.writeFITS(data=max_faraday_depth, header=I_header, output=results_folder + "max_faraday_depth.fits")
 

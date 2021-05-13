@@ -46,6 +46,7 @@ def FISTA_algorithm(x_init, F, fx, gx, grad, g_prox, eta, max_iter, tol, L0, ver
         e = np.sum(np.abs(x_new-x_old))/len(x_new)
         if e <= tol:
             print("Exit due to tolerance: ", e, " < ", tol)
+            print("Iterations: ", iter)
             break
 
         x_old = x_new;
