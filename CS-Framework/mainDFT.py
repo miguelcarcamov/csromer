@@ -297,7 +297,7 @@ def main():
                                  phi[max_faraday_depth_pos], np.nan)
     masked_pol_fraction = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P), pol_fraction, np.nan)
 
-    SNR_image = I / sigma_I
+    SNR_image = I_mfs / sigma_I
     SNR_image_vector = SNR_image[np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P))].flatten()
     pol_fraction_data_vector = pol_fraction[np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P))].flatten()
 
@@ -311,12 +311,12 @@ def main():
     plt.savefig(results_folder + "SNRvsPolFraction.png", bbox_inches="tight", dpi=100)
 
     # SNRvsPol = np.where(I>=nsigma*sigma_I, SNR_image/pol_fraction_data, np.nan)
-    writer.writeFITS(data=np.where(I >= nsigma * sigma_I, SNR_image, np.nan), header=pol_fraction_header,
+    writer.writeFITS(data=np.where(I_mfs >= nsigmas[0] * sigma_I, SNR_image, np.nan), header=pol_fraction_header,
                      output=results_folder + "SNR.fits")
     # writer.writeFITS(data=SNRvsPol, header=pol_fraction_header, output="SNRvsPolFraction.fits")
     writer.writeFITS(data=masked_pol_fraction, header=pol_fraction_header,
                      output=results_folder + "masked_pol_fraction.fits")
-    writer.writeFITS(data=np.where(I >= nsigma * sigma_I, max_rotated_intensity / I, np.nan), header=header,
+    writer.writeFITS(data=np.where(I_mfs >= nsigmas[0] * sigma_I, max_rotated_intensity / I_mfs, np.nan), header=header,
                      output=results_folder + "leakage_map.fits")
     writer.writeFITS(data=max_faraday_depth, header=header, output=results_folder + "max_faraday_depth.fits")
 
