@@ -53,14 +53,9 @@ class PreProcessor:
             sigma = np.sqrt(np.mean(image[y0:yn, x0:xn] ** 2))
         else:
             flux = np.sum(image)
-            
-
+            sigma = np.sqrt((residual_cal_error*flux)**2 + (sigma_error * np.sqrt(nbeam))**2)
 
         return sigma
-
-    def calculate_sigma_stuardi(self, ):
-
-
 
     def calculate_l2ref(self, W, K):
         return (1. / K) * np.sum(W * self.lambda2)
