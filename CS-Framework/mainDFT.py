@@ -305,6 +305,7 @@ def main():
                          F[max_faraday_depth_pos, F_x, F_y], np.nan)
     abs_F_at_peak = np.abs(F_at_peak)
     P_from_faraday = np.sqrt(abs_F_at_peak**2 - (2.3*sigma_P**2))
+    P_from_faraday = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P), P_from_faraday, np.nan)
 
     SNR_image = I_mfs / sigma_I
     SNR_image_vector = SNR_image[np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P))].flatten()

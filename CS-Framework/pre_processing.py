@@ -47,10 +47,20 @@ class PreProcessor:
 
         return sigmas
 
-    def calculate_sigma(self, image=None, x0=0, xn=0, y0=0, yn=0):
-        sigma = np.sqrt(np.mean(image[y0:yn, x0:xn] ** 2))
+    def calculate_sigma(self, image=None, x0=0, xn=0, y0=0, yn=0, sigma_error=None, residual_cal_error=None, nbeam=None):
+
+        if sigma_error is None and residual_cal_error is None and nbeam is None:
+            sigma = np.sqrt(np.mean(image[y0:yn, x0:xn] ** 2))
+        else:
+            flux = np.sum(image)
+            
+
 
         return sigma
+
+    def calculate_sigma_stuardi(self, ):
+
+
 
     def calculate_l2ref(self, W, K):
         return (1. / K) * np.sum(W * self.lambda2)
