@@ -28,11 +28,11 @@ class OFunction:
     def getValues(self):
         return self.values
 
-    def getLambda(self, id=0):
-        return self.F[id].getRegularizationParameter()
+    def getLambda(self, _id=0):
+        return self.F[_id].getRegularizationParameter()
 
-    def setLambda(self, reg=0.0, id=0):
-        self.F[id].setRegularizationParameter(reg=reg)
+    def setLambda(self, reg=0.0, _id=0):
+        self.F[_id].setRegularizationParameter(reg=reg)
 
     def evaluate(self, x):
         ret = 0.0
@@ -48,6 +48,6 @@ class OFunction:
             res += f_i.reg * f_i.calculate_gradient(x)
         return res
 
-    def calc_prox(self, x, nu=0, id=0):
-        f_i = self.F[id]
+    def calc_prox(self, x, nu=0, _id=0):
+        f_i = self.F[_id]
         return f_i.calculate_prox(x, nu)

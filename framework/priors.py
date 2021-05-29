@@ -7,9 +7,13 @@ Created on Tue Nov  5 09:38:54 2019
 """
 import numpy as np
 import prox_tv as ptv
-from utilities import real_to_complex, complex_to_real
+from .utilities import real_to_complex, complex_to_real
 from abc import ABCMeta, abstractmethod
-from optimizer import FixedPointMethod, GradientBasedMethod
+from .optimizer import FixedPointMethod, GradientBasedMethod
+
+
+def approx_abs(x, epsilon):
+    return np.sqrt(x * x + epsilon)
 
 
 class Fi(metaclass=ABCMeta):
@@ -76,21 +80,19 @@ class L1(Fi):
         for a_attribute in initlocals.keys():
             setattr(self, a_attribute, initlocals[a_attribute])
 
-    def evaluate(self, x):
-        return np.sum(np.abs(x))
+    def evaluate(self, x, epsilon=1e-12):
+        return np.sum(approx_abs(x, epsilon))
 
-    def calculate_gradient(self, x):
+    def calculate_gradient(self, x, epsilon=1e-12):
         dx = np.zeros(len(x), x.dtype)
-        idx = np.argwhere(x != 0)
-        idx_0 = np.argwhere(x == 0)
 
-        dx[idx] = np.sign(x[idx])
-        dx[idx_0] = 0.0
+        dx = x / approx_abs(x, epsilon)
+
         return dx
 
     def calculate_prox(self, x, nu=0):
         # print(x)
-        x = np.sign(x) * np.maximum(0, np.abs(x) - self.reg)
+        x = np.sign(x) * np.maximum(np.abs(x) - self.reg, 0.0)
         return x
 
 
@@ -114,14 +116,20 @@ class Chi2(Fi):
 
     def evaluate(self, x):
         x_complex = real_to_complex(x)
-        res = self.w * (self.dft_obj.forward_normalized(x_complex) - self.b)
-        chi2_vector = res.real ** 2 + res.imag ** 2
+        res = self.dft_obj.forward_normalized(x_complex) - self.b
+        chi2_vector = self.w * (res.real ** 2 + res.imag ** 2)
         val = 0.5 * np.sum(chi2_vector)
         return val
 
     def calculate_gradient(self, x):
         x_complex = real_to_complex(x)
         val = x_complex - self.F_dirty
+        return complex_to_real(val)
+
+    def calculate_gradient_fista(self, x):
+        x_complex = real_to_complex(x)
+        res = self.dft_obj.forward_normalized(x_complex) - self.b
+        val = self.dft_obj.backward(self.w*res)
         return complex_to_real(val)
 
     def calculate_prox(self, x, nu=0):
