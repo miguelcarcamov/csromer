@@ -30,8 +30,30 @@ class Gaussian(Function1D, ABC):
         if fwhm is None and sigma is not None:
             self.sigma = sigma
         else:
-            val = 2.0 * np.sqrt(2.0 * np.log(2.0))
-            self.sigma = fwhm / val
+            self.fwhm = fwhm
 
-    def run(self):
-        return self.amplitude * np.exp(-0.5*((self.x - self.mu) / self.sigma) ** 2)
+    @property
+    def sigma(self):
+        return self.__sigma
+
+    @sigma.setter
+    def sigma(self, val):
+        self.__sigma = val
+        val_fwhm = 2.0 * np.sqrt(2.0 * np.log(2.0))
+        self.__fwhm = val * val_fwhm
+
+    @property
+    def fwhm(self):
+        return self.__fwhm
+
+    @fwhm.setter
+    def fwhm(self, val):
+        self.__fwhm = val
+        val_fwhm = 2.0 * np.sqrt(2.0 * np.log(2.0))
+        self.__sigma = val / val_fwhm
+
+    def run(self, normalized=True):
+        f_gauss = self.amplitude * np.exp(-0.5 * ((self.x - self.mu) / self.sigma) ** 2)
+        if normalized:
+            f_gauss /= np.sum(f_gauss)
+        return f_gauss

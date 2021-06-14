@@ -129,7 +129,7 @@ class Chi2(Fi):
     def calculate_gradient_fista(self, x):
         x_complex = real_to_complex(x)
         res = self.dft_obj.forward_normalized(x_complex) - self.b
-        val = self.dft_obj.backward(self.w*res)
+        val = self.dft_obj.backward(res)
         return complex_to_real(val)
 
     def calculate_prox(self, x, nu=0):

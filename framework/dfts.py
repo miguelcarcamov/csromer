@@ -33,13 +33,17 @@ class DFT1D:
     def forward_normalized(self, x):
         # change units of x so the transform give us W(\lambda^2)*P(\lambda^2)
         val = x * self.K / self.n
-
+        
         b = np.zeros(self.m, dtype=np.float32) + 1j * np.zeros(self.m, dtype=np.float32)
 
         for i in range(0, self.m):
             b[i] = np.sum(val * np.exp(2 * 1j * self.phi * (self.lambda2[i] - self.lambda2_ref)))
 
-        return b / self.W
+        notzero_idx = np.where(self.W != 0.0)
+        zero_idx = np.where(self.W == 0.0)
+        b[notzero_idx] /= self.W[notzero_idx]
+        b[zero_idx] = 0.0
+        return b
 
     def backward(self, b):
         x = np.zeros(self.n, dtype=np.float32) + 1j * np.zeros(self.n, dtype=np.float32)

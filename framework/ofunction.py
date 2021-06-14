@@ -10,16 +10,16 @@ import numpy as np
 
 
 class OFunction:
-    def __init__(self, F=[]):
+    def __init__(self, F=None):
         initlocals = locals()
         initlocals.pop('self')
         for a_attribute in initlocals.keys():
             setattr(self, a_attribute, initlocals[a_attribute])
 
-        self.values = np.zeros(len(F))
-        if len(F) == 0:
+        if F is None:
             self.prox_functions = []
         else:
+            self.values = np.zeros(len(F))
             self.prox_functions = [f_i for f_i in self.F]
 
     def getProxFunctions(self):
@@ -49,5 +49,11 @@ class OFunction:
         return res
 
     def calc_prox(self, x, nu=0, _id=0):
-        f_i = self.F[_id]
-        return f_i.calculate_prox(x, nu)
+        if len(self.prox_functions) == 1:
+            f_i = self.F[_id]
+            proximal = f_i.calculate_prox(x, nu)
+        else:
+            proximal = x
+            for i in range(len(self.prox_functions)):
+                proximal = self.F[i].calculate_prox(proximal)
+        return proximal

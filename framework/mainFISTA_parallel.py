@@ -78,8 +78,7 @@ def calculateF(dftObject=None, W=np.array([]), F=np.array([]), P=np.array([]), i
     f_obj = OFunction(f_func)
     g_obj = OFunction(g_func)
 
-    opt = Optimizer(F_obj.evaluate, F_obj.calculate_gradient,
-                    F_real, maxiter=100, verbose=False)
+    opt = Optimizer(F_obj.evaluate, F_obj.calculate_gradient, F_real, verbose=False)
 
     obj, X = opt.FISTA(f_obj.evaluate, g_obj.evaluate,
                        f_obj.calculate_gradient, g_obj, 0.5)

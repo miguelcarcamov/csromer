@@ -114,8 +114,7 @@ def main():
     objf = OFunction(F_i)
 
     print("Optimizing objetive function...")
-    opt = Optimizer(objf.evaluate, objf.calculate_gradient,
-                    F_real, 10000, method='CG', verbose=verbose)
+    opt = Optimizer(objf.evaluate, objf.calculate_gradient, F_real, 10000, verbose=verbose)
 
     res = opt.gradient_based_method()
 

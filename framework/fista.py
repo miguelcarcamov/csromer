@@ -6,6 +6,7 @@ Created on Thu Nov 14 12:09:14 2019
 @author: miguel
 """
 import numpy as np
+import sys
 
 
 def FISTA_algorithm(x=None, F=None, fx=None, g_prox=None, max_iter=None, tol=1e-12, n=None, noise=None,
@@ -17,9 +18,15 @@ def FISTA_algorithm(x=None, F=None, fx=None, g_prox=None, max_iter=None, tol=1e-
 
     if max_iter is None and noise is not None:
         max_iter = int(np.floor(g_prox.getLambda() / noise))
+        if verbose:
+            print("Iterations set to " + str(max_iter))
 
     if noise is None:
         noise = 0.0
+
+    if noise >= g_prox.getLambda():
+        print("Error, noise cannot be greater than lambda")
+        sys.exit(-1)
 
     for it in range(0, max_iter):
         xold = x.copy()
@@ -32,13 +39,13 @@ def FISTA_algorithm(x=None, F=None, fx=None, g_prox=None, max_iter=None, tol=1e-
         e = np.sum(np.abs(x - xold)) / len(x)
         if e <= tol:
             print("Exit due to tolerance: ", e, " < ", tol)
-            print("Iterations: ", iter)
+            print("Iterations: ", it)
             break
 
         if verbose and it % 50 == 0:
             cost = F(x)
             print("Iteration: ", it,
                   " objective function value: {0:0.5f}".format(cost))
-        g_prox.setLambda(reg=g_prox.getLambda()-noise)
+        g_prox.setLambda(reg=g_prox.getLambda() - noise)
     min_cost = F(x)
     return min_cost, x

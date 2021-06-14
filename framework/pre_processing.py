@@ -24,20 +24,32 @@ class PreProcessor:
         self.rmtf_fwhm = 0.0
         self.max_recovered_width = 0.0
         self.max_faraday_depth = 0.0
+        self.delta_l2_min = 0.0
+        self.delta_l2_max = 0.0
+        self.delta_l2_mean = 0.0
+
+    @property
+    def freqs(self):
+        return self.__freqs
+
+    @freqs.setter
+    def freqs(self, val):
+        self.__freqs = val
+        self.nu_to_l2()
 
     def nu_to_l2(self):
         self.lambda2 = (c / self.freqs) ** 2
         self.lambda2 = self.lambda2[::-1]
 
     def calculate_max(self, image=None):
-        max = np.amax(image)
+        max_x = np.amax(image)
         where_max = np.unravel_index(np.argmax(image, axis=None), image.shape)
-        return max, where_max
+        return max_x, where_max
 
     def calculate_min(self, image=None, axis=0):
-        min = np.amin(image)
+        min_x = np.amin(image)
         where_min = np.unravel_index(np.argmin(image, axis=None), image.shape)
-        return min, where_min
+        return min_x, where_min
 
     def calculate_sigmas_cube(self, image=None, x0=0, xn=0, y0=0, yn=0):
         sigmas = np.zeros(len(self.freqs))
@@ -47,13 +59,14 @@ class PreProcessor:
 
         return sigmas
 
-    def calculate_sigma(self, image=None, x0=0, xn=0, y0=0, yn=0, sigma_error=None, residual_cal_error=None, nbeam=None):
+    def calculate_sigma(self, image=None, x0=0, xn=0, y0=0, yn=0, sigma_error=None, residual_cal_error=None,
+                        nbeam=None):
 
         if sigma_error is None and residual_cal_error is None and nbeam is None:
             sigma = np.sqrt(np.mean(image[y0:yn, x0:xn] ** 2))
         else:
             flux = np.sum(image)
-            sigma = np.sqrt((residual_cal_error*flux)**2 + (sigma_error * np.sqrt(nbeam))**2)
+            sigma = np.sqrt((residual_cal_error * flux) ** 2 + (sigma_error * np.sqrt(nbeam)) ** 2)
 
         return sigma
 
@@ -64,7 +77,7 @@ class PreProcessor:
 
         l2 = self.lambda2
 
-        l2_min = np.min(l2)
+        l2_min = np.min(l2[np.nonzero(l2)])
         l2_max = np.max(l2)
 
         l2_ref = self.calculate_l2ref(W, K)
@@ -83,6 +96,9 @@ class PreProcessor:
         self.rmtf_fwhm = delta_phi_fwhm
         self.max_recovered_width = delta_phi_theo
         self.max_faraday_depth = phi_max
+        self.delta_l2_min = delta_l2_min
+        self.delta_l2_max = delta_l2_max
+        self.delta_l2_mean = delta_l2_mean
         if verbose:
             print("Minimum Lambda-squared: {0:.3f} m^2".format(l2_min))
             print("Maximum Lambda-squared: {0:.3f} m^2".format(l2_max))

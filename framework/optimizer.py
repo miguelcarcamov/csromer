@@ -17,7 +17,7 @@ import sys
 
 class Optimizer(metaclass=ABCMeta):
 
-    def __init__(self, F_obj=None, i_guess=None, maxiter=500, method=None, tol=1e-15, verbose=True):
+    def __init__(self, F_obj=None, i_guess=None, maxiter=None, method=None, tol=1e-15, verbose=True):
         initlocals = locals()
         initlocals.pop('self')
         for a_attribute in initlocals.keys():
