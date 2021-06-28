@@ -164,7 +164,7 @@ def main():
     # print(lambda_test1)
     # print(lambda_test2)
     lambda_l1 = 5.5e-4
-    #lambda_l1 = lambda_test2
+    # lambda_l1 = lambda_test2
     lambda_tv = 0.05
 
     chi2 = Chi2(b=P, dft_obj=dft, w=W)
@@ -204,28 +204,26 @@ def main():
     plt.rc('text', usetex=True)
     plt.rc('font', family='serif')
 
-
-
     fig, axes = plt.subplots(2, 2)
-    
+
     # plt.axvline(x=50, color='darkgrey', linestyle='-')
     axes[0, 0].plot(lambda2, W * P.real, 'k.', label=r"Stokes $Q$")
     axes[0, 0].plot(lambda2, W * P.imag, 'c.', label=r"Stokes $U$")
     axes[0, 0].plot(lambda2, W * np.abs(P), 'g.', label=r"$|P|$")
-    
+
     # plt.plot(lambda2, I, 'r.', label=r"Stokes $I$")
     axes[0, 0].set_xlabel(r'$\lambda^2$[m$^{2}$]')
     axes[0, 0].set_ylabel(r'Jy/beam')
     axes[0, 0].legend(loc='upper right')
     axes[0, 0].tick_params(axis='x', labelsize=12)
     axes[0, 0].tick_params(axis='y', labelsize=12)
-    #axes[0, 0].tight_layout()
+    # axes[0, 0].tight_layout()
     # plt.savefig("stokes.eps", bbox_inches="tight")
     # plt.xlim([-500, 500])
     # plt.ylim([-0.75, 1.25])
 
     # plt.figure(2)
-    
+
     # plt.axvline(x=50, color='darkgrey', linestyle='-')
     axes[1, 1].plot(phi, X.real, 'c--', label=r"Real part")
     axes[1, 1].plot(phi, X.imag, 'c:', label=r"Imaginary part")
@@ -234,12 +232,12 @@ def main():
     axes[1, 1].set_xlabel(r'$\phi$[rad m$^{-2}$]')
     axes[1, 1].set_ylabel(r'Jy m$^2$ rad$^{-1}$')
     axes[1, 1].legend(loc='upper right')
-    #axes[1, 1].tight_layout()
-    #axes[1, 1].savefig("X.eps", bbox_inches="tight")
+    # axes[1, 1].tight_layout()
+    # axes[1, 1].savefig("X.eps", bbox_inches="tight")
     axes[1, 1].set_xlim([-1000, 1000])
     # plt.ylim([-0.75, 1.25])
 
-    #plt.figure(3)
+    # plt.figure(3)
 
     # plt.axvline(x=50, color='darkgrey', linestyle='-')
     axes[1, 0].plot(phi, F.real, 'c--', label=r"Real part")
@@ -251,11 +249,11 @@ def main():
     axes[1, 0].tick_params(axis='x', labelsize=12)
     axes[1, 0].tick_params(axis='y', labelsize=12)
     axes[1, 0].set_xlim([-1000, 1000])
-    #plt.tight_layout()
-    #plt.savefig("FDS.eps", bbox_inches="tight")
+    # plt.tight_layout()
+    # plt.savefig("FDS.eps", bbox_inches="tight")
     # plt.ylim([-0.75, 1.25])
 
-    #plt.figure(5)
+    # plt.figure(5)
 
     # plt.axvline(x=50, color='darkgrey', linestyle='-')
     axes[0, 1].plot(lambda2, P_hat.real, 'k.', label=r"Stokes $Q$")
@@ -267,11 +265,10 @@ def main():
     axes[0, 1].legend(loc='upper right')
     axes[0, 1].tick_params(axis='x', labelsize=12)
     axes[0, 1].tick_params(axis='y', labelsize=12)
-    #axes[0, 1].tight_layout()
-    #plt.savefig("stokes.eps", bbox_inches="tight")
+    # axes[0, 1].tight_layout()
+    # plt.savefig("stokes.eps", bbox_inches="tight")
     # plt.xlim([-500, 500])
     # plt.ylim([-0.75, 1.25])
-
 
     plt.figure(2)
     # plt.axvline(x=50, color='darkgrey', linestyle='-')

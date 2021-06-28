@@ -29,10 +29,10 @@ class OFunction:
         return self.values
 
     def getLambda(self, _id=0):
-        return self.F[_id].getRegularizationParameter()
+        return self.F[_id].reg
 
     def setLambda(self, reg=0.0, _id=0):
-        self.F[_id].setRegularizationParameter(reg=reg)
+        self.F[_id].reg = reg
 
     def evaluate(self, x):
         ret = 0.0

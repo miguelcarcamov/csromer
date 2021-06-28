@@ -17,17 +17,11 @@ def approx_abs(x, epsilon):
 
 
 class Fi(metaclass=ABCMeta):
-    def __init__(self, reg=1.0):
+    def __init__(self, reg=1.0, norm_factor=1.0):
         initlocals = locals()
         initlocals.pop('self')
         for a_attribute in initlocals.keys():
             setattr(self, a_attribute, initlocals[a_attribute])
-
-    def getRegularizationParameter(self):
-        return self.reg
-
-    def setRegularizationParameter(self, reg=0.0):
-        self.reg = reg
 
     @abstractmethod
     def evaluate(self, x):
@@ -51,7 +45,6 @@ class TV(Fi):
             setattr(self, a_attribute, initlocals[a_attribute])
 
         self.nu = np.array([])
-        self.fixed_point_opt = FixedPointMethod()
 
     def evaluate(self, x):
         tv = 0.0
@@ -68,8 +61,37 @@ class TV(Fi):
             dx[i] = np.sign(x[i] - x[i - 1]) - np.sign(x[i + 1] - x[i])
         return dx
 
-    def calculate_prox(self, x, nu=0):
+    def calculate_prox(self, x, nu=0.0):
         return ptv.tv1_1d(x, self.reg)
+
+
+class TSV(Fi):
+    def __init__(self, **kwargs):
+        super(TSV, self).__init__(**kwargs)
+        initlocals = locals()
+        initlocals.pop('self')
+        for a_attribute in initlocals.keys():
+            setattr(self, a_attribute, initlocals[a_attribute])
+
+        self.nu = np.array([])
+
+    def evaluate(self, x):
+        tv = 0.0
+        n = x.shape[0]
+        for i in range(0, n - 1):
+            tv += np.abs(x[i + 1] - x[i])**2
+        return tv
+
+    def calculate_gradient(self, x):
+
+        n = len(x)
+        dx = np.zeros(n, x.dtype)
+        for i in range(1, n - 1):
+            dx[i] = 2.0 * (np.sign(x[i] - x[i - 1]) - np.sign(x[i + 1] - x[i]))
+        return dx
+
+    def calculate_prox(self, x, nu=0.0):
+        return ptv.tv2_1d(x, self.reg)
 
 
 class L1(Fi):
@@ -81,7 +103,9 @@ class L1(Fi):
             setattr(self, a_attribute, initlocals[a_attribute])
 
     def evaluate(self, x, epsilon=1e-12):
-        return np.sum(approx_abs(x, epsilon))
+        val = np.sum(approx_abs(x, epsilon))
+        #print("Evaluation on L1:", val)
+        return val
 
     def calculate_gradient(self, x, epsilon=1e-12):
         dx = np.zeros(len(x), x.dtype)
@@ -99,35 +123,35 @@ class L1(Fi):
 class Chi2(Fi):
     def __init__(self, b=np.array([]), dft_obj=None, w=1.0, **kwargs):
         super(Chi2, self).__init__(**kwargs)
-        initlocals = locals()
-        initlocals.pop('self')
-        for a_attribute in initlocals.keys():
-            setattr(self, a_attribute, initlocals[a_attribute])
-        if len(self.b) != 0:
-            self.F_dirty = self.dft_obj.backward(self.b)
-
-    def setb(self, b=np.array([])):
+        self.dft_obj = dft_obj
+        self.w = w
         self.b = b
-        if len(self.b) != 0:
-            self.F_dirty = self.dft_obj.backward(self.b)
 
-    def setFdirty(self, F_dirty=None):
-        self.F_dirty = F_dirty
+    @property
+    def b(self):
+        return self.__b
+
+    @b.setter
+    def b(self, val=None):
+        self.__b = val
+        if val is not None:
+            self.__F_dirty = self.dft_obj.backward(self.__b)
 
     def evaluate(self, x):
-        x_complex = real_to_complex(x)
+        x_complex = real_to_complex(x) * self.norm_factor
         res = self.dft_obj.forward_normalized(x_complex) - self.b
         chi2_vector = self.w * (res.real ** 2 + res.imag ** 2)
         val = 0.5 * np.sum(chi2_vector)
+        #print("Evaluation on chi2:", val)
         return val
 
     def calculate_gradient(self, x):
-        x_complex = real_to_complex(x)
+        x_complex = real_to_complex(x) * self.norm_factor
         val = x_complex - self.F_dirty
         return complex_to_real(val)
 
     def calculate_gradient_fista(self, x):
-        x_complex = real_to_complex(x)
+        x_complex = real_to_complex(x) * self.norm_factor
         res = self.dft_obj.forward_normalized(x_complex) - self.b
         val = self.dft_obj.backward(res)
         return complex_to_real(val)
