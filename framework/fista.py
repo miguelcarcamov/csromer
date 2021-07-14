@@ -12,7 +12,7 @@ import sys
 def FISTA_algorithm(x=None, F=None, fx=None, g_prox=None, max_iter=None, tol=1e-12, n=None, noise=None,
                     verbose=True):
     if x is None and n is not None:
-        x = np.zeros(n) + 1j * np.zeros(n)
+        x = np.zeros(n, dtype=np.complex64)
     t = 1
     z = x.copy()
     min_cost = 0.0

@@ -9,47 +9,15 @@ Created on Tue Mar 12 18:34:19 2019
 import numpy as np
 from abc import ABCMeta, abstractmethod
 from pynufft import NUFFT
+from .dataset import Dataset
+from .parameter import Parameter
+import copy
 
 
 class FT(metaclass=ABCMeta):
-    def __init__(self, W=None, lambda2=None, lambda2_ref=0.0, phi=None):
-        self.lambda2 = lambda2
-        self.phi = phi
-        self.lambda2_ref = lambda2_ref
-        self.m = len(lambda2)
-        self.n = len(phi)
-        self.W = W
-        if self.W is None:
-            self.W = np.ones_like(lambda2)
-
-        self.K = np.sum(self.W)
-
-    @property
-    def lambda2(self):
-        return self.__lambda2
-
-    @lambda2.setter
-    def lambda2(self, val):
-        self.__lambda2 = val
-        self.__m = len(val)
-
-    @property
-    def phi(self):
-        return self.__phi
-
-    @phi.setter
-    def phi(self, val):
-        self.__phi = val
-        self.__n = len(val)
-
-    @property
-    def W(self):
-        return self.__W
-
-    @W.setter
-    def W(self, val):
-        self.__W = val
-        self.__K = np.sum(val)
+    def __init__(self, dataset: Dataset, parameter: Parameter):
+        self.dataset = dataset
+        self.parameter = copy.deepcopy(parameter)
 
     @abstractmethod
     def configure(self):
@@ -67,6 +35,10 @@ class FT(metaclass=ABCMeta):
     def backward(self):
         return
 
+    @abstractmethod
+    def RMTF(self):
+        return
+
 
 class DFT1D(FT):
     def __init__(self, **kwargs):
@@ -77,44 +49,44 @@ class DFT1D(FT):
 
     def forward(self, x):
 
-        b = np.zeros(self.m, dtype=np.float32) + 1j * np.zeros(self.m, dtype=np.float32)
+        b = np.zeros(self.dataset.m, dtype=np.float32) + 1j * np.zeros(self.dataset.m, dtype=np.float32)
 
         for i in range(0, self.m):
-            b[i] = np.sum(x * np.exp(2 * 1j * self.phi * (self.lambda2[i] - self.lambda2_ref)))
+            b[i] = np.sum(x * np.exp(2 * 1j * self.parameter.phi * (self.dataset.lambda2[i] - self.dataset.lambda2_ref)))
 
-        return self.W * b
+        return self.dataset.w * b
 
     def forward_normalized(self, x):
 
         # change units of x so the transform give us W(\lambda^2)*P(\lambda^2)
-        val = x * self.K / self.n
+        val = x * self.dataset.k / self.parameter.n
 
-        b = np.zeros(self.m, dtype=np.float32) + 1j * np.zeros(self.m, dtype=np.float32)
+        b = np.zeros(self.dataset.m, dtype=np.float32) + 1j * np.zeros(self.dataset.m, dtype=np.float32)
 
-        for i in range(0, self.m):
-            b[i] = np.sum(val * np.exp(2 * 1j * self.phi * (self.lambda2[i] - self.lambda2_ref)))
+        for i in range(0, self.dataset.m):
+            b[i] = np.sum(val * np.exp(2 * 1j * self.parameter.phi * (self.dataset.lambda2[i] - self.dataset.lambda2_ref)))
 
-        notzero_idx = np.where(self.W != 0.0)
-        zero_idx = np.where(self.W == 0.0)
-        b[notzero_idx] /= self.W[notzero_idx]
+        notzero_idx = np.where(self.dataset.w != 0.0)
+        zero_idx = np.where(self.dataset.w == 0.0)
+        b[notzero_idx] /= self.dataset.w[notzero_idx]
         b[zero_idx] = 0.0
         return b
 
     def backward(self, b):
-        x = np.zeros(self.n, dtype=np.float32) + 1j * np.zeros(self.n, dtype=np.float32)
-        l2 = self.lambda2 - self.lambda2_ref
-        for i in range(0, self.n):
-            x[i] = np.sum(self.W * b * np.exp(-2 * 1j * self.phi[i] * l2))
+        x = np.zeros(self.parameter.n, dtype=np.float32) + 1j * np.zeros(self.parameter.n, dtype=np.float32)
+        l2 = self.dataset.lambda2 - self.dataset.l2_ref
+        for i in range(0, self.parameter.n):
+            x[i] = np.sum(self.dataset.w * b * np.exp(-2 * 1j * self.parameter.phi[i] * l2))
 
-        return (1. / self.K) * x
+        return (1. / self.dataset.k) * x
 
     def RMTF(self, phi_x=0.0):
-        x = np.zeros(self.n, dtype=np.float32) + 1j * np.zeros(self.n, dtype=np.float32)
-        l2 = self.lambda2 - self.lambda2_ref
-        for i in range(0, self.n):
-            x[i] = np.sum(self.W * np.exp(-2 * 1j * (self.phi[i] - phi_x) * l2))
+        x = np.zeros(self.parameter.n, dtype=np.float32) + 1j * np.zeros(self.parameter.n, dtype=np.float32)
+        l2 = self.dataset.lambda2 - self.dataset.lambda2_ref
+        for i in range(0, self.parameter.n):
+            x[i] = np.sum(self.dataset.w * np.exp(-2 * 1j * (self.parameter.phi[i] - phi_x) * l2))
 
-        return (1. / self.K) * x
+        return (1. / self.dataset.k) * x
 
 
 class NUFFT1D(FT):
@@ -125,39 +97,43 @@ class NUFFT1D(FT):
         self.oversampling_factor = oversampling_factor
         self.normalize = normalize
         self.solve = solve
-        if self.lambda2 is not None and self.phi is not None:
-            self.delta_phi = np.abs(self.phi[1] - self.phi[0])
+        if self.parameter.cellsize is not None:
+            self.delta_phi = self.parameter.cellsize
             self.configure()
 
     def configure(self):
-        exp_factor = -2.0 * (self.lambda2 - self.lambda2_ref) * self.delta_phi
+        exp_factor = -2.0 * (self.dataset.lambda2 - self.dataset.l2_ref) * self.parameter.cellsize
 
-        Nd = (self.n,)  # Faraday Depth Space Length
-        Kd = (self.oversampling_factor * self.n,)  # Oversampled Faraday Depth Space Length
+        Nd = (self.parameter.n,)  # Faraday Depth Space Length
+        Kd = (self.oversampling_factor * self.parameter.n,)  # Oversampled Faraday Depth Space Length
         Jd = (self.conv_size,)
-        om = np.reshape(exp_factor, (self.m, 1))  # Exponential data
+        om = np.reshape(exp_factor, (self.dataset.m, 1))  # Exponential data
         self.nufft_obj.plan(om, Nd, Kd, Jd)
 
     def forward(self, x):
         b = self.nufft_obj.forward(x)
-        return self.W * b
+        return self.dataset.w * b
 
     def forward_normalized(self, x):
-        val = x * self.K / self.n
+        val = x * self.dataset.k / self.parameter.n
         b = self.nufft_obj.forward(val)
 
-        notzero_idx = np.where(self.W != 0.0)
-        zero_idx = np.where(self.W == 0.0)
-        b[notzero_idx] /= self.W[notzero_idx]
+        notzero_idx = np.where(self.dataset.w != 0.0)
+        zero_idx = np.where(self.dataset.w == 0.0)
+        b[notzero_idx] /= self.dataset.w[notzero_idx]
         b[zero_idx] = 0.0
         return b
 
     def backward(self, b, solver="cg", maxiter=100):
         if self.solve:
-            x = self.nufft_obj.solve(b, solver=solver, maxiter=maxiter)
+            x = self.nufft_obj.solve(self.dataset.w * b, solver=solver, maxiter=maxiter)
         else:
-            x = self.nufft_obj.adjoint(b)
+            x = self.nufft_obj.adjoint(self.dataset.w * b)
 
         if self.normalize:
-            x *= self.n / self.K
+            x *= self.parameter.n / self.dataset.k
         return x
+
+    def RMTF(self):
+        x = self.nufft_obj.adjoint(self.dataset.w)
+        return (1. / self.dataset.k) * x

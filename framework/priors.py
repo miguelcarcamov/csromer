@@ -10,14 +10,15 @@ import prox_tv as ptv
 from .utilities import real_to_complex, complex_to_real
 from abc import ABCMeta, abstractmethod
 from .optimizer import FixedPointMethod, GradientBasedMethod
-
+import pywt
+import sys
 
 def approx_abs(x, epsilon):
     return np.sqrt(x * x + epsilon)
 
 
 class Fi(metaclass=ABCMeta):
-    def __init__(self, reg=1.0, norm_factor=1.0):
+    def __init__(self, reg=1.0, norm_factor=1.0, wavelet=None):
         initlocals = locals()
         initlocals.pop('self')
         for a_attribute in initlocals.keys():
@@ -121,40 +122,46 @@ class L1(Fi):
 
 
 class Chi2(Fi):
-    def __init__(self, b=np.array([]), dft_obj=None, w=1.0, **kwargs):
+    def __init__(self, dft_obj=None, **kwargs):
         super(Chi2, self).__init__(**kwargs)
         self.dft_obj = dft_obj
-        self.w = w
-        self.b = b
-
-    @property
-    def b(self):
-        return self.__b
-
-    @b.setter
-    def b(self, val=None):
-        self.__b = val
-        if val is not None:
-            self.__F_dirty = self.dft_obj.backward(self.__b)
+        self.F_dirty = None
+        if self.dft_obj is not None:
+            self.F_dirty = self.dft_obj.backward(self.dft_obj.dataset.data)
 
     def evaluate(self, x):
+        if self.wavelet is not None:
+            x = self.wavelet.reconstruct(x)
         x_complex = real_to_complex(x) * self.norm_factor
-        res = self.dft_obj.forward_normalized(x_complex) - self.b
-        chi2_vector = self.w * (res.real ** 2 + res.imag ** 2)
+        model_data = self.dft_obj.forward_normalized(x_complex)
+        self.dft_obj.dataset.model_data = model_data
+        # res = model_data - self.dft_obj.dataset.data
+        res = self.dft_obj.dataset.residual
+        chi2_vector = self.dft_obj.dataset.w * (res.real ** 2 + res.imag ** 2)
         val = 0.5 * np.sum(chi2_vector)
-        #print("Evaluation on chi2:", val)
+        # print("Evaluation on chi2:", val)
         return val
 
     def calculate_gradient(self, x):
+        if self.wavelet is not None:
+            x = self.wavelet.reconstruct(x)
         x_complex = real_to_complex(x) * self.norm_factor
         val = x_complex - self.F_dirty
         return complex_to_real(val)
 
     def calculate_gradient_fista(self, x):
+        if self.wavelet is not None:
+            x = self.wavelet.reconstruct(x)
         x_complex = real_to_complex(x) * self.norm_factor
-        res = self.dft_obj.forward_normalized(x_complex) - self.b
+        model_data = self.dft_obj.forward_normalized(x_complex)
+        self.dft_obj.dataset.model_data = model_data
+        # res = model_data - self.dft_obj.dataset.data
+        res = self.dft_obj.dataset.residual
         val = self.dft_obj.backward(res)
-        return complex_to_real(val)
+        ret_val = complex_to_real(val)
+        if self.wavelet is not None:
+            ret_val = self.wavelet.decompose(ret_val)
+        return ret_val
 
     def calculate_prox(self, x, nu=0):
         a_transpose_b = complex_to_real(self.F_dirty)

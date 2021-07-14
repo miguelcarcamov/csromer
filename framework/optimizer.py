@@ -13,24 +13,16 @@ from .sdmm import sdmm
 import proxmin as pmin
 from abc import ABCMeta, abstractmethod
 import sys
+from .parameter import Parameter
 
 
 class Optimizer(metaclass=ABCMeta):
 
-    def __init__(self, F_obj=None, i_guess=None, maxiter=None, method=None, tol=1e-15, verbose=True):
+    def __init__(self, guess_param: Parameter, F_obj=None, maxiter=None, method=None, tol=1e-15, verbose=True):
         initlocals = locals()
         initlocals.pop('self')
         for a_attribute in initlocals.keys():
             setattr(self, a_attribute, initlocals[a_attribute])
-
-    def setGuess(self, i_guess=None):
-        self.i_guess = i_guess
-
-    def setIter(self, maxiter=0):
-        self.maxiter = maxiter
-
-    def setTol(self, tol=1e-10):
-        self.tol = tol
 
     @abstractmethod
     def run(self):
@@ -45,13 +37,10 @@ class FixedPointMethod(Optimizer):
         for a_attribute in initlocals.keys():
             setattr(self, a_attribute, initlocals[a_attribute])
 
-    def setFunction(self, gx=None):
-        self.gx = gx
-
     def run(self):
-        n = len(self.i_guess)
-        xt = self.i_guess
-        xt1 = np.zeros(n, dtype=self.i_guess.dtype)
+        n = guess_param.n
+        xt = guess_param.data
+        xt1 = np.zeros(n, dtype=xt.dtype)
         e = 1
         iter = 0
 
@@ -72,13 +61,13 @@ class GradientBasedMethod(Optimizer):
             setattr(self, a_attribute, initlocals[a_attribute])
 
     def run(self):
-        ret = minimize(fun=self.F_obj.evaluate, x0=self.i_guess, method=self.method, jac=self.F_obj.calculate_gradient,
+        ret = minimize(fun=self.F_obj.evaluate, x0=self.guess_param.data, method=self.method, jac=self.F_obj.calculate_gradient,
                        tol=self.tol, options={'maxiter': self.maxiter, 'disp': self.verbose})
         return ret.fun, ret.x
 
 
 class FISTA(Optimizer):
-    def __init__(self, fx=None, gx=None, noise=None, n=None, **kwargs):
+    def __init__(self, fx=None, gx=None, noise=None, **kwargs):
         super(FISTA, self).__init__(**kwargs)
         initlocals = locals()
         initlocals.pop('self')
@@ -86,8 +75,8 @@ class FISTA(Optimizer):
             setattr(self, a_attribute, initlocals[a_attribute])
 
     def run(self):
-        ret, x = FISTA_algorithm(self.i_guess, self.F_obj.evaluate, self.fx.calculate_gradient_fista, self.gx,
-                                 self.maxiter, self.tol, self.n, self.noise, self.verbose)
+        ret, x = FISTA_algorithm(self.guess_param.data, self.F_obj.evaluate, self.fx.calculate_gradient_fista, self.gx,
+                                 self.maxiter, self.tol, self.guess_param.n, self.noise, self.verbose)
         return ret, x
 
 
@@ -100,7 +89,7 @@ class ADMM(Optimizer):
             setattr(self, a_attribute, initlocals[a_attribute])
 
     def run(self):
-        x = self.i_guess
+        x = self.guess_param.data
         converged, error = pmin.admm(x, prox_f=self.fx.calc_prox, step_f=None, prox_g=self.gx.calc_prox, L=None,
                                      e_rel=self.tol, max_iter=self.maxiter)
         # return
