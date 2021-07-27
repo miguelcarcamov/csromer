@@ -14,11 +14,12 @@ import proxmin as pmin
 from abc import ABCMeta, abstractmethod
 import sys
 from .parameter import Parameter
+import copy
 
 
 class Optimizer(metaclass=ABCMeta):
 
-    def __init__(self, guess_param: Parameter, F_obj=None, maxiter=None, method=None, tol=1e-15, verbose=True):
+    def __init__(self, guess_param: Parameter = None, F_obj=None, maxiter=None, method=None, tol=1e-15, verbose=True):
         initlocals = locals()
         initlocals.pop('self')
         for a_attribute in initlocals.keys():
@@ -38,8 +39,8 @@ class FixedPointMethod(Optimizer):
             setattr(self, a_attribute, initlocals[a_attribute])
 
     def run(self):
-        n = guess_param.n
-        xt = guess_param.data
+        n = self.guess_param.n
+        xt = self.guess_param.data
         xt1 = np.zeros(n, dtype=xt.dtype)
         e = 1
         iter = 0
@@ -49,7 +50,10 @@ class FixedPointMethod(Optimizer):
             e = np.sum(np.abs(xt1 - xt))
             xt = xt1
             iter = iter + 1
-        return xt1
+
+        param = copy.deepcopy(self.guess_param)
+        param.data = xt1
+        return e, param
 
 
 class GradientBasedMethod(Optimizer):
@@ -63,7 +67,10 @@ class GradientBasedMethod(Optimizer):
     def run(self):
         ret = minimize(fun=self.F_obj.evaluate, x0=self.guess_param.data, method=self.method, jac=self.F_obj.calculate_gradient,
                        tol=self.tol, options={'maxiter': self.maxiter, 'disp': self.verbose})
-        return ret.fun, ret.x
+
+        param = copy.deepcopy(self.guess_param)
+        param.data = ret.x
+        return ret.fun, param
 
 
 class FISTA(Optimizer):
@@ -77,7 +84,10 @@ class FISTA(Optimizer):
     def run(self):
         ret, x = FISTA_algorithm(self.guess_param.data, self.F_obj.evaluate, self.fx.calculate_gradient_fista, self.gx,
                                  self.maxiter, self.tol, self.guess_param.n, self.noise, self.verbose)
-        return ret, x
+
+        param = copy.deepcopy(self.guess_param)
+        param.data = x
+        return ret, param
 
 
 class ADMM(Optimizer):
@@ -95,7 +105,9 @@ class ADMM(Optimizer):
         # return
         # ret, x = FISTA_algorithm(self.i_guess, self.obj, self.fx, self.gx, self.gradfx, self.gprox,
         #               self.eta, self.maxiter, self.tol, self.verbose)
-        return error, x
+        param = copy.deepcopy(self.guess_param)
+        param.data = x
+        return error, param
 
 
 class SDMM(Optimizer):

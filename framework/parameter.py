@@ -43,7 +43,7 @@ class Parameter:
     def n(self, val):
         self.__n = val
 
-    def calculate_cellsize(self, dataset: Dataset, oversampling=4):
+    def calculate_cellsize(self, dataset: Dataset = None, oversampling=4):
 
         if dataset is not None:
             l2_min = np.min(dataset.lambda2[np.nonzero(dataset.lambda2)])

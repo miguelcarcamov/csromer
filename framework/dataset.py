@@ -4,6 +4,7 @@ import numpy as np
 import scipy.signal as sci_signal
 from scipy import special
 
+
 def calculate_sigma(image=None, x0=0, xn=0, y0=0, yn=0, sigma_error=None, residual_cal_error=None,
                     nbeam=None):
     if sigma_error is None and residual_cal_error is None and nbeam is None:
@@ -34,14 +35,14 @@ class Dataset:
         elif lambda2 is not None:
             self.lambda2 = lambda2
 
+        self.m = len(self.lambda2)
+
         if sigma is None and w is None:
             self.w = np.ones(self.m)
         elif w is not None:
             self.w = w
         else:
             self.sigma = sigma
-
-        self.m = len(self.lambda2)
 
         self.data = data
         self.residual = None
@@ -66,8 +67,15 @@ class Dataset:
     @lambda2.setter
     def lambda2(self, val):
         self.__lambda2 = val
-        self.__m = len(val)
         self.calculate_l2_cellsize()
+
+    @property
+    def k(self):
+        return self.__k
+
+    @k.setter
+    def k(self, val):
+        self.__k = val
 
     @property
     def w(self):
@@ -76,8 +84,16 @@ class Dataset:
     @w.setter
     def w(self, val):
         self.__w = val
-        self.k = np.sum(self.__w)
+        self.__k = np.sum(val)
         self.__l2_ref = self.calculate_l2ref()
+
+    @property
+    def l2_ref(self):
+        return self.__l2_ref
+
+    @l2_ref.setter
+    def l2_ref(self, val):
+        self.__l2_ref = val
 
     @property
     def sigma(self):
@@ -165,10 +181,6 @@ class Dataset:
         elem_real = ((autocorr_res.real > -bound) & (autocorr_res.real < bound)).sum()
         percentage_real_in = 100.0 * elem_real / len(lags)
         elem_imag = ((autocorr_res.imag > -bound) & (autocorr_res.imag < bound)).sum()
-        percentage_imag_in= 100.0 * elem_imag / len(lags)
+        percentage_imag_in = 100.0 * elem_imag / len(lags)
 
         return lags, autocorr_res, bound, percentage_real_in, percentage_imag_in
-
-
-
-

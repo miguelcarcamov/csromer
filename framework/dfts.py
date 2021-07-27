@@ -15,9 +15,12 @@ import copy
 
 
 class FT(metaclass=ABCMeta):
-    def __init__(self, dataset: Dataset, parameter: Parameter):
+    def __init__(self, dataset: Dataset = None, parameter: Parameter = None):
         self.dataset = dataset
-        self.parameter = copy.deepcopy(parameter)
+        if parameter is not None:
+            self.parameter = copy.deepcopy(parameter)
+        else:
+            self.parameter = None
 
     @abstractmethod
     def configure(self):
