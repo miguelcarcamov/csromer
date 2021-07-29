@@ -7,9 +7,9 @@ Created on Tue Nov  5 09:38:54 2019
 """
 import numpy as np
 import prox_tv as ptv
-from .utilities import real_to_complex, complex_to_real
+from ..utils.utilities import real_to_complex, complex_to_real
 from abc import ABCMeta, abstractmethod
-from .optimizer import FixedPointMethod, GradientBasedMethod
+from ..optimization.optimizer import FixedPointMethod, GradientBasedMethod
 import pywt
 import sys
 

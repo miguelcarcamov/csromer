@@ -67,6 +67,7 @@ class Dataset:
     @lambda2.setter
     def lambda2(self, val):
         self.__lambda2 = val
+        self.__m = len(val)
         self.calculate_l2_cellsize()
 
     @property
@@ -76,6 +77,14 @@ class Dataset:
     @k.setter
     def k(self, val):
         self.__k = val
+
+    @property
+    def m(self):
+        return self.__m
+
+    @m.setter
+    def m(self, val):
+        self.__m = val
 
     @property
     def w(self):
@@ -128,7 +137,7 @@ class Dataset:
             if len(val) == self.m:
                 self.__model_data = val
                 if self.data is not None:
-                    self.calculate_residual()
+                    self.calculate_residuals()
             else:
                 sys.exit("Data must have same size as lambda2")
         else:
@@ -163,10 +172,10 @@ class Dataset:
 
         self.sigma = sigma
 
-    def calculate_residual(self):
+    def calculate_residuals(self):
         self.residual = self.model_data - self.data
 
-    def assess_residual(self):
+    def assess_residuals(self, confidence_interval=0.95):
         autocorr_real = autocorr(self.residual.real)
         autocorr_imag = autocorr(self.residual.imag)
         autocorr_res = autocorr_real + 1j * autocorr_imag
@@ -175,7 +184,7 @@ class Dataset:
         lags_pos = np.where(lags >= 0)
         lags = lags[lags_pos]
 
-        vcrit = np.sqrt(2) * special.erfinv(0.95)
+        vcrit = np.sqrt(2) * special.erfinv(confidence_interval)
         bound = vcrit / np.sqrt(self.m)
 
         elem_real = ((autocorr_res.real > -bound) & (autocorr_res.real < bound)).sum()
@@ -184,3 +193,12 @@ class Dataset:
         percentage_imag_in = 100.0 * elem_imag / len(lags)
 
         return lags, autocorr_res, bound, percentage_real_in, percentage_imag_in
+
+    def histogram_residuals(self):
+        hist_real, bins_real = np.histogram(self.residual.real, bins='auto')
+        hist_imag, bins_imag = np.histogram(self.residual.imag, bins='auto')
+
+        # You can plot the histograms this way:
+        # plt.bar(bins[:-1], hist, width=np.diff(bins), edgecolor="black", align="edge")
+
+        return hist_real, bins_real, hist_imag, bins_imag

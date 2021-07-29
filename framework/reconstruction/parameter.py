@@ -1,8 +1,8 @@
-from .dataset import Dataset
+from ..base.dataset import Dataset
 from scipy.constants import pi
 import numpy as np
-from .analytical_functions import Gaussian
-from .utilities import real_to_complex, complex_to_real
+from ..utils.analytical_functions import Gaussian
+from ..utils.utilities import real_to_complex, complex_to_real
 from scipy import signal as sci_signal
 
 

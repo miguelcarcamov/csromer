@@ -8,12 +8,12 @@ Created on Thu Nov  7 13:13:51 2019
 
 from scipy.optimize import minimize
 import numpy as np
-from .fista import FISTA_algorithm
-from .sdmm import sdmm
+from .methods.fista import FISTA_algorithm
+from .methods.sdmm import sdmm
 import proxmin as pmin
 from abc import ABCMeta, abstractmethod
 import sys
-from .parameter import Parameter
+from ..reconstruction.parameter import Parameter
 import copy
 
 

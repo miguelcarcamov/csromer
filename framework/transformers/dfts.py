@@ -9,8 +9,8 @@ Created on Tue Mar 12 18:34:19 2019
 import numpy as np
 from abc import ABCMeta, abstractmethod
 from pynufft import NUFFT
-from .dataset import Dataset
-from .parameter import Parameter
+from ..base.dataset import Dataset
+from ..reconstruction.parameter import Parameter
 import copy
 
 
