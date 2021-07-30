@@ -30,10 +30,8 @@ class Dataset:
         self.delta_l2_max = 0.0
         self.delta_l2_mean = 0.0
 
-        if nu is not None:
-            self.nu = nu
-        elif lambda2 is not None:
-            self.lambda2 = lambda2
+        self.nu = nu
+        self.lambda2 = lambda2
 
         self.m = len(self.lambda2)
 
@@ -58,7 +56,8 @@ class Dataset:
     @nu.setter
     def nu(self, val):
         self.__nu = val
-        self.nu_to_l2()
+        if val is not None:
+            self.nu_to_l2()
 
     @property
     def lambda2(self):
@@ -67,8 +66,9 @@ class Dataset:
     @lambda2.setter
     def lambda2(self, val):
         self.__lambda2 = val
-        self.__m = len(val)
-        self.calculate_l2_cellsize()
+        if val is not None:
+            self.__m = len(val)
+            self.calculate_l2_cellsize()
 
     @property
     def k(self):
