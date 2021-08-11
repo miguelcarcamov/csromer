@@ -3,6 +3,7 @@ import sys
 import numpy as np
 import scipy.signal as sci_signal
 from scipy import special
+import copy
 
 
 def calculate_sigma(image=None, x0=0, xn=0, y0=0, yn=0, sigma_error=None, residual_cal_error=None,
@@ -29,14 +30,19 @@ class Dataset:
         self.delta_l2_min = 0.0
         self.delta_l2_max = 0.0
         self.delta_l2_mean = 0.0
-
-        self.nu = nu
+        self.w = None
         self.lambda2 = lambda2
+        self.nu = nu
 
-        self.m = len(self.lambda2)
+        if lambda2 is not None:
+            self.m = len(self.lambda2)
+        elif nu is not None:
+            self.m = len(self.nu)
+        else:
+            self.m = None
 
         if sigma is None and w is None:
-            self.w = np.ones(self.m)
+            self.sigma = np.ones(self.m)
         elif w is not None:
             self.w = w
         else:
@@ -48,6 +54,15 @@ class Dataset:
             self.model_data = np.zeros_like(self.data, dtype=self.data.dtype)
         else:
             self.model_data = None
+
+    def __add__(self, other):
+        if isinstance(other, Dataset) and hasattr(other, 'data'):
+            if (self.nu == other.nu).all() and self.data is not None and other.data is not None:
+                source_copy = copy.deepcopy(self)
+                source_copy.data = self.data + other.data
+                return source_copy
+            else:
+                raise TypeError("Data in sources cannot have NoneType data")
 
     @property
     def nu(self):
@@ -68,6 +83,12 @@ class Dataset:
         self.__lambda2 = val
         if val is not None:
             self.__m = len(val)
+            self.__nu = c / np.sqrt(val)
+            if self.__w is not None:
+                if len(val) != len(self.__w):
+                    self.w = np.ones(self.__m)
+            else:
+                self.w = np.ones(self.__m)
             self.calculate_l2_cellsize()
 
     @property
@@ -93,8 +114,12 @@ class Dataset:
     @w.setter
     def w(self, val):
         self.__w = val
-        self.__k = np.sum(val)
-        self.__l2_ref = self.calculate_l2ref()
+        if val is not None:
+            aux_copy = val.copy()
+            aux_copy[aux_copy != 0] = 1.0 / np.sqrt(aux_copy[aux_copy != 0])
+            self.__sigma = aux_copy
+            self.__k = np.sum(val)
+            self.__l2_ref = self.calculate_l2ref()
 
     @property
     def l2_ref(self):
@@ -123,7 +148,11 @@ class Dataset:
             if len(val) == self.m:
                 self.__data = val
             else:
-                sys.exit("Data must have same size as lambda2")
+                self.__m = len(val)
+                self.__data = val
+            if hasattr(self, 'model_data'):
+                if self.__model_data is None:
+                    self.__model_data = np.zeros_like(val, dtype=self.data.dtype)
         else:
             self.__data = None
 
@@ -151,7 +180,7 @@ class Dataset:
         if self.lambda2 is not None:
             return (1. / self.k) * np.sum(self.w * self.lambda2)
         else:
-            sys.exit("Could not calculate l2 reference, lambda2 is defined as None")
+            return None
 
     def calculate_l2_cellsize(self):
 

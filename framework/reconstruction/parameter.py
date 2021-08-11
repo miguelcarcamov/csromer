@@ -94,6 +94,6 @@ class Parameter:
             x = sci_signal.convolve(self.data, gauss_rmtf_array, mode='full', method='auto')
         else:
             x = sci_signal.convolve(x, gauss_rmtf_array, mode='full', method='auto')
-        print(self.n)
+
         return x[self.n // 2:(self.n // 2) + self.n]
         # F_restored = F_conv[n // 2:(n // 2) + n] + F_residual

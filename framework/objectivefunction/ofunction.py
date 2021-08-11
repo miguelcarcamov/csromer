@@ -18,8 +18,10 @@ class OFunction:
 
         if F is None:
             self.prox_functions = []
+            self.nfuncs = None
         else:
             self.values = np.zeros(len(F))
+            self.nfuncs = len(F)
             self.prox_functions = [f_i for f_i in self.F]
 
     def getProxFunctions(self):
