@@ -2,6 +2,7 @@ from scipy.constants import speed_of_light as c
 import sys
 import numpy as np
 import scipy.signal as sci_signal
+import astropy.units as u
 from scipy import special
 import copy
 
@@ -24,15 +25,19 @@ def autocorr(x):
 
 
 class Dataset:
-    def __init__(self, nu=None, lambda2=None, data=None, w=None, sigma=None):
+    def __init__(self, nu=None, lambda2=None, data=None, w=None, sigma=None, spectral_idx=None):
         self.k = None
-        self.l2_ref = 0.0
+        self.l2_ref = None
+        self.nu_0 = None
         self.delta_l2_min = 0.0
         self.delta_l2_max = 0.0
         self.delta_l2_mean = 0.0
         self.w = None
         self.lambda2 = lambda2
         self.nu = nu
+        self.spectral_idx = spectral_idx
+        if self.nu is None:
+            self.s = None
 
         if lambda2 is not None:
             self.m = len(self.lambda2)
@@ -41,7 +46,7 @@ class Dataset:
         else:
             self.m = None
 
-        if sigma is None and w is None:
+        if sigma is None and w is None and self.m is not None:
             self.sigma = np.ones(self.m)
         elif w is not None:
             self.w = w
@@ -55,14 +60,36 @@ class Dataset:
         else:
             self.model_data = None
 
-    def __add__(self, other):
-        if isinstance(other, Dataset) and hasattr(other, 'data'):
-            if (self.nu == other.nu).all() and self.data is not None and other.data is not None:
-                source_copy = copy.deepcopy(self)
-                source_copy.data = self.data + other.data
-                return source_copy
-            else:
-                raise TypeError("Data in sources cannot have NoneType data")
+    @property
+    def spectral_idx(self):
+        return self.__spectral_idx
+
+    @spectral_idx.setter
+    def spectral_idx(self, val):
+        if val is None:
+            self.__spectral_idx = 0.0
+        else:
+            self.__spectral_idx = val
+
+        if self.__lambda2 is not None and self.__nu_0 is not None:
+            nu = c / np.sqrt(self.__lambda2)
+            self.__s = (nu / self.__nu_0) ** (-1.0 * self.__spectral_idx)
+
+    @property
+    def s(self):
+        return self.__s
+
+    @s.setter
+    def s(self, val):
+        self.__s = val
+
+    @property
+    def nu_0(self):
+        return self.__nu_0
+
+    @nu_0.setter
+    def nu_0(self, val):
+        self.__nu_0 = val
 
     @property
     def nu(self):
@@ -72,6 +99,7 @@ class Dataset:
     def nu(self, val):
         self.__nu = val
         if val is not None:
+            self.__nu_0 = np.median(val)
             self.nu_to_l2()
 
     @property
@@ -84,6 +112,9 @@ class Dataset:
         if val is not None:
             self.__m = len(val)
             self.__nu = c / np.sqrt(val)
+            self.__nu_0 = np.median(self.__nu)
+            if hasattr(self, 'spectral_idx'):
+                self.__s = (self.__nu / self.__nu_0) ** (-1.0 * self.__spectral_idx)
             if self.__w is not None:
                 if len(val) != len(self.__w):
                     self.w = np.ones(self.__m)
@@ -135,8 +166,10 @@ class Dataset:
 
     @sigma.setter
     def sigma(self, val):
+        if val is not None:
+            self.w = 1.0 / (val ** 2)
         self.__sigma = val
-        self.w = 1.0 / (val ** 2)
+
 
     @property
     def data(self):
@@ -175,6 +208,28 @@ class Dataset:
     def nu_to_l2(self):
         lambda2 = (c / self.nu) ** 2
         self.lambda2 = lambda2[::-1]
+
+    def calculate_amplitude(self, column: 'str' = 'data'):
+        if hasattr(self, column):
+            data = getattr(self, column)
+            if data.dtype == np.complex64 or data.dtype == np.complex128:
+                amplitude = np.abs(data)
+                return amplitude
+            else:
+                raise TypeError("Data is not complex")
+        else:
+            raise ValueError("Column does not exist")
+
+    def calculate_polangle(self, column: 'str' = 'data'):
+        if hasattr(self, column):
+            data = getattr(self, column)
+            if data.dtype == np.complex64 or data.dtype == np.complex128:
+                pol_angle = 0.5 * np.arctan2(self.data.imag, self.data.real)
+                return pol_angle * u.rad
+            else:
+                raise TypeError("Data is not complex")
+        else:
+            raise ValueError("Column does not exist")
 
     def calculate_l2ref(self):
         if self.lambda2 is not None:

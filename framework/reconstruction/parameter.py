@@ -74,6 +74,15 @@ class Parameter:
             self.phi = self.cellsize * np.arange(-(self.n / 2), (self.n / 2), 1)
             self.data = np.zeros_like(self.phi, dtype=np.complex64)
 
+    def calculate_sparsity(self):
+        if self.data.dtype == np.complex64 or self.data.dtype == np.complex128:
+            n = 2 * len(self.data)
+            non_zeros = len(np.nonzero(self.data.real)) + len(np.nonzero(self.data.imag))
+        else:
+            n = len(self.data)
+            non_zeros = len(np.nonzero(self.data))
+        return 100.0 * (1.0 - (non_zeros / n))
+
     def complex_data_to_real(self):
         if self.data.dtype == np.complex64:
             self.data = complex_to_real(self.data)

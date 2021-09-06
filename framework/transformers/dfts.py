@@ -11,12 +11,14 @@ from abc import ABCMeta, abstractmethod
 from pynufft import NUFFT
 from ..base.dataset import Dataset
 from ..reconstruction.parameter import Parameter
+from scipy.constants import speed_of_light as c
 import copy
 
 
 class FT(metaclass=ABCMeta):
     def __init__(self, dataset: Dataset = None, parameter: Parameter = None):
         self.dataset = dataset
+        self.s = None
         if parameter is not None:
             self.parameter = copy.deepcopy(parameter)
         else:
@@ -53,11 +55,11 @@ class DFT1D(FT):
     def forward(self, x):
 
         b = np.zeros(self.dataset.m, dtype=np.float32) + 1j * np.zeros(self.dataset.m, dtype=np.float32)
-
         for i in range(0, self.m):
-            b[i] = np.sum(x * np.exp(2 * 1j * self.parameter.phi * (self.dataset.lambda2[i] - self.dataset.lambda2_ref)))
+            b[i] = np.sum(
+                x * np.exp(2 * 1j * self.parameter.phi * (self.dataset.lambda2[i] - self.dataset.l2_ref)))
 
-        return self.dataset.w * b
+        return self.dataset.w * b * self.dataset.s
 
     def forward_normalized(self, x):
 
@@ -67,19 +69,20 @@ class DFT1D(FT):
         b = np.zeros(self.dataset.m, dtype=np.float32) + 1j * np.zeros(self.dataset.m, dtype=np.float32)
 
         for i in range(0, self.dataset.m):
-            b[i] = np.sum(val * np.exp(2 * 1j * self.parameter.phi * (self.dataset.lambda2[i] - self.dataset.lambda2_ref)))
+            b[i] = np.sum(
+                val * np.exp(2 * 1j * self.parameter.phi * (self.dataset.lambda2[i] - self.dataset.l2_ref)))
 
         notzero_idx = np.where(self.dataset.w != 0.0)
         zero_idx = np.where(self.dataset.w == 0.0)
         b[notzero_idx] /= self.dataset.w[notzero_idx]
         b[zero_idx] = 0.0
-        return b
+        return b * self.dataset.s
 
     def backward(self, b):
         x = np.zeros(self.parameter.n, dtype=np.float32) + 1j * np.zeros(self.parameter.n, dtype=np.float32)
         l2 = self.dataset.lambda2 - self.dataset.l2_ref
         for i in range(0, self.parameter.n):
-            x[i] = np.sum(self.dataset.w * b * np.exp(-2 * 1j * self.parameter.phi[i] * l2))
+            x[i] = np.sum(self.dataset.w * b / self.dataset.s * np.exp(-2 * 1j * self.parameter.phi[i] * l2))
 
         return (1. / self.dataset.k) * x
 
@@ -115,23 +118,24 @@ class NUFFT1D(FT):
 
     def forward(self, x):
         b = self.nufft_obj.forward(x)
+        b *= self.dataset.s
         return self.dataset.w * b
 
     def forward_normalized(self, x):
         val = x * self.dataset.k / self.parameter.n
         b = self.nufft_obj.forward(val)
-
+        b *= self.dataset.s
         notzero_idx = np.where(self.dataset.w != 0.0)
         zero_idx = np.where(self.dataset.w == 0.0)
         b[notzero_idx] /= self.dataset.w[notzero_idx]
         b[zero_idx] = 0.0
         return b
 
-    def backward(self, b, solver="cg", maxiter=100):
+    def backward(self, b, solver="cg", maxiter=1):
         if self.solve:
-            x = self.nufft_obj.solve(self.dataset.w * b, solver=solver, maxiter=maxiter)
+            x = self.nufft_obj.solve(self.dataset.w * b / self.dataset.s, solver=solver, maxiter=maxiter)
         else:
-            x = self.nufft_obj.adjoint(self.dataset.w * b)
+            x = self.nufft_obj.adjoint(self.dataset.w * b / self.dataset.s)
 
         if self.normalize:
             x *= self.parameter.n / self.dataset.k

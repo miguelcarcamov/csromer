@@ -18,7 +18,11 @@ def FISTA_algorithm(x=None, F=None, fx=None, g_prox=None, max_iter=None, tol=1e-
     min_cost = 0.0
 
     if max_iter is None and noise is not None:
-        max_iter = int(np.floor(g_prox.getLambda() / noise))
+        if noise is not np.nan:
+            max_iter = int(np.floor(g_prox.getLambda() / noise))
+        else:
+            raise ValueError("Noise must be a number"
+                             )
         if verbose:
             print("Iterations set to " + str(max_iter))
 

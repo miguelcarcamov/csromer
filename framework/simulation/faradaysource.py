@@ -3,34 +3,30 @@ from ..base.dataset import Dataset
 import numpy as np
 from scipy.constants import c
 import itertools
+import copy
 import sys
 
 
 class FaradaySource(Dataset, metaclass=ABCMeta):
-    def __init__(self, nu_0=None, s_nu=None, remove_frac=None, noise=None, spectral_idx=None, **kwargs):
+    def __init__(self, s_nu=None, remove_frac=None, noise=None, **kwargs):
         super().__init__(**kwargs)
         # self.dataset = Dataset(nu=nu)
-
-        if nu_0 is None and self.nu is not None:
-            self.nu_0 = np.median(self.nu)
-        else:
-            self.nu_0 = nu_0
 
         self.s_nu = s_nu
         self.remove_frac = remove_frac
         self.noise = noise
-        self.spectral_idx = spectral_idx
 
-    @property
-    def spectral_idx(self):
-        return self.__spectral_idx
-
-    @spectral_idx.setter
-    def spectral_idx(self, val):
-        if val is None:
-            self.__spectral_idx = 0.0
-        else:
-            self.__spectral_idx = val
+    def __add__(self, other):
+        if isinstance(other, FaradaySource) and hasattr(other, 'data'):
+            if (
+                    self.nu == other.nu).all() and self.data is not None and other.data is not None and self.s_nu is not None and other.s_nu is not None:
+                source_copy = copy.deepcopy(self)
+                source_copy.data = self.data + other.data  # Sums the polarized data
+                w = self.s_nu + other.s_nu
+                source_copy.spectral_idx = (self.s_nu * self.spectral_idx + other.s_nu * other.spectral_idx) / w
+                return source_copy
+            else:
+                raise TypeError("Data attribute in sources cannot be NoneType")
 
     @abstractmethod
     def simulate(self):
@@ -111,13 +107,13 @@ class FaradayThickSource(FaradaySource):
             self.phi_center = 0.0
 
     def simulate(self):
-        # nu = c / np.sqrt(self.lambda2)
-        # k = (nu / self.nu_0) ** (-1.0 * self.spectral_idx)
+        nu = c / np.sqrt(self.lambda2)
+        k = (nu / self.nu_0) ** (-1.0 * self.spectral_idx)
         phi_fg = self.phi_fg / 2.
         j = 2. * (self.lambda2 - self.l2_ref) * (self.phi_center + phi_fg)
         k = 2. * (self.lambda2 - self.l2_ref) * (self.phi_center - phi_fg)
         mu_q = np.sin(j) - np.sin(k)
-        const = self.s_nu / (2. * self.phi_fg * (self.lambda2 - self.l2_ref))
+        const = self.s_nu * k / (2. * self.phi_fg * (self.lambda2 - self.l2_ref))
         mu_u = np.cos(j) - np.cos(k)
 
         self.data = const * (mu_q + mu_u / 1j)

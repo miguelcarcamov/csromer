@@ -24,11 +24,12 @@ class Wavelet(metaclass=ABCMeta):
 
     def calculate_max_level(self, x):
         n = len(x)
-        return pywt.dwt_max_level(n, self.wavelet)
+        return pywt.dwt_max_level(n, self.wavelet.dec_len)
 
     def decompose(self, x):
-        if self.level is not None and self.level > self.calculate_max_level(x):
-            sys.exit("You are trying to decompose into more levels than the maximum level expected")
+        if self.level is not None:
+            if self.level > self.calculate_max_level(x):
+                sys.exit("You are trying to decompose into more levels than the maximum level expected")
 
         # Return coefficients
         coeffs = pywt.wavedec(data=x, wavelet=self.wavelet, mode=self.mode, level=self.level)
@@ -63,6 +64,3 @@ class Wavelet(metaclass=ABCMeta):
         signal_re = pywt.waverec(coeffs_re, self.wavelet, self.mode)
         signal_im = pywt.waverec(coeffs_im, self.wavelet, self.mode)
         return signal_re + 1j * signal_im
-
-
-
