@@ -170,7 +170,6 @@ class Dataset:
             self.w = 1.0 / (val ** 2)
         self.__sigma = val
 
-
     @property
     def data(self):
         return self.__data
