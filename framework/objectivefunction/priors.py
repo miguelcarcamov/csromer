@@ -13,6 +13,7 @@ from ..optimization.optimizer import FixedPointMethod, GradientBasedMethod
 import pywt
 import sys
 
+
 def approx_abs(x, epsilon):
     return np.sqrt(x * x + epsilon)
 
@@ -39,7 +40,7 @@ class Fi(metaclass=ABCMeta):
 
 class TV(Fi):
     def __init__(self, **kwargs):
-        super(TV, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         initlocals = locals()
         initlocals.pop('self')
         for a_attribute in initlocals.keys():
@@ -68,7 +69,7 @@ class TV(Fi):
 
 class TSV(Fi):
     def __init__(self, **kwargs):
-        super(TSV, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         initlocals = locals()
         initlocals.pop('self')
         for a_attribute in initlocals.keys():
@@ -80,7 +81,7 @@ class TSV(Fi):
         tv = 0.0
         n = x.shape[0]
         for i in range(0, n - 1):
-            tv += np.abs(x[i + 1] - x[i])**2
+            tv += np.abs(x[i + 1] - x[i]) ** 2
         return tv
 
     def calculate_gradient(self, x):
@@ -97,7 +98,7 @@ class TSV(Fi):
 
 class L1(Fi):
     def __init__(self, **kwargs):
-        super(L1, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         initlocals = locals()
         initlocals.pop('self')
         for a_attribute in initlocals.keys():
@@ -105,7 +106,7 @@ class L1(Fi):
 
     def evaluate(self, x, epsilon=1e-12):
         val = np.sum(approx_abs(x, epsilon))
-        #print("Evaluation on L1:", val)
+        # print("Evaluation on L1:", val)
         return val
 
     def calculate_gradient(self, x, epsilon=1e-12):
@@ -123,7 +124,7 @@ class L1(Fi):
 
 class Chi2(Fi):
     def __init__(self, dft_obj=None, **kwargs):
-        super(Chi2, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.dft_obj = dft_obj
         self.F_dirty = None
         if self.dft_obj is not None:
@@ -136,7 +137,7 @@ class Chi2(Fi):
         model_data = self.dft_obj.forward_normalized(x_complex)
         self.dft_obj.dataset.model_data = model_data
         # res = model_data - self.dft_obj.dataset.data
-        res = self.dft_obj.dataset.residual
+        res = -self.dft_obj.dataset.residual
         chi2_vector = self.dft_obj.dataset.w * (res.real ** 2 + res.imag ** 2)
         val = 0.5 * np.sum(chi2_vector)
         # print("Evaluation on chi2:", val)
@@ -156,7 +157,7 @@ class Chi2(Fi):
         model_data = self.dft_obj.forward_normalized(x_complex)
         self.dft_obj.dataset.model_data = model_data
         # res = model_data - self.dft_obj.dataset.data
-        res = self.dft_obj.dataset.residual
+        res = -self.dft_obj.dataset.residual
         val = self.dft_obj.backward(res)
         ret_val = complex_to_real(val)
         if self.wavelet is not None:

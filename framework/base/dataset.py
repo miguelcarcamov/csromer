@@ -19,8 +19,10 @@ def calculate_sigma(image=None, x0=0, xn=0, y0=0, yn=0, sigma_error=None, residu
 
 
 def autocorr(x):
-    result = sci_signal.correlate(x / np.std(x), x / np.std(x), mode='full', method='auto')
-    result /= len(x)
+    variance = x.var()
+    x_input = x - x.mean()
+    result = sci_signal.correlate(x_input, x_input, mode='full', method='auto')
+    result /= variance*len(x)
     return result[result.size // 2:]
 
 
@@ -256,12 +258,15 @@ class Dataset:
         self.sigma = sigma
 
     def calculate_residuals(self):
-        self.residual = self.model_data - self.data
+        self.residual = self.data - self.model_data
 
     def assess_residuals(self, confidence_interval=0.95):
         autocorr_real = autocorr(self.residual.real)
         autocorr_imag = autocorr(self.residual.imag)
+        autocorr_real_sq = autocorr(self.residual.real**2)
+        autocorr_imag_sq = autocorr(self.residual.imag**2)
         autocorr_res = autocorr_real + 1j * autocorr_imag
+        autocorr_res_sq = autocorr_real_sq + 1j * autocorr_imag_sq
 
         lags = sci_signal.correlation_lags(self.m, self.m, mode="full")
         lags_pos = np.where(lags >= 0)
@@ -275,7 +280,12 @@ class Dataset:
         elem_imag = ((autocorr_res.imag > -bound) & (autocorr_res.imag < bound)).sum()
         percentage_imag_in = 100.0 * elem_imag / len(lags)
 
-        return lags, autocorr_res, bound, percentage_real_in, percentage_imag_in
+        elem_real_sq = ((autocorr_res_sq.real > -bound) & (autocorr_res_sq.real < bound)).sum()
+        percentage_real_in_sq = 100.0 * elem_real_sq / len(lags)
+        elem_imag_sq = ((autocorr_res_sq.imag > -bound) & (autocorr_res_sq.imag < bound)).sum()
+        percentage_imag_in_sq = 100.0 * elem_imag_sq / len(lags)
+
+        return lags, autocorr_res, autocorr_res_sq, bound, percentage_real_in, percentage_imag_in, percentage_real_in_sq, percentage_imag_in_sq
 
     def histogram_residuals(self):
         hist_real, bins_real = np.histogram(self.residual.real, bins='auto')

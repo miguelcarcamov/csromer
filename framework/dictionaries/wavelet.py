@@ -5,7 +5,7 @@ import sys
 
 
 class Wavelet(metaclass=ABCMeta):
-    def __init__(self, wavelet_name=None, level=None, mode=None):
+    def __init__(self, wavelet_name: str = None, level: int = None, mode: str = None):
         self.wavelet_name = wavelet_name
         self.mode = mode
         self.level = level
@@ -13,54 +13,22 @@ class Wavelet(metaclass=ABCMeta):
         self.wavelet = None
         self.coeff_slices = None
 
-        if self.wavelet_name is not None and self.wavelet_name in pywt.wavelist(kind="discrete"):
-            self.wavelet = pywt.Wavelet(self.wavelet_name)
-        else:
-            sys.exit("Continuous wavelet are not yet implemented")
-
-    def calculate_ncoeffs(self, x):
-        n = len(x)
-        return pywt.dwt_coeff_len(n, self.wavelet, mode=mode)
-
+    @abstractmethod
     def calculate_max_level(self, x):
-        n = len(x)
-        return pywt.dwt_max_level(n, self.wavelet.dec_len)
+        return
 
+    @abstractmethod
     def decompose(self, x):
-        if self.level is not None:
-            if self.level > self.calculate_max_level(x):
-                sys.exit("You are trying to decompose into more levels than the maximum level expected")
+        return
 
-        # Return coefficients
-        coeffs = pywt.wavedec(data=x, wavelet=self.wavelet, mode=self.mode, level=self.level)
-        coeffs_arr, self.coeff_slices = pywt.coeffs_to_array(coeffs)
-        return coeffs_arr
-
+    @abstractmethod
     def decompose_complex(self, x):
-        if self.level is not None and self.level > self.calculate_max_level(x.real):
-            sys.exit("You are trying to decompose into more levels than the maximum level expected")
+        return
 
-        # Return coefficients
-        coeffs_re = pywt.wavedec(data=x.real, wavelet=self.wavelet, mode=self.mode, level=self.level)
-        coeffs_im = pywt.wavedec(data=x.imag, wavelet=self.wavelet, mode=self.mode, level=self.level)
-
-        coeffs_arr_re, coeffs_slices_re = pywt.coeffs_to_array(coeffs_re)
-        coeffs_arr_im, coeffs_slices_im = pywt.coeffs_to_array(coeffs_im)
-
-        self.coeff_slices = coeffs_slices_re, coeffs_slices_im
-        return coeffs_arr_re + 1j * coeffs_arr_im
-
+    @abstractmethod
     def reconstruct(self, input_coeffs):
-        coeffs = pywt.array_to_coeffs(input_coeffs, self.coeff_slices, output_format='wavedec')
+        return
 
-        # Return signal
-        return pywt.waverec(coeffs, self.wavelet, self.mode)
-
+    @abstractmethod
     def reconstruct_complex(self, input_coeffs):
-        coeffs_re = pywt.array_to_coeffs(input_coeffs.real, self.coeff_slices[0], output_format='wavedec')
-        coeffs_im = pywt.array_to_coeffs(input_coeffs.imag, self.coeff_slices[1], output_format='wavedec')
-
-        # Return signal
-        signal_re = pywt.waverec(coeffs_re, self.wavelet, self.mode)
-        signal_im = pywt.waverec(coeffs_im, self.wavelet, self.mode)
-        return signal_re + 1j * signal_im
+        return
