@@ -4,6 +4,7 @@ import numpy as np
 import scipy.signal as sci_signal
 import astropy.units as u
 from scipy import special
+from typing import Union, List
 import copy
 
 
@@ -18,12 +19,42 @@ def calculate_sigma(image=None, x0=0, xn=0, y0=0, yn=0, sigma_error=None, residu
     return sigma
 
 
-def autocorr(x):
+def autocorr(x: np.ndarray):
     variance = x.var()
     x_input = x - x.mean()
     result = sci_signal.correlate(x_input, x_input, mode='full', method='auto')
-    result /= variance*len(x)
+    result /= variance * len(x)
     return result[result.size // 2:]
+
+
+def boxpierce(x: np.ndarray = None, k: Union[List, int] = None):
+    n = len(x)
+    if type(k) == list:
+        res = []
+        for i in k:
+            x_res = x[0:k]
+            x_sum = n * np.sum(x_res * x_res)
+            res.append(x_sum)
+        return res
+    else:
+        x_res = x[0:k]
+        x_sum = n * np.sum(x_res * x_res)
+        return x_sum
+
+
+def ljungbox(x: np.ndarray = None, k: Union[List, int] = None):
+    n = len(x)
+    if type(k) == list:
+        res = []
+        for i in k:
+            x_res = x[0:i]
+            x_sum = n * (n+2) * np.sum(x_res * x_res / (n-i))
+            res.append(x_sum)
+        return res
+    else:
+        x_res = x[0:k]
+        x_sum = n * (n+2) * np.sum(x_res * x_res / (n-k))
+        return x_sum
 
 
 class Dataset:
@@ -263,8 +294,8 @@ class Dataset:
     def assess_residuals(self, confidence_interval=0.95):
         autocorr_real = autocorr(self.residual.real)
         autocorr_imag = autocorr(self.residual.imag)
-        autocorr_real_sq = autocorr(self.residual.real**2)
-        autocorr_imag_sq = autocorr(self.residual.imag**2)
+        autocorr_real_sq = autocorr(self.residual.real ** 2)
+        autocorr_imag_sq = autocorr(self.residual.imag ** 2)
         autocorr_res = autocorr_real + 1j * autocorr_imag
         autocorr_res_sq = autocorr_real_sq + 1j * autocorr_imag_sq
 
