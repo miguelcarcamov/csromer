@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from ..base.dataset import Dataset
+from ..base import Dataset
 import numpy as np
 from scipy.constants import c
 import itertools

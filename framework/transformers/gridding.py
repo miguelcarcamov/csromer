@@ -1,6 +1,9 @@
-from ..base.dataset import Dataset
+from __future__ import annotations
 import numpy as np
 import copy
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from ..base import Dataset
 
 EPSILON = 1e-12
 
@@ -24,6 +27,7 @@ class Gridding:
 
     def run(self):
         gridded_dataset = copy.deepcopy(self.dataset)
+        gridded_dataset.gridded = True
         l2_grid = np.arange(start=0.0 + EPSILON, stop=np.max(self.dataset.lambda2), step=self.dataset.delta_l2_mean)
         l2_grid_pos = np.floor(self.dataset.lambda2 // self.dataset.delta_l2_mean).astype(int)
         bincount_data = complex_bincount(l2_grid_pos, self.dataset.w * self.dataset.data)

@@ -1,9 +1,13 @@
-from ..base.dataset import Dataset
+from __future__ import annotations
 from scipy.constants import pi
 import numpy as np
 from ..utils.analytical_functions import Gaussian
 from ..utils.utilities import real_to_complex, complex_to_real
 from scipy import signal as sci_signal
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..base import Dataset
 
 
 class Parameter:

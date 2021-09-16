@@ -5,6 +5,8 @@ import scipy.signal as sci_signal
 import astropy.units as u
 from scipy import special
 from typing import Union, List
+import scipy.stats
+from ..transformers import Gridding
 import copy
 
 
@@ -19,7 +21,7 @@ def calculate_sigma(image=None, x0=0, xn=0, y0=0, yn=0, sigma_error=None, residu
     return sigma
 
 
-def autocorr(x: np.ndarray):
+def autocorr_gridded(x: np.ndarray):
     variance = x.var()
     x_input = x - x.mean()
     result = sci_signal.correlate(x_input, x_input, mode='full', method='auto')
@@ -27,38 +29,48 @@ def autocorr(x: np.ndarray):
     return result[result.size // 2:]
 
 
-def boxpierce(x: np.ndarray = None, k: Union[List, int] = None):
+def boxpierce(x: np.ndarray = None, k: Union[List, int] = None, conf_level: float = 0.95):
     n = len(x)
     if type(k) == list:
         res = []
         for i in k:
-            x_res = x[0:k]
-            x_sum = n * np.sum(x_res * x_res)
+            if i < 1:
+                raise ValueError("Cannot calculate for lags lower than 1")
+            idx = np.arange(1, i+1, 1)
+            x_sum = n * np.sum(x[idx]**2)
             res.append(x_sum)
-        return res
+        chi2 = scipy.stats.chi2.ppf(conf_level, df=k)
+        return np.array(res), chi2
     else:
-        x_res = x[0:k]
-        x_sum = n * np.sum(x_res * x_res)
-        return x_sum
+        if k < 1:
+            raise ValueError("The lag cannot be less than 1")
+        idx = np.arange(1, k+1, 1)
+        x_sum = n * np.sum(x[idx]**2)
+        return np.array(x_sum), scipy.stats.chi2.ppf(conf_level, df=k)
 
 
-def ljungbox(x: np.ndarray = None, k: Union[List, int] = None):
+def ljungbox(x: np.ndarray = None, k: Union[List, int] = None, conf_level: float = 0.95):
     n = len(x)
-    if type(k) == list:
+    if isinstance(k, list):
         res = []
         for i in k:
-            x_res = x[0:i]
-            x_sum = n * (n+2) * np.sum(x_res * x_res / (n-i))
+            if i < 1:
+                raise ValueError("Cannot calculate for lags lower than 1")
+            idx = np.arange(1, i+1, 1)
+            x_sum = n * (n + 2) * np.sum(x[idx]**2 / (n - idx))
             res.append(x_sum)
-        return res
+        chi2 = scipy.stats.chi2.ppf(conf_level, df=k)
+        return np.array(res), chi2
     else:
-        x_res = x[0:k]
-        x_sum = n * (n+2) * np.sum(x_res * x_res / (n-k))
-        return x_sum
+        if k < 1:
+            raise ValueError("The lag cannot be less than 1")
+        idx = np.arange(1, k+1, 1)
+        x_sum = n * (n + 2) * np.sum(x[idx]**2 / (n - idx))
+        return np.array(x_sum), scipy.stats.chi2.ppf(conf_level, df=k)
 
 
 class Dataset:
-    def __init__(self, nu=None, lambda2=None, data=None, w=None, sigma=None, spectral_idx=None):
+    def __init__(self, nu=None, lambda2=None, data=None, w=None, sigma=None, spectral_idx=None, gridded=None):
         self.k = None
         self.l2_ref = None
         self.nu_0 = None
@@ -69,6 +81,11 @@ class Dataset:
         self.lambda2 = lambda2
         self.nu = nu
         self.spectral_idx = spectral_idx
+        self.gridded = gridded
+
+        if self.gridded is None:
+            self.gridded = False
+
         if self.nu is None:
             self.s = None
 
@@ -291,15 +308,26 @@ class Dataset:
     def calculate_residuals(self):
         self.residual = self.data - self.model_data
 
-    def assess_residuals(self, confidence_interval=0.95):
-        autocorr_real = autocorr(self.residual.real)
-        autocorr_imag = autocorr(self.residual.imag)
-        autocorr_real_sq = autocorr(self.residual.real ** 2)
-        autocorr_imag_sq = autocorr(self.residual.imag ** 2)
+    def assess_residuals(self, confidence_interval: float = 0.95):
+        if self.gridded:
+            autocorr_real = autocorr_gridded(self.residual.real)
+            autocorr_imag = autocorr_gridded(self.residual.imag)
+            autocorr_real_sq = autocorr_gridded(self.residual.real ** 2)
+            autocorr_imag_sq = autocorr_gridded(self.residual.imag ** 2)
+            lags = sci_signal.correlation_lags(self.m, self.m, mode="full")
+        else:
+            # Grid the irregular data
+            gridding = Gridding(self)
+            gridded_data = gridding.run()
+            autocorr_real = autocorr_gridded(gridded_data.residual.real)
+            autocorr_imag = autocorr_gridded(gridded_data.residual.imag)
+            autocorr_real_sq = autocorr_gridded(gridded_data.residual.real ** 2)
+            autocorr_imag_sq = autocorr_gridded(gridded_data.residual.imag ** 2)
+            lags = sci_signal.correlation_lags(gridded_data.m, gridded_data.m, mode="full")
+
         autocorr_res = autocorr_real + 1j * autocorr_imag
         autocorr_res_sq = autocorr_real_sq + 1j * autocorr_imag_sq
 
-        lags = sci_signal.correlation_lags(self.m, self.m, mode="full")
         lags_pos = np.where(lags >= 0)
         lags = lags[lags_pos]
 
