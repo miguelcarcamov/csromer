@@ -32,7 +32,7 @@ class FaradaySource(Dataset, metaclass=ABCMeta):
     def simulate(self):
         pass
 
-    def remove_channels(self, remove_frac=None):
+    def remove_channels(self, remove_frac=None, random_state=None, chunksize=None):
         if remove_frac is None:
             remove_frac = 1.0 - self.remove_frac
         elif remove_frac == 0.0:
@@ -40,10 +40,16 @@ class FaradaySource(Dataset, metaclass=ABCMeta):
         else:
             remove_frac = 1.0 - remove_frac
 
+        if chunksize is None:
+            chunksize = self.m // 8
         _chansremoved = []
         while True:
-            pos = np.random.randint(0, self.m)  # get position
-            width = np.random.uniform(0, 100)  # get chunk size
+            if random_state is None:
+                pos = np.random.randint(0, self.m)  # get position
+                width = np.random.uniform(0, chunksize)  # get chunk size
+            else:
+                pos = random_state.randint(0, self.m)  # get position
+                width = random_state.uniform(0, chunksize)  # get chunk size
             low = int(pos - 0.5 * width)
             if low < 0:
                 low = 0
@@ -62,7 +68,10 @@ class FaradaySource(Dataset, metaclass=ABCMeta):
         # adjust back towards specified fraction
         # using single channel adjustments:
         while True:
-            idx = np.random.randint(0, len(chans_removed))
+            if random_state is None:
+                idx = np.random.randint(0, len(chans_removed))
+            else:
+                idx = random_state.randint(0, len(chans_removed))
             chans_removed = np.delete(chans_removed, idx)
             frac = float(len(chans_removed)) / float(self.m)
             if frac <= remove_frac:
@@ -73,11 +82,15 @@ class FaradaySource(Dataset, metaclass=ABCMeta):
         if self.data is not None:
             self.data = self.data[chans_removed]
 
-    def apply_noise(self, noise=None):
+    def apply_noise(self, noise=None, random_state=None):
         if noise is None:
             noise = self.noise
-        q_noise = np.random.normal(loc=0.0, scale=noise, size=self.m)
-        u_noise = np.random.normal(loc=0.0, scale=noise, size=self.m)
+        if random_state is None:
+            q_noise = np.random.normal(loc=0.0, scale=noise, size=self.m)
+            u_noise = np.random.normal(loc=0.0, scale=noise, size=self.m)
+        else:
+            q_noise = random_state.normal(loc=0.0, scale=noise, size=self.m)
+            u_noise = random_state.normal(loc=0.0, scale=noise, size=self.m)
         p_noise = q_noise + 1j * u_noise
         self.data += p_noise
 
