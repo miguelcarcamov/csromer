@@ -31,6 +31,8 @@ class UndecimatedWavelet(Wavelet):
         if self.level is not None:
             self.array_size = 2 ** self.level
 
+        self.pad_width = None
+
     def calculate_max_level(self, x):
         n = len(x)
         return pywt.swt_max_level(n)
@@ -45,8 +47,12 @@ class UndecimatedWavelet(Wavelet):
         else:
             array_size = 2 ** self.level
 
-        if len(x) and (array_size % len(x)) == 0:
-            raise ValueError("Your signal length is not multiple of 2**level")
+        signal_size = len(x)
+        if signal_size and (array_size % signal_size) == 0:
+            print("Your signal length is not multiple of 2**" + str(self.level) + ". Padding array...")
+            padded_size = int(array_size * round(float(signal_size) / array_size))
+            self.pad_width = padded_size - signal_size
+            x = np.pad(x, (0, self.pad_width))
 
         coeffs = pywt.swt(data=x, wavelet=self.wavelet, level=self.level, trim_approx=self.trim_approx, norm=self.norm)
         coeffs_arr, self.coeff_slices = pywt.coeffs_to_array(coeffs)
@@ -61,8 +67,12 @@ class UndecimatedWavelet(Wavelet):
         else:
             array_size = 2 ** self.level
 
-        if len(x.real) and (array_size % len(x.real)) == 0:
-            raise ValueError("Your signal length is not multiple of 2**level")
+        signal_size = len(x)
+        if signal_size and (array_size % signal_size) == 0:
+            print("Your signal length is not multiple of 2**" + str(self.level) + ". Padding array...")
+            padded_size = int(array_size * round(float(signal_size) / array_size))
+            self.pad_width = padded_size - signal_size
+            x = np.pad(x, (0, self.pad_width))
 
         # Return coefficients
         coeffs_re = pywt.swt(data=x.real, wavelet=self.wavelet, level=self.level, trim_approx=self.trim_approx,
@@ -78,13 +88,26 @@ class UndecimatedWavelet(Wavelet):
 
     def reconstruct(self, input_coeffs):
         coeffs = pywt.array_to_coeffs(input_coeffs, self.coeff_slices, output_format='wavedec')
-        return pywt.iswt(coeffs, self.wavelet, self.norm)
+        signal = pywt.iswt(coeffs, self.wavelet, self.norm)
+
+        if self.pad_width is not None:
+            # Undo padding
+            signal = signal[0: len(signal) - self.pad_width]
+            self.pad_width = None
+
+        return signal
 
     def reconstruct_complex(self, input_coeffs):
         coeffs_re = pywt.array_to_coeffs(input_coeffs.real, self.coeff_slices[0], output_format='wavedec')
         coeffs_im = pywt.array_to_coeffs(input_coeffs.imag, self.coeff_slices[1], output_format='wavedec')
 
-        # Return signal
         signal_re = pywt.iswt(coeffs_re, self.wavelet, self.norm)
         signal_im = pywt.iswt(coeffs_im, self.wavelet, self.norm)
+
+        if self.pad_width is not None:
+            # Undo padding
+            signal_re = signal_re[0: len(signal_re) - self.pad_width]
+            signal_im = signal_im[0: len(signal_im) - self.pad_width]
+            self.pad_width = None
+
         return signal_re + 1j * signal_im
