@@ -47,7 +47,7 @@ class Parameter:
     def n(self, val):
         self.__n = val
 
-    def calculate_cellsize(self, dataset: Dataset = None, oversampling=4):
+    def calculate_cellsize(self, dataset: Dataset = None, oversampling=4, verbose=True):
 
         if dataset is not None:
             l2_min = np.min(dataset.lambda2[np.nonzero(dataset.lambda2)])
@@ -65,10 +65,11 @@ class Parameter:
             self.max_recovered_width = delta_phi_theo
             self.max_faraday_depth = phi_max
 
-            print("FWHM of the main peak of the RMTF: {0:.3f} rad/m^2".format(self.rmtf_fwhm))
-            print("Maximum recovered width structure: {0:.3f} rad/m^2".format(self.max_recovered_width))
-            print("Maximum Faraday Depth to which one has more than 50% sensitivity: {0:.3f}".format(
-                self.max_faraday_depth))
+            if verbose:
+                print("FWHM of the main peak of the RMTF: {0:.3f} rad/m^2".format(self.rmtf_fwhm))
+                print("Maximum recovered width structure: {0:.3f} rad/m^2".format(self.max_recovered_width))
+                print("Maximum Faraday Depth to which one has more than 50% sensitivity: {0:.3f}".format(
+                    self.max_faraday_depth))
 
             phi_r = delta_phi / oversampling
 

@@ -30,7 +30,8 @@ def FISTA_algorithm(x=None, F=None, fx=None, g_prox=None, max_iter=None, tol=1e-
         noise = 0.0
 
     if noise >= g_prox.getLambda():
-        print("Error, noise cannot be greater than lambda")
+        if verbose:
+            print("Error, noise cannot be greater than lambda")
         return min_cost, x
 
     for it in range(0, max_iter):
@@ -43,19 +44,22 @@ def FISTA_algorithm(x=None, F=None, fx=None, g_prox=None, max_iter=None, tol=1e-
         z = x + ((t0 - 1.) / t) * (x - xold)
         e = np.sum(np.abs(x - xold)) / len(x)
         if e <= tol:
-            print("Exit due to tolerance: ", e, " < ", tol)
-            print("Iterations: ", it)
+            if verbose:
+                print("Exit due to tolerance: ", e, " < ", tol)
+                print("Iterations: ", it)
             break
 
         if verbose and it % 50 == 0:
             cost = F(x)
-            print("Iteration: ", it,
-                  " objective function value: {0:0.5f}".format(cost))
+            if verbose:
+                print("Iteration: ", it,
+                      " objective function value: {0:0.5f}".format(cost))
         new_lambda = g_prox.getLambda() - noise
         if new_lambda > 0.0:
             g_prox.setLambda(reg=new_lambda)
         else:
-            print("Exit due to negative regularization parameter")
+            if verbose:
+                print("Exit due to negative regularization parameter")
             break
     min_cost = F(x)
     return min_cost, x

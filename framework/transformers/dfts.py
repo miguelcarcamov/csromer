@@ -57,7 +57,7 @@ class DFT1D(FT):
     def forward(self, x):
 
         b = np.zeros(self.dataset.m, dtype=np.float32) + 1j * np.zeros(self.dataset.m, dtype=np.float32)
-        for i in range(0, self.m):
+        for i in range(0, self.dataset.m):
             b[i] = np.sum(
                 x * np.exp(2 * 1j * self.parameter.phi * (self.dataset.lambda2[i] - self.dataset.l2_ref)))
 
@@ -86,7 +86,7 @@ class DFT1D(FT):
         for i in range(0, self.parameter.n):
             x[i] = np.sum(self.dataset.w * b / self.dataset.s * np.exp(-2 * 1j * self.parameter.phi[i] * l2))
 
-        return (1. / self.dataset.k) * x
+        return x / self.dataset.k
 
     def RMTF(self, phi_x=0.0):
         x = np.zeros(self.parameter.n, dtype=np.float32) + 1j * np.zeros(self.parameter.n, dtype=np.float32)
@@ -94,7 +94,7 @@ class DFT1D(FT):
         for i in range(0, self.parameter.n):
             x[i] = np.sum(self.dataset.w * np.exp(-2 * 1j * (self.parameter.phi[i] - phi_x) * l2))
 
-        return (1. / self.dataset.k) * x
+        return x / self.dataset.k
 
 
 class NUFFT1D(FT):
@@ -110,7 +110,8 @@ class NUFFT1D(FT):
             self.configure()
 
     def configure(self):
-        exp_factor = -2.0 * (self.dataset.lambda2 - self.dataset.l2_ref) * self.parameter.cellsize
+        l2 = self.dataset.lambda2 - self.dataset.l2_ref
+        exp_factor = -2.0 * l2 * self.parameter.cellsize
 
         Nd = (self.parameter.n,)  # Faraday Depth Space Length
         Kd = (self.oversampling_factor * self.parameter.n,)  # Oversampled Faraday Depth Space Length

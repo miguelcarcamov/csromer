@@ -17,13 +17,6 @@ def complex_to_real(z):  # complex vector of length n -> real of length 2n
     return np.concatenate((np.real(z), np.imag(z)))
 
 
-def find_pixel(M, N, contiguous_id):
-    for i in range(M):
-        for j in range(N):
-            if contiguous_id == N * i + j:
-                return i, j
-
-
 def make_mask(I=np.array([]), sigma=0.0):
     indexes = np.where(I >= sigma)
     masked_values = np.where(I < sigma)
@@ -34,3 +27,12 @@ def make_mask_faraday(I=np.array([]), P=np.array([]), sigma_I=0.0, sigma_P=0.0):
     indexes = np.where((I >= sigma_I) & (P >= sigma_P))
     masked_values = np.where((I < sigma_I) & (P < sigma_P))
     return indexes, masked_values
+
+
+def calculate_noise(image=np.array([]), x0=0, xn=0, y0=0, yn=0):
+    if image.ndim > 2:
+        sigma = np.std(image[:, y0:yn, x0:xn], axis=(1, 2))
+    else:
+        sigma = np.std(image[y0:yn, x0:xn])
+
+    return sigma
