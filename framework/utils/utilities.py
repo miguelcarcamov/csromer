@@ -19,14 +19,14 @@ def complex_to_real(z):  # complex vector of length n -> real of length 2n
 
 def make_mask(I=np.array([]), sigma=0.0):
     indexes = np.where(I >= sigma)
-    masked_values = np.where(I < sigma)
-    return indexes, masked_values
+    masked_idxs = np.where(I < sigma)
+    return indexes, masked_idxs
 
 
 def make_mask_faraday(I=np.array([]), P=np.array([]), sigma_I=0.0, sigma_P=0.0):
     indexes = np.where((I >= sigma_I) & (P >= sigma_P))
-    masked_values = np.where((I < sigma_I) & (P < sigma_P))
-    return indexes, masked_values
+    masked_idxs = np.where((I < sigma_I) & (P < sigma_P))
+    return indexes, masked_idxs
 
 
 def calculate_noise(image=np.array([]), x0=0, xn=0, y0=0, yn=0):
