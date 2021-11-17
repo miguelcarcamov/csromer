@@ -181,7 +181,7 @@ def main():
     folder = './joblib_mmap'
     try:
         if os.path.exists(folder):
-            os.rmdir(folder)
+            shutil.rmtree(folder)
         os.mkdir(folder)
     except FileExistsError:
         pass
