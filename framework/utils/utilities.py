@@ -23,10 +23,15 @@ def make_mask(I=np.array([]), sigma=0.0):
     return indexes, masked_idxs
 
 
-def make_mask_faraday(I=np.array([]), P=np.array([]), cube_Q=np.array([]), cube_U=np.array([]), spectral_idx=None,
+def make_mask_faraday(I=np.array([]), P=np.array([]), cube_Q=None, cube_U=None, spectral_idx=None,
                       sigma_I=0.0, sigma_P=0.0):
-    Q_nan = np.isnan(cube_Q).any(axis=0)
-    U_nan = np.isnan(cube_U).any(axis=0)
+
+    if cube_Q is not None:
+        Q_nan = np.isnan(cube_Q).any(axis=0)
+
+    if cube_U is not None:
+        U_nan = np.isnan(cube_U).any(axis=0)
+
     if spectral_idx is None:
         indexes = np.where((I >= sigma_I) & (P >= sigma_P) & ~Q_nan & ~U_nan)
         masked_idxs = np.where((I < sigma_I) & (P < sigma_P) & Q_nan & U_nan)
@@ -39,8 +44,8 @@ def make_mask_faraday(I=np.array([]), P=np.array([]), cube_Q=np.array([]), cube_
 
 def calculate_noise(image=np.array([]), x0=0, xn=0, y0=0, yn=0):
     if image.ndim > 2:
-        sigma = np.std(image[:, y0:yn, x0:xn], axis=(1, 2))
+        sigma = np.nanstd(image[:, y0:yn, x0:xn], axis=(1, 2))
     else:
-        sigma = np.std(image[y0:yn, x0:xn])
+        sigma = np.nanstd(image[y0:yn, x0:xn])
 
     return sigma

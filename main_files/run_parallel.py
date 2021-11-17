@@ -171,6 +171,7 @@ def main():
     workers_idxs, masked_idxs = make_mask_faraday(I_mfs, P_mfs, Q, U, spectral_idx, nsigmas[0] * sigma_I, nsigmas[1] * sigma_P)
 
     sigma = np.sqrt((sigma_Q_cube ** 2 + sigma_U_cube ** 2) / 2)
+    print(sigma)
     data = Q + 1j * U
 
     global_dataset = Dataset(nu=nu, sigma=sigma)
