@@ -189,7 +189,7 @@ def main():
 
     output_file_mmap = os.path.join(folder, 'output_mmap')
 
-    F = np.memmap(output_file_mmap, dtype=np.complex128, shape=(4, global_parameter.n, M, N), mode='w+')
+    F = np.memmap(output_file_mmap, dtype=np.complex64, shape=(4, global_parameter.n, M, N), mode='w+')
 
     total_pixels = len(workers_idxs[0])
     print("LOS to reconstruct: ", total_pixels)
