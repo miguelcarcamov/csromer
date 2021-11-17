@@ -115,8 +115,6 @@ def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None,
     F[3, :, i, j] = F_residual
 
 
-
-
 def main():
     cubes, mfs_images, spectral_idx, freq_f, lambda_reg, output, index, nsigmas, verbose = getopt()
     index = int(index)
@@ -168,7 +166,8 @@ def main():
 
     P_mfs = np.sqrt(Q_mfs ** 2 + U_mfs ** 2)
     pol_fraction = P_mfs / I_mfs
-    workers_idxs, masked_idxs = make_mask_faraday(I_mfs, P_mfs, Q, U, spectral_idx, nsigmas[0] * sigma_I, nsigmas[1] * sigma_P)
+    workers_idxs, masked_idxs = make_mask_faraday(I_mfs, P_mfs, Q, U, spectral_idx, nsigmas[0] * sigma_I,
+                                                  nsigmas[1] * sigma_P)
 
     sigma = np.sqrt((sigma_Q_cube ** 2 + sigma_U_cube ** 2) / 2)
 
@@ -220,13 +219,11 @@ def main():
                                            max_rotated_intensity, np.nan)
     max_faraday_depth = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P),
                                  phi[max_faraday_depth_pos], np.nan)
-    masked_pol_fraction = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P), pol_fraction,
-                                   np.nan)
-
-    F_x, F_y = np.indices((M, N))
+    # masked_pol_fraction = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P), pol_fraction,
+    #                               np.nan)
 
     F_at_peak = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P),
-                         restored_F[max_faraday_depth_pos, F_x, F_y], np.nan)
+                         restored_F[max_faraday_depth_pos], np.nan)
     abs_F_at_peak = np.abs(F_at_peak)
     P_from_faraday = np.sqrt(abs_F_at_peak ** 2 - (2.3 * sigma_P ** 2))
     Pfraction_from_faraday = P_from_faraday / I_mfs
@@ -237,6 +234,8 @@ def main():
                      output=results_folder + "max_rotated_intensity.fits")
 
     writer.writeFITS(data=max_faraday_depth, header=I_header, output=results_folder + "max_faraday_depth.fits")
+
+    writer.writeFITS(data=Pfraction_from_faraday, header=I_header, output=results_folder + "polarization_fraction.fits")
 
     dirty_F[:, masked_idxs[0], masked_idxs[1]] = np.nan
     model_F[:, masked_idxs[0], masked_idxs[1]] = np.nan
