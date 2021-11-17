@@ -244,16 +244,16 @@ def main():
     restored_F[:, masked_idxs[0], masked_idxs[1]] = np.nan
     residual_F[:, masked_idxs[0], masked_idxs[1]] = np.nan
 
-    writer.writeFITSCube(dirty_F, I_header, len(phi), phi, np.abs(phi[1] - phi[0]),
+    writer.writeFITSCube(dirty_F, QU_header, len(phi), phi, np.abs(phi[1] - phi[0]),
                          output=results_folder + "faraday_dirty.fits")
 
-    writer.writeFITSCube(model_F, I_header, len(phi), phi, np.abs(phi[1] - phi[0]),
+    writer.writeFITSCube(model_F, QU_header, len(phi), phi, np.abs(phi[1] - phi[0]),
                          output=results_folder + "faraday_model.fits")
 
-    writer.writeFITSCube(restored_F, I_header, len(phi), phi, np.abs(phi[1] - phi[0]),
+    writer.writeFITSCube(restored_F, QU_header, len(phi), phi, np.abs(phi[1] - phi[0]),
                          output=results_folder + "faraday_restored.fits")
 
-    writer.writeFITSCube(residual_F, I_header, len(phi), phi, np.abs(phi[1] - phi[0]),
+    writer.writeFITSCube(residual_F, QU_header, len(phi), phi, np.abs(phi[1] - phi[0]),
                          output=results_folder + "faraday_residual.fits")
 
     del global_parameter
