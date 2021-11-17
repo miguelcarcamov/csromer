@@ -23,14 +23,17 @@ def make_mask(I=np.array([]), sigma=0.0):
     return indexes, masked_idxs
 
 
-def make_mask_faraday(I=np.array([]), P=np.array([]), spectral_idx=None, sigma_I=0.0, sigma_P=0.0):
+def make_mask_faraday(I=np.array([]), P=np.array([]), cube_Q=np.array([]), cube_U=np.array([]), spectral_idx=None,
+                      sigma_I=0.0, sigma_P=0.0):
+    Q_nan = np.isnan(cube_Q).any(axis=0)
+    U_nan = np.isnan(cube_U).any(axis=0)
     if spectral_idx is None:
-        indexes = np.where((I >= sigma_I) & (P >= sigma_P))
-        masked_idxs = np.where((I < sigma_I) & (P < sigma_P))
+        indexes = np.where((I >= sigma_I) & (P >= sigma_P) & ~Q_nan & ~U_nan)
+        masked_idxs = np.where((I < sigma_I) & (P < sigma_P) & Q_nan & U_nan)
     else:
         isnan = np.isnan(spectral_idx)
-        indexes = np.where((I >= sigma_I) & (P >= sigma_P) & ~isnan)
-        masked_idxs = np.where((I < sigma_I) & (P < sigma_P) & isnan)
+        indexes = np.where((I >= sigma_I) & (P >= sigma_P) & ~isnan & ~Q_nan & ~U_nan)
+        masked_idxs = np.where((I < sigma_I) & (P < sigma_P) & isnan & Q_nan & U_nan)
     return indexes, masked_idxs
 
 
