@@ -77,7 +77,7 @@ def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None,
 
     dataset = Dataset(nu=nu, sigma=sigma, data=data[:, i, j], spectral_idx=spectral_idx[i, j])
     parameter = Parameter()
-    parameter.calculate_cellsize(dataset=dataset, verbose=False)
+    parameter.calculate_cellsize(dataset=dataset, oversampling=8, verbose=False)
 
     dft = DFT1D(dataset=dataset, parameter=parameter)
     nufft = NUFFT1D(dataset=dataset, parameter=parameter, solve=True)
@@ -177,7 +177,7 @@ def main():
     global_dataset = Dataset(nu=nu, sigma=sigma)
 
     global_parameter = Parameter()
-    global_parameter.calculate_cellsize(dataset=global_dataset)
+    global_parameter.calculate_cellsize(dataset=global_dataset, oversampling=8)
 
     folder = './joblib_mmap'
     try:
@@ -214,6 +214,8 @@ def main():
 
     abs_F = np.abs(restored_F)
 
+    print(restored_F.shape)
+
     max_rotated_intensity = np.amax(abs_F, axis=0)
     max_faraday_depth_pos = np.argmax(abs_F, axis=0)
     max_rotated_intensity_image = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P),
@@ -224,6 +226,8 @@ def main():
                                    np.nan)
 
     F_x, F_y = np.indices((M, N))
+    print(F_x)
+    print(F_y)
     F_at_peak = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P),
                          restored_F[max_faraday_depth_pos, F_x, F_y], np.nan)
     abs_F_at_peak = np.abs(F_at_peak)
