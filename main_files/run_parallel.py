@@ -144,6 +144,9 @@ def main():
 
     if spectral_idx is None:
         spectral_idx = np.zeros_like(I_mfs)
+    else:
+        alpha_header, alpha_mfs = reader.readImage(name=spectral_idx)
+        spectral_idx = alpha_mfs
 
     nu = reader.readFreqsNumpyFile()
 
@@ -177,6 +180,8 @@ def main():
 
     folder = './joblib_mmap'
     try:
+        if os.path.exists(folder):
+            os.rmdir(folder)
         os.mkdir(folder)
     except FileExistsError:
         pass
