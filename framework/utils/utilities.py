@@ -23,9 +23,13 @@ def make_mask(I=np.array([]), sigma=0.0):
     return indexes, masked_idxs
 
 
-def make_mask_faraday(I=np.array([]), P=np.array([]), sigma_I=0.0, sigma_P=0.0):
-    indexes = np.where((I >= sigma_I) & (P >= sigma_P))
-    masked_idxs = np.where((I < sigma_I) & (P < sigma_P))
+def make_mask_faraday(I=np.array([]), P=np.array([]), spectral_idx=None, sigma_I=0.0, sigma_P=0.0):
+    if spectral_idx is None:
+        indexes = np.where((I >= sigma_I) & (P >= sigma_P))
+        masked_idxs = np.where((I < sigma_I) & (P < sigma_P))
+    else:
+        indexes = np.where((I >= sigma_I) & (P >= sigma_P) & (spectral_idx != np.nan))
+        masked_idxs = np.where((I < sigma_I) & (P < sigma_P) & (spectral_idx == np.nan))
     return indexes, masked_idxs
 
 

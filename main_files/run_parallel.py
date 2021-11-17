@@ -165,7 +165,7 @@ def main():
 
     P_mfs = np.sqrt(Q_mfs ** 2 + U_mfs ** 2)
     pol_fraction = P_mfs / I_mfs
-    workers_idxs, masked_idxs = make_mask_faraday(I_mfs, P_mfs, nsigmas[0] * sigma_I, nsigmas[1] * sigma_P)
+    workers_idxs, masked_idxs = make_mask_faraday(I_mfs, P_mfs, spectral_idx, nsigmas[0] * sigma_I, nsigmas[1] * sigma_P)
 
     sigma = np.sqrt((sigma_Q_cube ** 2 + sigma_U_cube ** 2) / 2)
     data = Q + 1j * U
