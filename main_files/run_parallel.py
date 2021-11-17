@@ -207,14 +207,12 @@ def main():
     phi = global_parameter.phi
     phi_output_idx = np.where((phi > -1000) & (phi < 1000))
     phi = phi[phi_output_idx]
-    dirty_F = F[0, phi_output_idx]
-    model_F = F[1, phi_output_idx]
-    restored_F = F[2, phi_output_idx]
-    residual_F = F[3, phi_output_idx]
+    dirty_F = F[0, phi_output_idx].squeeze()
+    model_F = F[1, phi_output_idx].squeeze()
+    restored_F = F[2, phi_output_idx].squeeze()
+    residual_F = F[3, phi_output_idx].squeeze()
 
     abs_F = np.abs(restored_F)
-
-    print(restored_F.shape)
 
     max_rotated_intensity = np.amax(abs_F, axis=0)
     max_faraday_depth_pos = np.argmax(abs_F, axis=0)
@@ -226,8 +224,7 @@ def main():
                                    np.nan)
 
     F_x, F_y = np.indices((M, N))
-    print(F_x)
-    print(F_y)
+
     F_at_peak = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P),
                          restored_F[max_faraday_depth_pos, F_x, F_y], np.nan)
     abs_F_at_peak = np.abs(F_at_peak)
