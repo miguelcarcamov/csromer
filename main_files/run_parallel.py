@@ -211,7 +211,6 @@ def main():
     model_F = F[1, phi_output_idx].squeeze()
     restored_F = F[2, phi_output_idx].squeeze()
     residual_F = F[3, phi_output_idx].squeeze()
-    print(residual_F.shape)
 
     abs_F = np.abs(restored_F)
 
