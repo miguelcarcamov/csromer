@@ -221,11 +221,7 @@ def main():
                                  phi[max_faraday_depth_pos], np.nan)
     # masked_pol_fraction = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P), pol_fraction,
     #                               np.nan)
-
-    F_at_peak = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P),
-                         restored_F[max_faraday_depth_pos], np.nan)
-    abs_F_at_peak = np.abs(F_at_peak)
-    P_from_faraday = np.sqrt(abs_F_at_peak ** 2 - (2.3 * sigma_P ** 2))
+    P_from_faraday = np.sqrt(max_rotated_intensity ** 2 - (2.3 * sigma_P ** 2))
     Pfraction_from_faraday = P_from_faraday / I_mfs
 
     writer = Writer()
