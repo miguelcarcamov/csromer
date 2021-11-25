@@ -7,3 +7,4 @@ pynufft==2021.2.0
 scipy==1.6.3
 astropy==4.2.1
 joblib==1.0.1
+astroquery=0.4.4
