@@ -44,8 +44,26 @@ def make_mask_faraday(I=np.array([]), P=np.array([]), cube_Q=None, cube_U=None, 
     return indexes, masked_idxs
 
 
-def calculate_noise(image=np.array([]), x0=0, xn=0, y0=0, yn=0, nsigma=3, use_sigma_clipped_stats=False):
-    if use_sigma_clipped_stats:
+def calculate_noise(image=np.array([]), x0=None, xn=None, y0=None, yn=None, nsigma=3, use_sigma_clipped_stats=False):
+    if x0 is None:
+        x0 = 0
+
+    if y0 is None:
+        y0 = 0
+
+    if xn is None:
+        if image.ndim > 2:
+            xn = image.shape[2]
+        else:
+            xn = image.shape[1]
+
+    if yn is None:
+        if image.ndim > 2:
+            yn = image.shape[1]
+        else:
+            yn = image.shape[0]
+
+    if not use_sigma_clipped_stats:
         if image.ndim > 2:
             sigma = np.nanstd(image[:, y0:yn, x0:xn], axis=(1, 2))
         else:

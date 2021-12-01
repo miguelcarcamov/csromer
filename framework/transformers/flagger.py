@@ -1,4 +1,8 @@
 import numpy as np
+from abc import ABCMeta, abstractmethod
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from ..base import Dataset
 
 
 def median_absolute_deviation(x):
@@ -47,13 +51,14 @@ class MeanFlagger(Flagger):
             sigma = self.dataset.sigma
             mean_sigma = nsigma * np.mean(sigma)
             std_err = np.std(sigma) / np.sqrt(len(sigma))
+            threshold = mean_sigma + nsigma * std_err
             if self.delete_channels:
-                idx_channels = np.where(sigma <= mean_sigma + nsigma * std_err)
+                idx_channels = np.where(sigma <= threshold)
                 self.dataset.sigma = self.dataset.sigma[idx_channels]
                 self.dataset.lambda2 = self.dataset.lambda2[idx_channels]
                 self.dataset.data = self.dataset.data[idx_channels]
             else:
-                flagged_idx = np.where(sigma > mean_sigma + nsigma * std_err)
+                flagged_idx = np.where(sigma > threshold)
                 self.dataset.w[flagged_idx] = 0.0
 
 
