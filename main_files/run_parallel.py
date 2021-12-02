@@ -18,6 +18,7 @@ from framework.objectivefunction import TSV, TV, L1, Chi2
 from framework.optimization import FISTA, ADMM, SDMM, GradientBasedMethod
 from framework.dictionaries.discrete import DiscreteWavelet
 from framework.dictionaries.undecimated import UndecimatedWavelet
+from framework.transformers import MeanFlagger
 
 
 def getopt():
@@ -69,9 +70,7 @@ def getopt():
     return cubes, mfs_images, spec_idx, freq_f, reg_terms, output, index, nsigmas, verbose
 
 
-def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None,
-                     mask_idxs=None,
-                     idx=None):
+def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None, noise=None, mask_idxs=None, idx=None):
     i = mask_idxs[0][idx]
     j = mask_idxs[1][idx]
 
@@ -83,12 +82,11 @@ def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None,
     nufft = NUFFT1D(dataset=dataset, parameter=parameter, solve=True)
 
     F_dirty = dft.backward(dataset.data)
-    idx_noise = np.where(np.abs(parameter.phi) > parameter.max_faraday_depth / 1.5)
-    noise_F = np.std(0.5 * (F_dirty[idx_noise].real + F_dirty[idx_noise].imag))
+
     F[0, :, i, j] = F_dirty
     wav = UndecimatedWavelet(wavelet_name="coif2")
 
-    lambda_l1 = np.sqrt(2 * len(dataset.data) + 4 * np.sqrt(len(dataset.data))) * noise_F * np.sqrt(0.5)
+    lambda_l1 = np.sqrt(2 * len(dataset.data) + np.sqrt(4 * len(dataset.data))) * noise
     lambda_tsv = 0.0
     chi2 = Chi2(dft_obj=nufft, wavelet=wav)
     l1 = L1(reg=lambda_l1)
@@ -104,7 +102,7 @@ def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None,
     parameter.complex_data_to_real()
     parameter.data = wav.decompose(parameter.data)
 
-    opt = FISTA(guess_param=parameter, F_obj=F_obj, fx=chi2, gx=g_obj, noise=noise_F, verbose=False)
+    opt = FISTA(guess_param=parameter, F_obj=F_obj, fx=chi2, gx=g_obj, noise=noise, verbose=False)
     obj, X = opt.run()
 
     X.data = wav.reconstruct(X.data)
@@ -146,13 +144,11 @@ def main():
         alpha_header, alpha_mfs = reader.readImage(name=spectral_idx)
         spectral_idx = alpha_mfs
 
-    nu = reader.readFreqsNumpyFile()
-
-    sigma_I = calculate_noise(image=I_mfs, x0=0, xn=197, y0=0, yn=184)
-    sigma_Q = calculate_noise(image=Q_mfs, x0=0, xn=197, y0=0, yn=184)
-    sigma_U = calculate_noise(image=U_mfs, x0=0, xn=197, y0=0, yn=184)
-    sigma_Q_cube = calculate_noise(image=Q, x0=0, xn=197, y0=0, yn=184)
-    sigma_U_cube = calculate_noise(image=U, x0=0, xn=197, y0=0, yn=184)
+    sigma_I = calculate_noise(image=I_mfs, xn=300, yn=300, nsigma=3, use_sigma_clipped_stats=True)
+    sigma_Q = calculate_noise(image=Q_mfs, xn=300, yn=300, nsigma=3, use_sigma_clipped_stats=True)
+    sigma_U = calculate_noise(image=U_mfs, xn=300, yn=300, nsigma=3, use_sigma_clipped_stats=True)
+    sigma_Q_cube = calculate_noise(image=Q, xn=300, yn=300, nsigma=3, use_sigma_clipped_stats=True)
+    sigma_U_cube = calculate_noise(image=U, xn=300, yn=300, nsigma=3, use_sigma_clipped_stats=True)
 
     print("Sigma MFS I: ", sigma_I)
     print("Sigma MFS Q: ", sigma_Q)
@@ -169,11 +165,21 @@ def main():
     workers_idxs, masked_idxs = make_mask_faraday(I_mfs, P_mfs, Q, U, spectral_idx, nsigmas[0] * sigma_I,
                                                   nsigmas[1] * sigma_P)
 
-    sigma = np.sqrt((sigma_Q_cube ** 2 + sigma_U_cube ** 2) / 2)
+    nu = reader.readFreqsNumpyFile()
 
-    data = Q + 1j * U
+    sigma = 0.5 * (sigma_Q_cube + sigma_U_cube)
 
     global_dataset = Dataset(nu=nu, sigma=sigma)
+
+    # Flagging #
+    # First round using normal flagging
+    normal_flagger = MeanFlagger(data=global_dataset, nsigma=5.0, delete_channels=True)
+    idxs, outliers_idxs = normal_flagger.run()
+
+    sigma = global_dataset.sigma
+    nu = global_dataset.nu[::-1]
+    data = Q[idxs] + 1j * U[idxs]
+    noise = 1/np.sqrt(np.sum(global_dataset.w))
 
     global_parameter = Parameter()
     global_parameter.calculate_cellsize(dataset=global_dataset, oversampling=8)
@@ -197,8 +203,7 @@ def main():
     del global_dataset
 
     Parallel(n_jobs=-3, backend="multiprocessing", verbose=10)(delayed(reconstruct_cube)(
-        F, data, sigma, nu, spectral_idx,
-        workers_idxs, i) for i in range(0, total_pixels))
+        F, data, sigma, nu, spectral_idx, noise, workers_idxs, i) for i in range(0, total_pixels))
 
     results_folder = "recon/"
     os.makedirs(results_folder, exist_ok=True)

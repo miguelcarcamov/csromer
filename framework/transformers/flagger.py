@@ -1,8 +1,7 @@
 import numpy as np
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from ..base import Dataset
+from typing import Union
+from ..base import Dataset
 
 
 def median_absolute_deviation(x):
@@ -18,9 +17,34 @@ def moving_average(x, w):
     return np.convolve(x, np.ones(w), 'valid') / w
 
 
+def hampel(array, w, nsigma, imputation=False):
+    k = 1.4826
+    array_copy = array.copy()
+    rolling_mean = moving_average(array_copy, w)
+    rolling_median = np.median(rolling_mean)
+    rolling_sigma = k * median_absolute_deviation(rolling_mean)
+    preserved_idxs = np.where(np.abs(array_copy - rolling_median) <= (nsigma * rolling_sigma))[0]
+    outlier_idxs = np.where(np.abs(array_copy - rolling_median) > (nsigma * rolling_sigma))[0]
+    if imputation:
+        array_copy[outlier_idxs] = rolling_median
+        return array_copy, preserved_idxs, outlier_idxs
+    else:
+        return preserved_idxs, outlier_idxs
+
+
+def normal_flagging(x, nsigma):
+    n = len(x)
+    mean_sigma = np.mean(x)
+    std_err = np.std(x) / np.sqrt(n)
+    threshold = mean_sigma + nsigma * std_err
+    preserved_idxs = np.where(x <= threshold)[0]
+    outlier_idxs = np.where(x > threshold)[0]
+    return preserved_idxs, outlier_idxs
+
+
 class Flagger(metaclass=ABCMeta):
-    def __init__(self, dataset: Dataset = None, delete_channels=None, nsigma=None):
-        self.dataset = dataset
+    def __init__(self, data: Union[Dataset, np.ndarray] = None, delete_channels=None, nsigma=None):
+        self.data = data
 
         if nsigma is None:
             self.nsigma = 0.0
@@ -45,26 +69,37 @@ class MeanFlagger(Flagger):
         if self.nsigma is not None:
             nsigma = self.nsigma
 
-        if self.dataset is None:
-            raise ValueError("Cannot flag dataset without a Dataset object")
-        else:
-            sigma = self.dataset.sigma
-            mean_sigma = nsigma * np.mean(sigma)
-            std_err = np.std(sigma) / np.sqrt(len(sigma))
-            threshold = mean_sigma + nsigma * std_err
+        if isinstance(self.data, Dataset):
+            original_length = len(self.data.sigma)
+            sigma_array = self.data.sigma.copy()
+            idxs, outlier_idxs = normal_flagging(sigma_array, nsigma)
+            flagged_percentage = (len(outlier_idxs)/original_length) * 100.0
             if self.delete_channels:
-                idx_channels = np.where(sigma <= threshold)
-                self.dataset.sigma = self.dataset.sigma[idx_channels]
-                self.dataset.lambda2 = self.dataset.lambda2[idx_channels]
-                self.dataset.data = self.dataset.data[idx_channels]
+                self.data.lambda2 = self.data.lambda2[idxs]
+                self.data.sigma = sigma_array[idxs]
+                if self.data.data is not None:
+                    self.data.data = self.data.data[idxs]
             else:
-                flagged_idx = np.where(sigma > threshold)
-                self.dataset.w[flagged_idx] = 0.0
+                self.data.w[outlier_idxs] = 0.0
+            print("Flagging {0:.2f}% of the data".format(flagged_percentage))
+            return idxs, outlier_idxs
+        elif isinstance(self.data, np.ndarray):
+            original_length = len(self.data)
+            idxs, outlier_idxs = normal_flagging(self.data, nsigma)
+            flagged_percentage = (len(outlier_idxs) / original_length) * 100.0
+            if self.delete_channels:
+                self.data = self.data[idxs]
+            else:
+                self.data[outlier_idxs] = 0.0
+            print("Flagging {0:.2f}% of the data".format(flagged_percentage))
+            return idxs, outlier_idxs
+        else:
+            raise TypeError("The data attribute is not a Dataset or numpy array object")
 
 
-class HalperFlagger(Flagger):
+class HampelFlagger(Flagger):
     def __init__(self, w=3, imputation=False, **kwargs):
-        super(HalperFlagger, self).__init__(**kwargs)
+        super(HampelFlagger, self).__init__(**kwargs)
         self.w = w
         self.imputation = imputation
 
@@ -72,23 +107,43 @@ class HalperFlagger(Flagger):
         if self.nsigma is not None:
             nsigma = self.nsigma
 
-        if self.dataset is None:
-            raise ValueError("Cannot flag dataset without a Dataset object")
-        else:
-            k = 1.4826
-            rolling_mean = moving_average(self.dataset.sigma, w)
-            rolling_median = np.median(rolling_mean)
-            rolling_sigma = k * median_absolute_deviation(rolling_mean)
+        if isinstance(self.data, Dataset):
+            original_length = len(self.data.sigma)
             if self.imputation:
-                if self.delete_channels:
-                    idx_channels = np.where(np.abs(self.dataset.sigma - rolling_median) <= (nsigma * rolling_sigma))
-                    self.dataset.sigma = self.dataset.sigma[idx_channels]
-                else:
-                    flagged_idx = np.where(np.abs(self.dataset.sigma - rolling_median) > (nsigma * rolling_sigma))
-                    self.dataset.w[flagged_idx] = 0.0
+                new_sigma, idxs, outlier_idxs = hampel(self.data.sigma, self.w, nsigma, self.imputation)
+                self.data.sigma = new_sigma
+                flagged_percentage = (len(outlier_idxs)/original_length) * 100.0
+                print("Imputing {0:.2f}% of the data".format(flagged_percentage))
+                return None
             else:
-                flagged_idx = np.where(np.abs(self.dataset.sigma - rolling_median) > (nsigma * rolling_sigma))
-                self.dataset.w[flagged_idx] = rolling_median[flagged_idx]
-
-
-
+                sigma_array = self.data.sigma.copy()
+                idxs, outlier_idxs = hampel(sigma_array, self.w, nsigma, self.imputation)
+                flagged_percentage = (len(outlier_idxs) / original_length) * 100.0
+                if self.delete_channels:
+                    self.data.lambda2 = self.data.lambda2[idxs]
+                    self.data.sigma = sigma_array[idxs]
+                    if self.data.data is not None:
+                        self.data.data = self.data.data[idxs]
+                else:
+                    self.data.w[outlier_idxs] = 0.0
+                print("Flagging {0:.2f}% of the data".format(flagged_percentage))
+                return idxs, outlier_idxs
+        elif isinstance(self.data, np.ndarray):
+            original_length = len(self.data)
+            if self.imputation:
+                new_sigma, idxs, outlier_idxs = hampel(self.data.sigma, self.w, nsigma, self.imputation)
+                self.data = new_sigma
+                flagged_percentage = (len(outlier_idxs) / original_length) * 100.0
+                print("Imputing {0:.2f}% of the data".format(flagged_percentage))
+                return None
+            else:
+                idxs, outlier_idxs = hampel(self.data.sigma, self.w, nsigma, self.imputation)
+                if self.delete_channels:
+                    self.data = self.data[idxs]
+                else:
+                    self.data[outlier_idxs] = 0.0
+                flagged_percentage = (len(outlier_idxs) / original_length) * 100.0
+                print("Flagging {0:.2f}% of the data".format(flagged_percentage))
+                return idxs, outlier_idxs
+        else:
+            raise TypeError("The data attribute is not a Dataset or numpy array object")

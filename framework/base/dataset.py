@@ -1,3 +1,4 @@
+from __future__ import annotations
 from scipy.constants import speed_of_light as c
 import sys
 import numpy as np
@@ -6,7 +7,9 @@ import astropy.units as u
 from scipy import special
 from typing import Union, List
 import scipy.stats
-from ..transformers import Gridding
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from ..transformers.gridding import Gridding
 import copy
 
 
@@ -86,7 +89,7 @@ class Dataset:
         if self.gridded is None:
             self.gridded = False
 
-        if self.nu is None:
+        if self.nu is None and self.lambda2 is None:
             self.s = None
 
         if lambda2 is not None:
@@ -288,27 +291,20 @@ class Dataset:
 
     def calculate_l2_cellsize(self):
 
-        delta_l2_min = np.min(np.abs(np.diff(self.lambda2)))
-        delta_l2_mean = np.mean(np.abs(np.diff(self.lambda2)))
-        delta_l2_max = np.max(np.abs(np.diff(self.lambda2)))
+        w_nozeros = np.where(self.w > 0.0)
+        lambda2_aux = self.lambda2[w_nozeros]
+        delta_l2_min = np.min(np.abs(np.diff(lambda2_aux)))
+        delta_l2_mean = np.mean(np.abs(np.diff(lambda2_aux)))
+        delta_l2_max = np.max(np.abs(np.diff(lambda2_aux)))
 
         self.delta_l2_min = delta_l2_min
         self.delta_l2_max = delta_l2_max
         self.delta_l2_mean = delta_l2_mean
 
-    # The next functions need to be checked again !!!
-    def calculate_sigmas_cube(self, image=None, x0=0, xn=0, y0=0, yn=0):
-        sigma = np.zeros(len(self.nu))
-
-        for i in range(len(self.nu)):
-            sigma[i] = np.sqrt(np.mean(image[i, y0:yn, x0:xn] ** 2))
-
-        self.sigma = sigma
-
     def calculate_residuals(self):
         self.residual = self.data - self.model_data
 
-    def assess_residuals(self, confidence_interval: float = 0.95):
+    def assess_residuals(self, gridding_object: Gridding = None, confidence_interval: float = 0.95):
         if self.gridded:
             autocorr_real = autocorr_gridded(self.residual.real)
             autocorr_imag = autocorr_gridded(self.residual.imag)
@@ -317,7 +313,7 @@ class Dataset:
             lags = sci_signal.correlation_lags(self.m, self.m, mode="full")
         else:
             # Grid the irregular data
-            gridding = Gridding(self)
+            gridding = gridding_object
             gridded_data = gridding.run()
             autocorr_real = autocorr_gridded(gridded_data.residual.real)
             autocorr_imag = autocorr_gridded(gridded_data.residual.imag)

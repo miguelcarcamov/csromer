@@ -1,10 +1,10 @@
 from abc import ABCMeta, abstractmethod
-from ..base import Dataset
 import numpy as np
 from scipy.constants import c
 import itertools
 import copy
 import sys
+from ..base.dataset import Dataset
 
 
 class FaradaySource(Dataset, metaclass=ABCMeta):
