@@ -70,9 +70,8 @@ def calculate_noise(image=np.array([]), x0=None, xn=None, y0=None, yn=None, nsig
             sigma = np.nanstd(image[y0:yn, x0:xn])
     else:
         if image.ndim > 2:
-            mean, median, std = sigma_clipped_stats(image, sigma=nsigma, axis=(1, 2))
+            mean, median, sigma = sigma_clipped_stats(image[:, y0:yn, x0:xn], sigma=nsigma, axis=(1, 2))
         else:
-            mean, median, std = sigma_clipped_stats(image, sigma=nsigma)
-        sigma = std
+            mean, median, sigma = sigma_clipped_stats(image[y0:yn, x0:xn], sigma=nsigma)
 
     return sigma
