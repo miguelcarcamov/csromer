@@ -1,10 +1,10 @@
 from abc import ABCMeta, abstractmethod
-from ..base import Dataset
 import numpy as np
 from scipy.constants import c
 import itertools
 import copy
 import sys
+from ..base.dataset import Dataset
 
 
 class FaradaySource(Dataset, metaclass=ABCMeta):
@@ -96,15 +96,18 @@ class FaradaySource(Dataset, metaclass=ABCMeta):
 
 
 class FaradayThinSource(FaradaySource):
-    def __init__(self, phi_gal=None, **kwargs):
+    def __init__(self, phi_gal=None, dchi=None, **kwargs):
         super().__init__(**kwargs)
         self.phi_gal = phi_gal
+        self.dchi = dchi
+        if self.dchi is None:
+            self.dchi = 0.0
 
     def simulate(self):
         nu = c / np.sqrt(self.lambda2)
         k = (nu / self.nu_0) ** (-1.0 * self.spectral_idx)
         mu_q = np.cos(2. * self.phi_gal * (self.lambda2 - self.l2_ref))
-        mu_u = np.sin(2. * self.phi_gal * (self.lambda2 - self.l2_ref))
+        mu_u = np.sin(2. * (self.phi_gal * (self.lambda2 - self.l2_ref) + self.dchi))
 
         # p = np.mean(np.sqrt(mu_q ** 2 + mu_u ** 2))
 
