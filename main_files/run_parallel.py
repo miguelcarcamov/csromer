@@ -70,8 +70,7 @@ def getopt():
 
 
 def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None,
-                     mask_idxs=None,
-                     idx=None):
+                     mask_idxs=None, idx=None, use_wavelet=True):
     i = mask_idxs[0][idx]
     j = mask_idxs[1][idx]
 
@@ -84,9 +83,14 @@ def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None,
 
     F_dirty = dft.backward(dataset.data)
     idx_noise = np.where(np.abs(parameter.phi) > parameter.max_faraday_depth / 1.5)
-    noise_F = np.std(0.5 * (F_dirty[idx_noise].real + F_dirty[idx_noise].imag))
+    # noise_F = np.std(0.5 * (F_dirty[idx_noise].real + F_dirty[idx_noise].imag))
+    noise_F = np.sqrt(1.0 / np.sum(dataset.w))
     F[0, :, i, j] = F_dirty
-    wav = UndecimatedWavelet(wavelet_name="coif2")
+
+    if use_wavelet:
+        wav = UndecimatedWavelet(wavelet_name="coif2")
+    else:
+        wav = None
 
     lambda_l1 = np.sqrt(2 * len(dataset.data) + 4 * np.sqrt(len(dataset.data))) * noise_F * np.sqrt(0.5)
     lambda_tsv = 0.0
@@ -102,12 +106,16 @@ def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None,
 
     parameter.data = F_dirty
     parameter.complex_data_to_real()
-    parameter.data = wav.decompose(parameter.data)
+
+    if use_wavelet:
+        parameter.data = wav.decompose(parameter.data)
 
     opt = FISTA(guess_param=parameter, F_obj=F_obj, fx=chi2, gx=g_obj, noise=noise_F, verbose=False)
     obj, X = opt.run()
 
-    X.data = wav.reconstruct(X.data)
+    if use_wavelet:
+        X.data = wav.reconstruct(X.data)
+
     X.real_data_to_complex()
     F_residual = nufft.backward(dataset.residual)
     F[1, :, i, j] = X.data
@@ -198,9 +206,9 @@ def main():
 
     Parallel(n_jobs=-3, backend="multiprocessing", verbose=10)(delayed(reconstruct_cube)(
         F, data, sigma, nu, spectral_idx,
-        workers_idxs, i) for i in range(0, total_pixels))
+        workers_idxs, i, False) for i in range(0, total_pixels))
 
-    results_folder = "recon/"
+    results_folder = "recon_l1_testW/"
     os.makedirs(results_folder, exist_ok=True)
 
     phi = global_parameter.phi
