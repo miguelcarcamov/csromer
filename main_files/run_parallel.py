@@ -70,7 +70,8 @@ def getopt():
     return cubes, mfs_images, spec_idx, freq_f, reg_terms, output, index, nsigmas, verbose
 
 
-def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None, noise=None, mask_idxs=None, idx=None):
+def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None, noise=None,
+                     mask_idxs=None, idx=None, use_wavelet=True):
     i = mask_idxs[0][idx]
     j = mask_idxs[1][idx]
 
@@ -82,9 +83,12 @@ def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None, 
     nufft = NUFFT1D(dataset=dataset, parameter=parameter, solve=True)
 
     F_dirty = dft.backward(dataset.data)
-
     F[0, :, i, j] = F_dirty
-    wav = UndecimatedWavelet(wavelet_name="coif2")
+
+    if use_wavelet:
+        wav = UndecimatedWavelet(wavelet_name="coif2")
+    else:
+        wav = None
 
     lambda_l1 = np.sqrt(2 * len(dataset.data) + np.sqrt(4 * len(dataset.data))) * noise
     lambda_tsv = 0.0
@@ -100,12 +104,16 @@ def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None, 
 
     parameter.data = F_dirty
     parameter.complex_data_to_real()
-    parameter.data = wav.decompose(parameter.data)
+
+    if use_wavelet:
+        parameter.data = wav.decompose(parameter.data)
 
     opt = FISTA(guess_param=parameter, F_obj=F_obj, fx=chi2, gx=g_obj, noise=noise, verbose=False)
     obj, X = opt.run()
 
-    X.data = wav.reconstruct(X.data)
+    if use_wavelet:
+        X.data = wav.reconstruct(X.data)
+
     X.real_data_to_complex()
     F_residual = nufft.backward(dataset.residual)
     F[1, :, i, j] = X.data
@@ -144,11 +152,11 @@ def main():
         alpha_header, alpha_mfs = reader.readImage(name=spectral_idx)
         spectral_idx = alpha_mfs
 
-    sigma_I = calculate_noise(image=I_mfs, xn=300, yn=300, nsigma=3, use_sigma_clipped_stats=True)
-    sigma_Q = calculate_noise(image=Q_mfs, xn=300, yn=300, nsigma=3, use_sigma_clipped_stats=True)
-    sigma_U = calculate_noise(image=U_mfs, xn=300, yn=300, nsigma=3, use_sigma_clipped_stats=True)
-    sigma_Q_cube = calculate_noise(image=Q, xn=300, yn=300, nsigma=3, use_sigma_clipped_stats=True)
-    sigma_U_cube = calculate_noise(image=U, xn=300, yn=300, nsigma=3, use_sigma_clipped_stats=True)
+    sigma_I = calculate_noise(image=I_mfs, xn=300, yn=300, nsigma=3.0, use_sigma_clipped_stats=True)
+    sigma_Q = calculate_noise(image=Q_mfs, xn=300, yn=300, nsigma=3.0, use_sigma_clipped_stats=True)
+    sigma_U = calculate_noise(image=U_mfs, xn=300, yn=300, nsigma=3.0, use_sigma_clipped_stats=True)
+    sigma_Q_cube = calculate_noise(image=Q, xn=300, yn=300, nsigma=3.0, use_sigma_clipped_stats=True)
+    sigma_U_cube = calculate_noise(image=U, xn=300, yn=300, nsigma=3.0, use_sigma_clipped_stats=True)
 
     print("Sigma MFS I: ", sigma_I)
     print("Sigma MFS Q: ", sigma_Q)
@@ -179,7 +187,7 @@ def main():
     sigma = global_dataset.sigma
     nu = global_dataset.nu[::-1]
     data = Q[idxs] + 1j * U[idxs]
-    noise = 1/np.sqrt(np.sum(global_dataset.w))
+    noise = 1.0/np.sqrt(np.sum(global_dataset.w))
 
     global_parameter = Parameter()
     global_parameter.calculate_cellsize(dataset=global_dataset, oversampling=8)
@@ -203,9 +211,9 @@ def main():
     del global_dataset
 
     Parallel(n_jobs=-3, backend="multiprocessing", verbose=10)(delayed(reconstruct_cube)(
-        F, data, sigma, nu, spectral_idx, noise, workers_idxs, i) for i in range(0, total_pixels))
+            F, data, sigma, nu, spectral_idx, noise, workers_idxs, i, False) for i in range(0, total_pixels))
 
-    results_folder = "recon/"
+    results_folder = "recon_l1_testW/"
     os.makedirs(results_folder, exist_ok=True)
 
     phi = global_parameter.phi
