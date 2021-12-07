@@ -62,20 +62,24 @@ class FaradaySky:
 
         return rm_value_mean, rm_value_std
 
-    def galactic_rm_image(self, fitsfile: Union[str, fits.HDUList] = None, use_bilinear_interpolation: bool = False):
+    def galactic_rm_image(self, fitsfile: Union[str, fits.PrimaryHDU, fits.Header] = None,
+                          use_bilinear_interpolation: bool = False):
         if isinstance(fitsfile, str):
             hdul = fits.open(fitsfile)[0]
+            header = hdul.header
+        elif isinstance(fitsfile, fits.PrimaryHDU):
+            header = fitsfile.header
         else:
-            hdul = fitsfile
+            header = fitsfile
 
-        if hdul.header["NAXIS"] > 2:
-            w = WCS(hdul.header, naxis=(1, 2))
+        if header["NAXIS"] > 2:
+            w = WCS(header, naxis=(1, 2))
         else:
-            w = WCS(hdul.header)
+            w = WCS(header)
 
-        m = hdul.header["NAXIS1"]
-        n = hdul.header["NAXIS2"]
-        frame = hdul.header["RADESYS"].lower()
+        m = header["NAXIS1"]
+        n = header["NAXIS2"]
+        frame = header["RADESYS"].lower()
         x = np.arange(0, m, 1)
         y = np.arange(0, n, 1)
         xx, yy = np.meshgrid(x, y)
