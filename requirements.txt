@@ -10,3 +10,4 @@ joblib==1.0.1
 astroquery==0.4.4
 healpy==1.15.0
 h5py==3.1.0
+astropy-healpix==0.6
