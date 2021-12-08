@@ -75,7 +75,7 @@ class FaradaySky:
             header = fitsfile
 
         if header["NAXIS"] > 2:
-            w = WCS(header, naxis=(1, 2))
+            w = WCS(header, naxis=2)
         else:
             w = WCS(header)
 
