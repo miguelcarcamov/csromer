@@ -30,7 +30,7 @@ def normalize_data(data: np.ndarray = None, _min: float = None, _max: float = No
             _max = 0.0
         data_min = np.nanmin(data)
         data_max = np.nanmax(data)
-        return _min + (data - data_min)/(data_max - data_min) * (_max - _min)
+        return _min + (data - data_min) / (data_max - data_min) * (_max - _min)
     else:
         raise ValueError("No data to normalize")
 
@@ -75,7 +75,7 @@ def get_sigma_from_image(image: np.ndarray = None, nsigma=5.0):
 
 class Plotter:
     def __init__(self, optical_image: fits.HDUList = None,
-                 radio_image: Union[fits.HDUList, str] = None,
+                 radio_image: Union[fits.PrimaryHDU, fits.HDUList, str] = None,
                  xray_image: Union[fits.HDUList, str] = None,
                  additional_image: fits.HDUList = None, z: np.float32 = None, dist: np.float32 = None,
                  scalebar_length_kpc: Quantity = None, use_latex: bool = None):
@@ -101,57 +101,74 @@ class Plotter:
             scale = Planck18.arcsec_per_kpc_comoving(self.z)  # scale in arcsec per kpc
             self.sb_length_arcsec = scale * scalebar_length_kpc
 
-    def get_optical(self, radio_image: fits.HDUList = None, rgb: bool = False, filename: str = None):
+    def get_optical(self, radio_image: Union[fits.Header, fits.PrimaryHDU, fits.HDUList] = None, rgb: bool = False,
+                    filename: str = None):
         if radio_image is None:
             radio_image = self.radio_image
-        if radio_image is not None:
+
+        if isinstance(radio_image, fits.HDUList):
             header = radio_image[0].header
-            m = header["NAXIS1"]
-            n = header["NAXIS2"]
-            cdelt1 = header["CDELT1"] * un.deg
-            cdelt2 = header["CDELT2"] * un.deg
-            crpix1 = header["CRPIX1"]
-            crpix2 = header["CRPIX2"]
-            crval1 = header["CRVAL1"] * un.deg
-            crval2 = header["CRVAL2"] * un.deg
-            radesys = header["RADESYS"].lower()
-            pixels = str(m) + "," + str(n)
-            coord = SkyCoord(crval1, crval2, frame=radesys)
-            radius = 2 * (m - crpix1) * -cdelt1
+        elif isinstance(radio_image, fits.PrimaryHDU):
+            header = radio_image.header
+        elif isinstance(radio_image, fits.Header):
+            header = radio_image
+        else:
+            raise TypeError("Radio image is not a header, PrimaryHDU or HDUList")
 
-            if rgb:
-                surveys = ["SDSSg", "SDSSr", "SDSSi"]
-                hdu_g, hdu_r, hdu_i = astroquery_search(center_coordinate=coord, radius=radius, pixels=pixels,
-                                                        coordinates="J2000", sampler="LI", scaling="Log",
-                                                        surveys=surveys)
-                data = make_lupton_rgb(hdu_i.data, hdu_r.data, hdu_g.data, filename=filename)
-                hdu_i.data = data
-                self.optical_image = hdu_i
-            else:
-                self.optical_image = astroquery_search(center_coordinate=coord, radius=radius, pixels=pixels,
-                                                       coordinates="J2000", sampler="LI", scaling="Log",
-                                                       surveys="DSS")
+        m = header["NAXIS1"]
+        n = header["NAXIS2"]
+        cdelt1 = header["CDELT1"] * un.deg
+        cdelt2 = header["CDELT2"] * un.deg
+        crpix1 = header["CRPIX1"]
+        crpix2 = header["CRPIX2"]
+        crval1 = header["CRVAL1"] * un.deg
+        crval2 = header["CRVAL2"] * un.deg
+        radesys = header["RADESYS"].lower()
+        pixels = str(m) + "," + str(n)
+        coord = SkyCoord(crval1, crval2, frame=radesys)
+        radius = 2 * (m - crpix1) * -cdelt1
 
-    def get_additional(self, radio_image: fits.HDUList = None, surveys: Union[List[str], str] = None):
+        if rgb:
+            surveys = ["SDSSg", "SDSSr", "SDSSi"]
+            hdu_g, hdu_r, hdu_i = astroquery_search(center_coordinate=coord, radius=radius, pixels=pixels,
+                                                    coordinates="J2000", sampler="LI", scaling="Log",
+                                                    surveys=surveys)
+            data = make_lupton_rgb(hdu_i.data, hdu_r.data, hdu_g.data, filename=filename)
+            hdu_i.data = data
+            self.optical_image = hdu_i
+        else:
+            self.optical_image = astroquery_search(center_coordinate=coord, radius=radius, pixels=pixels,
+                                                   coordinates="J2000", sampler="LI", scaling="Log",
+                                                   surveys="DSS")
+
+    def get_additional(self, radio_image: Union[fits.Header, fits.PrimaryHDU, fits.HDUList] = None,
+                       surveys: Union[List[str], str] = None):
         if radio_image is None:
             radio_image = self.radio_image
-        if radio_image is not None:
+        if isinstance(radio_image, fits.HDUList):
             header = radio_image[0].header
-            m = header["NAXIS1"]
-            n = header["NAXIS2"]
-            cdelt1 = header["CDELT1"] * un.deg
-            cdelt2 = header["CDELT2"] * un.deg
-            crpix1 = header["CRPIX1"]
-            crpix2 = header["CRPIX2"]
-            crval1 = header["CRVAL1"] * un.deg
-            crval2 = header["CRVAL2"] * un.deg
-            radesys = header["RADESYS"].lower()
-            pixels = str(m) + "," + str(n)
-            coord = SkyCoord(crval1, crval2, frame=radesys)
-            radius = 2 * (m - crpix1) * -cdelt1
+        elif isinstance(radio_image, fits.PrimaryHDU):
+            header = radio_image.header
+        elif isinstance(radio_image, fits.Header):
+            header = radio_image
+        else:
+            raise TypeError("Radio image is not a header, PrimaryHDU or HDUList")
 
-            self.additional_image = astroquery_search(center_coordinate=coord, radius=radius, pixels=pixels,
-                                                      coordinates="J2000", surveys=surveys)
+        m = header["NAXIS1"]
+        n = header["NAXIS2"]
+        cdelt1 = header["CDELT1"] * un.deg
+        cdelt2 = header["CDELT2"] * un.deg
+        crpix1 = header["CRPIX1"]
+        crpix2 = header["CRPIX2"]
+        crval1 = header["CRVAL1"] * un.deg
+        crval2 = header["CRVAL2"] * un.deg
+        radesys = header["RADESYS"].lower()
+        pixels = str(m) + "," + str(n)
+        coord = SkyCoord(crval1, crval2, frame=radesys)
+        radius = 2 * (m - crpix1) * -cdelt1
+
+        self.additional_image = astroquery_search(center_coordinate=coord, radius=radius, pixels=pixels,
+                                                  coordinates="J2000", surveys=surveys)
 
     def plot_overlay(self, dpi: np.int32 = 600, xlabel: str = None, ylabel: str = None, sigma_list: list = None):
         plt.figure(dpi=dpi)
@@ -192,7 +209,14 @@ class Plotter:
 
         # Plot for optical data
         if self.radio_image is not None:
-            wcs = WCS(self.radio_image[0].header, naxis=2)
+            if isinstance(self.radio_image, fits.HDUList):
+                header = self.radio_image[0].header
+                radio_data = self.radio_image[0].data
+            elif isinstance(self.radio_image, fits.PrimaryHDU):
+                header = self.radio_image.header
+                radio_data = self.radio_image.data
+
+            wcs = WCS(header, naxis=2)
             ax = plt.subplot(projection=wcs)
 
         if self.optical_image is not None:
@@ -212,7 +236,7 @@ class Plotter:
             ax.contour(purple_data, transform=ax.get_transform(wcs_xray), colors=[purple_color],
                        levels=purple_contours, linewidths=0.2)
             ax.imshow(purple_data, origin='lower', transform=ax.get_transform(wcs_xray),
-                      cmap=purplecmap, alpha=purple_alphas, vmax=np.nanmax(purple_data)/5000)
+                      cmap=purplecmap, alpha=purple_alphas, vmax=np.nanmax(purple_data) / 5000)
             ax.plot(0, 0, '-', c=purple_color, label="XMM", linewidth=3)
 
             # Contours for additional data
@@ -233,16 +257,16 @@ class Plotter:
 
         # Contours for radio continuum
         if self.radio_image is not None:
-            radio_image_sigma = sigma_list[2] * get_sigma_from_image(self.radio_image[0].data.squeeze())
+            radio_image_sigma = sigma_list[2] * get_sigma_from_image(radio_data.squeeze())
             red_contours = [radio_image_sigma * i for i in contourmults]
-            red_data = self.radio_image[0].data.squeeze()
+            red_data = radio_data.squeeze()
             red_norm = normalize_data(red_data, 0, 1)
             red_color = twilightcmap(0.75)
             red_alphas = np.where(red_data >= radio_image_sigma, red_norm, 0.0)
             ax.contour(red_data, transform=ax.get_transform(wcs), colors=[red_color],
                        levels=red_contours, linewidths=0.2)
             ax4 = plt.imshow(red_data, origin='lower', transform=ax.get_transform(wcs),
-                             vmax=np.nanmax(red_data)/1000,
+                             vmax=np.nanmax(red_data) / 1000,
                              cmap=redcmap, alpha=red_alphas)
             ax.plot(0, 0, '-', c=red_color, label="JVLA", linewidth=3)
 

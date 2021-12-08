@@ -62,11 +62,13 @@ class FaradaySky:
 
         return rm_value_mean, rm_value_std
 
-    def galactic_rm_image(self, fitsfile: Union[str, fits.PrimaryHDU, fits.Header] = None,
+    def galactic_rm_image(self, fitsfile: Union[str, fits.HDUList, fits.PrimaryHDU, fits.Header] = None,
                           use_bilinear_interpolation: bool = False):
         if isinstance(fitsfile, str):
             hdul = fits.open(fitsfile)[0]
             header = hdul.header
+        elif isinstance(fitsfile, fits.HDUList):
+            header = fitsfile[0].header
         elif isinstance(fitsfile, fits.PrimaryHDU):
             header = fitsfile.header
         else:
