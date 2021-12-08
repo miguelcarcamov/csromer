@@ -8,6 +8,7 @@ from scipy import special
 from typing import Union, List
 import scipy.stats
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from ..transformers.gridding import Gridding
 import copy
@@ -39,16 +40,16 @@ def boxpierce(x: np.ndarray = None, k: Union[List, int] = None, conf_level: floa
         for i in k:
             if i < 1:
                 raise ValueError("Cannot calculate for lags lower than 1")
-            idx = np.arange(1, i+1, 1)
-            x_sum = n * np.sum(x[idx]**2)
+            idx = np.arange(1, i + 1, 1)
+            x_sum = n * np.sum(x[idx] ** 2)
             res.append(x_sum)
         chi2 = scipy.stats.chi2.ppf(conf_level, df=k)
         return np.array(res), chi2
     else:
         if k < 1:
             raise ValueError("The lag cannot be less than 1")
-        idx = np.arange(1, k+1, 1)
-        x_sum = n * np.sum(x[idx]**2)
+        idx = np.arange(1, k + 1, 1)
+        x_sum = n * np.sum(x[idx] ** 2)
         return np.array(x_sum), scipy.stats.chi2.ppf(conf_level, df=k)
 
 
@@ -59,16 +60,16 @@ def ljungbox(x: np.ndarray = None, k: Union[List, int] = None, conf_level: float
         for i in k:
             if i < 1:
                 raise ValueError("Cannot calculate for lags lower than 1")
-            idx = np.arange(1, i+1, 1)
-            x_sum = n * (n + 2) * np.sum(x[idx]**2 / (n - idx))
+            idx = np.arange(1, i + 1, 1)
+            x_sum = n * (n + 2) * np.sum(x[idx] ** 2 / (n - idx))
             res.append(x_sum)
         chi2 = scipy.stats.chi2.ppf(conf_level, df=k)
         return np.array(res), chi2
     else:
         if k < 1:
             raise ValueError("The lag cannot be less than 1")
-        idx = np.arange(1, k+1, 1)
-        x_sum = n * (n + 2) * np.sum(x[idx]**2 / (n - idx))
+        idx = np.arange(1, k + 1, 1)
+        x_sum = n * (n + 2) * np.sum(x[idx] ** 2 / (n - idx))
         return np.array(x_sum), scipy.stats.chi2.ppf(conf_level, df=k)
 
 
@@ -303,6 +304,12 @@ class Dataset:
 
     def calculate_residuals(self):
         self.residual = self.data - self.model_data
+
+    def subtract_galacticrm(self, phi_gal):
+        p = self.data
+        galrm_shift = np.exp(-2j * phi_gal * (self.lambda2 - self.l2_ref))
+        p_hat = p * galrm_shift
+        self.data = p_hat
 
     def assess_residuals(self, gridding_object: Gridding = None, confidence_interval: float = 0.95):
         if self.gridded:
