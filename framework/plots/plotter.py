@@ -226,7 +226,7 @@ class Plotter:
 
         # Contours for X-ray data
         if self.xray_image is not None:
-            wcs_xray = WCS(self.xray_image[0].header)
+            wcs_xray = WCS(self.xray_image[0].header, naxis=2)
             xray_image_sigma = sigma_list[0] * get_sigma_from_image(self.xray_image[0].data)
             purple_contours = [xray_image_sigma * i for i in contourmults]
             purple_data = self.xray_image[0].data
@@ -241,7 +241,7 @@ class Plotter:
 
             # Contours for additional data
         if self.additional_image is not None:
-            wcs_additional = WCS(self.additional_image.header)
+            wcs_additional = WCS(self.additional_image.header, naxis=2)
             add_image_sigma = sigma_list[1] * get_sigma_from_image(self.additional_image.data)
             blue_contours = [add_image_sigma * i for i in contourmults]
             blue_data = self.additional_image.data
