@@ -74,11 +74,7 @@ class FaradaySky:
         else:
             header = fitsfile
 
-        if header["NAXIS"] > 2:
-            print("NAXIS: {0:d}, greater than 2 - Using last two axes".format(header["NAXIS"]))
-            w = WCS(header, naxis=2)
-        else:
-            w = WCS(header)
+        w = WCS(header, naxis=2)
 
         m = header["NAXIS1"]
         n = header["NAXIS2"]
