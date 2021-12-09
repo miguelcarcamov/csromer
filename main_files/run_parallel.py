@@ -19,7 +19,7 @@ from framework.optimization import FISTA, ADMM, SDMM, GradientBasedMethod
 from framework.dictionaries.discrete import DiscreteWavelet
 from framework.dictionaries.undecimated import UndecimatedWavelet
 from framework.transformers import MeanFlagger
-
+from framework.faraday_sky import FaradaySky
 
 def getopt():
     # initiate the parser
@@ -83,6 +83,11 @@ def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None, 
     nufft = NUFFT1D(dataset=dataset, parameter=parameter, solve=True)
 
     F_dirty = dft.backward(dataset.data)
+
+    if noise is None:
+        edges_idx = np.where(np.abs(parameter.phi) > parameter.max_faraday_depth / 1.5)
+        noise = 0.5 * (np.std(F_dirty[edges_idx].real) + np.std(F_dirty[edges_idx].imag))
+
     F[0, :, i, j] = F_dirty
 
     if use_wavelet:
@@ -211,7 +216,7 @@ def main():
     del global_dataset
 
     Parallel(n_jobs=-3, backend="multiprocessing", verbose=10)(delayed(reconstruct_cube)(
-            F, data, sigma, nu, spectral_idx, noise, workers_idxs, i, False) for i in range(0, total_pixels))
+            F, data, sigma, nu, spectral_idx, None, workers_idxs, i, False) for i in range(0, total_pixels))
 
     results_folder = "recon_l1_testW/"
     os.makedirs(results_folder, exist_ok=True)
@@ -236,6 +241,12 @@ def main():
     #                               np.nan)
     P_from_faraday = np.sqrt(max_rotated_intensity ** 2 - (2.3 * sigma_P ** 2))
     Pfraction_from_faraday = P_from_faraday / I_mfs
+
+    # Subtract Milky-way RM contribution
+    f_sky = FaradaySky(filename="/raid/scratch/carcamo/repos/CS-Framework/faradaysky/faraday2020v2.hdf5")
+
+    mean_sky, std_sky = f_sky.galactic_rm_image(I_header, use_bilinear_interpolation=False)
+    max_faraday_depth -= mean_sky.value
 
     writer = Writer()
 
