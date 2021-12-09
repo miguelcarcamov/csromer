@@ -131,6 +131,7 @@ def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None, 
 
 def main():
     cubes, mfs_images, spectral_idx, freq_f, lambda_reg, eta, output, index, nsigmas, verbose = getopt()
+    eta = float(eta)
     index = int(index)
     mfs_counter = len(mfs_images)
     cube_counter = len(cubes)
