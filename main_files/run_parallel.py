@@ -187,7 +187,7 @@ def main():
     # Get Milky-way RM contribution
     f_sky = FaradaySky(filename="/raid/scratch/carcamo/repos/csromer/faradaysky/faraday2020v2.hdf5")
 
-    mean_sky, std_sky = f_sky.galactic_rm_image(I_header, use_bilinear_interpolation=False)
+    mean_sky, std_sky = f_sky.galactic_rm_image(I_header, use_bilinear_interpolation=True)
 
     # Subtract Milky-way RM contribution
     P = Q + 1j * U
