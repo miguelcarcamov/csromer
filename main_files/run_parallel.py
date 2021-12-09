@@ -7,19 +7,19 @@ from joblib import Parallel, delayed, load, dump
 from astropy.io import fits
 import shutil
 
-sys.path.insert(0, './../')
-from framework.io import Reader, Writer
-from framework.utils import calculate_noise, make_mask_faraday
-from framework.base import Dataset
-from framework.reconstruction import Parameter
-from framework.transformers import DFT1D, NUFFT1D
-from framework.objectivefunction import OFunction
-from framework.objectivefunction import TSV, TV, L1, Chi2
-from framework.optimization import FISTA, ADMM, SDMM, GradientBasedMethod
-from framework.dictionaries.discrete import DiscreteWavelet
-from framework.dictionaries.undecimated import UndecimatedWavelet
-from framework.transformers import MeanFlagger
-from framework.faraday_sky import FaradaySky
+from csromer.io import Reader, Writer
+from csromer.utils import calculate_noise, make_mask_faraday
+from csromer.base import Dataset
+from csromer.reconstruction import Parameter
+from csromer.transformers import DFT1D, NUFFT1D
+from csromer.objectivefunction import OFunction
+from csromer.objectivefunction import TSV, TV, L1, Chi2
+from csromer.optimization import FISTA, ADMM, SDMM, GradientBasedMethod
+from csromer.dictionaries.discrete import DiscreteWavelet
+from csromer.dictionaries.undecimated import UndecimatedWavelet
+from csromer.transformers import MeanFlagger
+from csromer.faraday_sky import FaradaySky
+
 
 def getopt():
     # initiate the parser
@@ -189,10 +189,21 @@ def main():
     normal_flagger = MeanFlagger(data=global_dataset, nsigma=5.0, delete_channels=True)
     idxs, outliers_idxs = normal_flagger.run()
 
+    # Get Milky-way RM contribution
+    f_sky = FaradaySky(filename="/raid/scratch/carcamo/repos/csromer/faradaysky/faraday2020v2.hdf5")
+
+    mean_sky, std_sky = f_sky.galactic_rm_image(I_header, use_bilinear_interpolation=False)
+
+    # Subtract Milky-way RM contribution
+    P = Q + 1j * U
+    P *= np.exp(-2j * mean_sky.value[np.newaxis, :, :] * (
+                global_dataset.lambda2[:, np.newaxis, np.newaxis] - global_dataset.l2_ref))
+
     sigma = global_dataset.sigma
     nu = global_dataset.nu[::-1]
-    data = Q[idxs] + 1j * U[idxs]
-    noise = 1.0/np.sqrt(np.sum(global_dataset.w))
+
+    data = P[idxs].real + 1j * P[idxs].imag
+    noise = 1.0 / np.sqrt(np.sum(global_dataset.w))
 
     global_parameter = Parameter()
     global_parameter.calculate_cellsize(dataset=global_dataset, oversampling=8)
@@ -216,7 +227,7 @@ def main():
     del global_dataset
 
     Parallel(n_jobs=-3, backend="multiprocessing", verbose=10)(delayed(reconstruct_cube)(
-            F, data, sigma, nu, spectral_idx, None, workers_idxs, i, False) for i in range(0, total_pixels))
+        F, data, sigma, nu, spectral_idx, None, workers_idxs, i, False) for i in range(0, total_pixels))
 
     results_folder = "recon_l1_testW/"
     os.makedirs(results_folder, exist_ok=True)
@@ -241,12 +252,6 @@ def main():
     #                               np.nan)
     P_from_faraday = np.sqrt(max_rotated_intensity ** 2 - (2.3 * sigma_P ** 2))
     Pfraction_from_faraday = P_from_faraday / I_mfs
-
-    # Subtract Milky-way RM contribution
-    f_sky = FaradaySky(filename="/raid/scratch/carcamo/repos/CS-Framework/faradaysky/faraday2020v2.hdf5")
-
-    mean_sky, std_sky = f_sky.galactic_rm_image(I_header, use_bilinear_interpolation=False)
-    max_faraday_depth -= mean_sky.value
 
     writer = Writer()
 
