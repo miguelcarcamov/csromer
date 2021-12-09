@@ -184,11 +184,6 @@ def main():
 
     global_dataset = Dataset(nu=nu, sigma=sigma)
 
-    # Flagging #
-    # First round using normal flagging
-    normal_flagger = MeanFlagger(data=global_dataset, nsigma=5.0, delete_channels=True)
-    idxs, outliers_idxs = normal_flagger.run()
-
     # Get Milky-way RM contribution
     f_sky = FaradaySky(filename="/raid/scratch/carcamo/repos/csromer/faradaysky/faraday2020v2.hdf5")
 
@@ -197,12 +192,17 @@ def main():
     # Subtract Milky-way RM contribution
     P = Q + 1j * U
     P *= np.exp(-2j * mean_sky.value[np.newaxis, :, :] * (
-                global_dataset.lambda2[:, np.newaxis, np.newaxis] - global_dataset.l2_ref))
+            global_dataset.lambda2[:, np.newaxis, np.newaxis] - global_dataset.l2_ref))
+
+    # Flagging #
+    # First round using normal flagging
+    normal_flagger = MeanFlagger(data=global_dataset, nsigma=5.0, delete_channels=True)
+    idxs, outliers_idxs = normal_flagger.run()
 
     sigma = global_dataset.sigma
     nu = global_dataset.nu[::-1]
 
-    data = P[idxs].real + 1j * P[idxs].imag
+    data = P[idxs]
     noise = 1.0 / np.sqrt(np.sum(global_dataset.w))
 
     global_parameter = Parameter()
