@@ -44,7 +44,7 @@ def getopt():
                         type=float)
     parser.add_argument("-l", "--lambdas", nargs='*',
                         help="Regularization parameters separated by space")
-    parser.add_argument("-e", "--eta", nargs=1,
+    parser.add_argument("-e", "--eta", nargs='?',
                         help="Eta factor to increase or decrease L1 regularization", default=1.0, const=float)
     parser.add_argument("-o", "--output", nargs="*",
                         help="Path/s and/or name/s of the output file/s in FITS/npy format", required=True)
