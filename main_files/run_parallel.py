@@ -44,6 +44,8 @@ def getopt():
                         type=float)
     parser.add_argument("-l", "--lambdas", nargs='*',
                         help="Regularization parameters separated by space")
+    parser.add_argument("-e", "--eta", nargs=1,
+                        help="Eta factor to increase or decrease L1 regularization", default=1.0, const=float)
     parser.add_argument("-o", "--output", nargs="*",
                         help="Path/s and/or name/s of the output file/s in FITS/npy format", required=True)
     parser.add_argument("-I", "--index", nargs='?',
@@ -57,6 +59,7 @@ def getopt():
     spec_idx = vars(args)['spectral_idx']
     freq_f = vars(args)['freq_file']
     reg_terms = vars(args)['lambdas']
+    eta_term = vars(args)['eta']
     output = vars(args)['output']
     index = vars(args)['index']
     nsigmas = vars(args)['sigmas']
@@ -67,11 +70,11 @@ def getopt():
         print("this is myprogram version 0.1")
         sys.exit(1)
 
-    return cubes, mfs_images, spec_idx, freq_f, reg_terms, output, index, nsigmas, verbose
+    return cubes, mfs_images, spec_idx, freq_f, reg_terms, eta_term, output, index, nsigmas, verbose
 
 
 def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None, noise=None,
-                     mask_idxs=None, idx=None, use_wavelet=True):
+                     mask_idxs=None, idx=None, eta=1.0, use_wavelet=True):
     i = mask_idxs[0][idx]
     j = mask_idxs[1][idx]
 
@@ -86,7 +89,7 @@ def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None, 
 
     if noise is None:
         edges_idx = np.where(np.abs(parameter.phi) > parameter.max_faraday_depth / 1.5)
-        noise = 0.5 * (np.std(F_dirty[edges_idx].real) + np.std(F_dirty[edges_idx].imag))
+        noise = eta * 0.5 * (np.std(F_dirty[edges_idx].real) + np.std(F_dirty[edges_idx].imag))
 
     F[0, :, i, j] = F_dirty
 
@@ -127,7 +130,7 @@ def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None, 
 
 
 def main():
-    cubes, mfs_images, spectral_idx, freq_f, lambda_reg, output, index, nsigmas, verbose = getopt()
+    cubes, mfs_images, spectral_idx, freq_f, lambda_reg, eta, output, index, nsigmas, verbose = getopt()
     index = int(index)
     mfs_counter = len(mfs_images)
     cube_counter = len(cubes)
@@ -227,7 +230,7 @@ def main():
     del global_dataset
 
     Parallel(n_jobs=-3, backend="multiprocessing", verbose=10)(delayed(reconstruct_cube)(
-        F, data, sigma, nu, spectral_idx, None, workers_idxs, i, False) for i in range(0, total_pixels))
+        F, data, sigma, nu, spectral_idx, None, workers_idxs, i, eta, False) for i in range(0, total_pixels))
 
     results_folder = "recon_l1_testW/"
     os.makedirs(results_folder, exist_ok=True)
