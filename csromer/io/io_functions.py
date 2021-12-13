@@ -20,11 +20,7 @@ def filter_cubes(data_I, data_Q, data_U, header):
     sum_U = np.nansum(data_U, axis=(1, 2))
     correct_freqs = np.where((sum_I != 0.0) | (sum_Q != 0.0) | (sum_U != 0.0))[0]
     filtered_data = 100.0 * (nfreqs - len(correct_freqs))/nfreqs
-    print(nfreqs)
     print("Filtering {0:.2f}% of the total data".format(filtered_data))
-    print(len(correct_freqs))
-    print(correct_freqs)
-    print(correct_freqs.shape)
     return data_I[correct_freqs], data_Q[correct_freqs], data_U[correct_freqs], nu[correct_freqs]
 
 
