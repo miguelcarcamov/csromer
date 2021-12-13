@@ -10,6 +10,18 @@ from astropy.io import fits
 import sys
 
 
+def filter_cubes(data_I, data_Q, data_U, header):
+    init_freq = header["CRVAL3"]
+    nfreqs = header["NAXIS3"]
+    step_freq = header["CDELT3"]
+    nu = init_freq + np.arange(0, nfreqs) * step_freq
+    sum_I = np.nansum(data_I, axis=(1, 2))
+    sum_Q = np.nansum(data_Q, axis=(1, 2))
+    sum_U = np.nansum(data_U, axis=(1, 2))
+    correct_freqs = np.where((sum_I != 0.0) & (sum_Q != 0.0) & (sum_U != 0.0))
+    return data_I[correct_freqs], data_Q[correct_freqs], data_U[correct_freqs], nu[correct_freqs]
+
+
 class Reader:
     def __init__(self, stokes_I_name=None, stokes_Q_name=None, stokes_U_name=None, Q_cube_name=None, U_cube_name=None,
                  freq_file_name=None, numpy_file=None):
