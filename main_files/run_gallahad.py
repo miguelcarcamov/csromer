@@ -7,7 +7,7 @@ from joblib import Parallel, delayed, load, dump
 from astropy.io import fits
 import shutil
 
-from csromer.io import Reader, Writer
+from csromer.io import Reader, Writer, filter_cubes
 from csromer.utils import calculate_noise, make_mask_faraday
 from csromer.base import Dataset
 from csromer.reconstruction import Parameter
@@ -46,8 +46,6 @@ def getopt():
                         help="Eta factor to increase or decrease L1 regularization", default=1.0, const=float)
     parser.add_argument("-o", "--output", nargs="*",
                         help="Path/s and/or name/s of the output file/s in FITS/npy format", required=True)
-    parser.add_argument("-I", "--index", nargs='?',
-                        help="Selected index of the pixel on where the minimization is done", const=int, default=0)
 
     # read arguments from the command line
     args = parser.parse_args()
@@ -55,11 +53,9 @@ def getopt():
     cubes = vars(args)['cubes']
     mfs_images = vars(args)['mfs']
     spec_idx = vars(args)['spectral_idx']
-    freq_f = vars(args)['freq_file']
     reg_terms = vars(args)['lambdas']
     eta_term = vars(args)['eta']
     output = vars(args)['output']
-    index = vars(args)['index']
     nsigmas = vars(args)['sigmas']
     verbose = vars(args)['verbose']
     # check for --version or -V
@@ -68,7 +64,7 @@ def getopt():
         print("this is myprogram version 0.1")
         sys.exit(1)
 
-    return cubes, mfs_images, spec_idx, freq_f, reg_terms, eta_term, output, index, nsigmas, verbose
+    return cubes, mfs_images, spec_idx, reg_terms, eta_term, output, nsigmas, verbose
 
 
 def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None, noise=None,
@@ -128,30 +124,22 @@ def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None, 
 
 
 def main():
-    cubes, mfs_images, spectral_idx, freq_f, lambda_reg, eta, output, index, nsigmas, verbose = getopt()
+    cubes, mfs_images, spectral_idx, lambda_reg, eta, output, nsigmas, verbose = getopt()
     eta = float(eta)
     index = int(index)
-    mfs_counter = len(mfs_images)
-    cube_counter = len(cubes)
 
-    if cube_counter > 1:
-        print("Reading images")
-        reader = Reader(stokes_I_name=mfs_images[0], stokes_Q_name=mfs_images[1], stokes_U_name=mfs_images[2],
-                        Q_cube_name=cubes[0], U_cube_name=cubes[1], freq_file_name=freq_f)
-        Q, U, QU_header = reader.readQU()
-        Q = np.flipud(Q)
-        U = np.flipud(U)
-        M = Q.shape[1]
-        N = Q.shape[2]
-    else:
-        reader = Reader(freq_file_name=freq_f, numpy_file=images[0])
-        Q, U = reader.readNumpyFile()
-        Q = np.flipud(Q)
-        U = np.flipud(U)
+    reader = Reader()
+    IQUV, IQUV_header = reader.readQU(cubes)
+    I, Q, U, nu = filter_cubes(IQUV[0], IQUV[1], IQUV[2])
+    Q = np.flipud(Q)
+    U = np.flipud(U)
+    M = Q.shape[1]
+    N = Q.shape[2]
 
-    I_header, I_mfs = reader.readImage(stokes="I")
-    Q_header, Q_mfs = reader.readImage(stokes="Q")
-    U_header, U_mfs = reader.readImage(stokes="U")
+    IQUV_mfs, IQUV_mfs_header = reader.readQU(mfs_images)
+    I_mfs = IQUV_mfs[0]
+    Q_mfs = IQUV_mfs[1]
+    U_mfs = IQUV_mfs[2]
 
     if spectral_idx is None:
         spectral_idx = np.zeros_like(I_mfs)
@@ -180,8 +168,6 @@ def main():
     workers_idxs, masked_idxs = make_mask_faraday(I_mfs, P_mfs, Q, U, spectral_idx, nsigmas[0] * sigma_I,
                                                   nsigmas[1] * sigma_P)
 
-    nu = reader.readFreqsNumpyFile()
-
     sigma = 0.5 * (sigma_Q_cube + sigma_U_cube)
 
     global_dataset = Dataset(nu=nu, sigma=sigma)
@@ -189,7 +175,7 @@ def main():
     # Get Milky-way RM contribution
     f_sky = FaradaySky(filename="/raid/scratch/carcamo/repos/csromer/faradaysky/faraday2020v2.hdf5")
 
-    mean_sky, std_sky = f_sky.galactic_rm_image(I_header, use_bilinear_interpolation=True)
+    mean_sky, std_sky = f_sky.galactic_rm_image(IQUV_header, use_bilinear_interpolation=True)
 
     # Subtract Milky-way RM contribution
     P = Q + 1j * U
@@ -231,7 +217,7 @@ def main():
     Parallel(n_jobs=-3, backend="multiprocessing", verbose=10)(delayed(reconstruct_cube)(
         F, data, sigma, nu, spectral_idx, None, workers_idxs, i, eta, False) for i in range(0, total_pixels))
 
-    results_folder = "recon_l1_testW/"
+    results_folder = os.path.join(output)
     os.makedirs(results_folder, exist_ok=True)
 
     phi = global_parameter.phi
@@ -257,28 +243,28 @@ def main():
 
     writer = Writer()
 
-    writer.writeFITS(data=max_rotated_intensity_image, header=I_header,
+    writer.writeFITS(data=max_rotated_intensity_image, header=IQUV_header,
                      output=results_folder + "max_rotated_intensity.fits")
 
-    writer.writeFITS(data=max_faraday_depth, header=I_header, output=results_folder + "max_faraday_depth.fits")
+    writer.writeFITS(data=max_faraday_depth, header=IQUV_header, output=results_folder + "max_faraday_depth.fits")
 
-    writer.writeFITS(data=Pfraction_from_faraday, header=I_header, output=results_folder + "polarization_fraction.fits")
+    writer.writeFITS(data=Pfraction_from_faraday, header=IQUV_header, output=results_folder + "polarization_fraction.fits")
 
     dirty_F[:, masked_idxs[0], masked_idxs[1]] = np.nan
     model_F[:, masked_idxs[0], masked_idxs[1]] = np.nan
     restored_F[:, masked_idxs[0], masked_idxs[1]] = np.nan
     residual_F[:, masked_idxs[0], masked_idxs[1]] = np.nan
 
-    writer.writeFITSCube(dirty_F, I_header, len(phi), phi, np.abs(phi[1] - phi[0]),
+    writer.writeFITSCube(dirty_F, IQUV_header, len(phi), phi, np.abs(phi[1] - phi[0]),
                          output=results_folder + "faraday_dirty.fits")
 
-    writer.writeFITSCube(model_F, I_header, len(phi), phi, np.abs(phi[1] - phi[0]),
+    writer.writeFITSCube(model_F, IQUV_header, len(phi), phi, np.abs(phi[1] - phi[0]),
                          output=results_folder + "faraday_model.fits")
 
-    writer.writeFITSCube(restored_F, I_header, len(phi), phi, np.abs(phi[1] - phi[0]),
+    writer.writeFITSCube(restored_F, IQUV_header, len(phi), phi, np.abs(phi[1] - phi[0]),
                          output=results_folder + "faraday_restored.fits")
 
-    writer.writeFITSCube(residual_F, I_header, len(phi), phi, np.abs(phi[1] - phi[0]),
+    writer.writeFITSCube(residual_F, IQUV_header, len(phi), phi, np.abs(phi[1] - phi[0]),
                          output=results_folder + "faraday_residual.fits")
 
     del global_parameter
