@@ -141,19 +141,19 @@ class Writer:
                 string_tuple = self.output.partition(".fits")
                 output_real = string_tuple[0] + "_real" + string_tuple[1]
                 output_imag = string_tuple[0] + "_imag" + string_tuple[1]
-                fits.writeto(output_real, data=cube.real, header=header, overwrite=overwrite)
-                fits.writeto(output_imag, data=cube.imag, header=header, overwrite=overwrite)
+                fits.writeto(output_real, data=cube.real, header=header, overwrite=overwrite,  output_verify='silentfix')
+                fits.writeto(output_imag, data=cube.imag, header=header, overwrite=overwrite,  output_verify='silentfix')
             else:
-                fits.writeto(self.output, data=cube, header=header, overwrite=overwrite)
+                fits.writeto(self.output, data=cube, header=header, overwrite=overwrite,  output_verify='silentfix')
         else:
             if cube.dtype == np.complex64 or cube.dtype == np.complex128:
                 string_tuple = output.partition(".fits")
                 output_real = string_tuple[0] + "_real" + string_tuple[1]
                 output_imag = string_tuple[0] + "_imag" + string_tuple[1]
-                fits.writeto(output_real, data=cube.real, header=header, overwrite=overwrite)
-                fits.writeto(output_imag, data=cube.imag, header=header, overwrite=overwrite)
+                fits.writeto(output_real, data=cube.real, header=header, overwrite=overwrite, output_verify='silentfix')
+                fits.writeto(output_imag, data=cube.imag, header=header, overwrite=overwrite,  output_verify='silentfix')
             else:
-                fits.writeto(output, data=cube, header=header, overwrite=overwrite)
+                fits.writeto(output, data=cube, header=header, overwrite=overwrite,  output_verify='silentfix')
 
     def writeNPCube(self, cube, output=None):
         if output is None:
