@@ -44,7 +44,7 @@ def getopt():
                         help="Regularization parameters separated by space")
     parser.add_argument("-e", "--eta", nargs='?',
                         help="Eta factor to increase or decrease L1 regularization", default=1.0, const=float)
-    parser.add_argument("-o", "--output", nargs="*",
+    parser.add_argument("-o", "--output",
                         help="Path/s and/or name/s of the output file/s in FITS/npy format", required=True)
 
     # read arguments from the command line
@@ -126,7 +126,6 @@ def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None, 
 def main():
     cubes, mfs_images, spectral_idx, lambda_reg, eta, output, nsigmas, verbose = getopt()
     eta = float(eta)
-    index = int(index)
 
     reader = Reader()
     IQUV, IQUV_header = reader.readQU(cubes)

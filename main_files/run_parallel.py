@@ -46,7 +46,7 @@ def getopt():
                         help="Regularization parameters separated by space")
     parser.add_argument("-e", "--eta", nargs='?',
                         help="Eta factor to increase or decrease L1 regularization", default=1.0, const=float)
-    parser.add_argument("-o", "--output", nargs="*",
+    parser.add_argument("-o", "--output",
                         help="Path/s and/or name/s of the output file/s in FITS/npy format", required=True)
     parser.add_argument("-I", "--index", nargs='?',
                         help="Selected index of the pixel on where the minimization is done", const=int, default=0)
