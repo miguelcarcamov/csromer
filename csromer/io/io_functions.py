@@ -23,6 +23,8 @@ def filter_cubes(data_I, data_Q, data_U, header):
     print(nfreqs)
     print("Filtering {0:.2f}% of the total data".format(filtered_data))
     print(len(correct_freqs))
+    print(correct_freqs)
+    print(correct_freqs.shape)
     return data_I[correct_freqs], data_Q[correct_freqs], data_U[correct_freqs], nu[correct_freqs]
 
 
