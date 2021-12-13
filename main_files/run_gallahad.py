@@ -29,9 +29,9 @@ def getopt():
                         help="show program version", action="store_true")
     parser.add_argument("-v", "--verbose",
                         help="Print output", action="store_true")
-    parser.add_argument("-c", "--cubes", nargs='?',
+    parser.add_argument("-c", "--cubes",
                         help="Input Cubes Stokes polarized images (I,Q,U,V)", required=True)
-    parser.add_argument("-m", "--mfs", nargs='?',
+    parser.add_argument("-m", "--mfs",
                         help="Input MFS Stokes polarized images (I,Q,U,V)", required=True)
     parser.add_argument("-a", "--spectral_idx",
                         help="Input Spectral Index Image", required=False)
@@ -63,7 +63,6 @@ def getopt():
     if args.version:
         print("this is myprogram version 0.1")
         sys.exit(1)
-
     return cubes, mfs_images, spec_idx, reg_terms, eta_term, output, nsigmas, verbose
 
 
@@ -128,14 +127,14 @@ def main():
     eta = float(eta)
 
     reader = Reader()
-    IQUV, IQUV_header = reader.readQU(cubes)
-    I, Q, U, nu = filter_cubes(IQUV[0], IQUV[1], IQUV[2])
+    IQUV, IQUV_header = reader.readCube(cubes)
+    I, Q, U, nu = filter_cubes(IQUV[0], IQUV[1], IQUV[2], IQUV_header)
     Q = np.flipud(Q)
     U = np.flipud(U)
     M = Q.shape[1]
     N = Q.shape[2]
 
-    IQUV_mfs, IQUV_mfs_header = reader.readQU(mfs_images)
+    IQUV_mfs, IQUV_mfs_header = reader.readCube(mfs_images)
     I_mfs = IQUV_mfs[0]
     Q_mfs = IQUV_mfs[1]
     U_mfs = IQUV_mfs[2]
