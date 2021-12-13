@@ -233,7 +233,7 @@ def main():
     Parallel(n_jobs=-3, backend="multiprocessing", verbose=10)(delayed(reconstruct_cube)(
         F, data, sigma, nu, spectral_idx, None, workers_idxs, i, eta, False) for i in range(0, total_pixels))
 
-    results_folder = "recon_l1_testW/"
+    results_folder = output
     os.makedirs(results_folder, exist_ok=True)
 
     phi = global_parameter.phi
