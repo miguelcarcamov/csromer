@@ -127,14 +127,14 @@ def main():
     eta = float(eta)
 
     reader = Reader()
-    IQUV, IQUV_header = reader.readCube(cubes)
+    IQUV_header, IQUV = reader.readCube(cubes)
     I, Q, U, nu = filter_cubes(IQUV[0], IQUV[1], IQUV[2], IQUV_header)
     Q = np.flipud(Q)
     U = np.flipud(U)
     M = Q.shape[1]
     N = Q.shape[2]
 
-    IQUV_mfs, IQUV_mfs_header = reader.readCube(mfs_images)
+    IQUV_mfs_header, IQUV_mfs = reader.readCube(mfs_images)
     I_mfs = IQUV_mfs[0]
     Q_mfs = IQUV_mfs[1]
     U_mfs = IQUV_mfs[2]
