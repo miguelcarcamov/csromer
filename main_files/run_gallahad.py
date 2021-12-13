@@ -29,9 +29,9 @@ def getopt():
                         help="show program version", action="store_true")
     parser.add_argument("-v", "--verbose",
                         help="Print output", action="store_true")
-    parser.add_argument("-c", "--cubes", nargs=1,
+    parser.add_argument("-c", "--cubes", nargs='?',
                         help="Input Cubes Stokes polarized images (I,Q,U,V)", required=True)
-    parser.add_argument("-m", "--mfs", nargs=1,
+    parser.add_argument("-m", "--mfs", nargs='?',
                         help="Input MFS Stokes polarized images (I,Q,U,V)", required=True)
     parser.add_argument("-a", "--spectral_idx",
                         help="Input Spectral Index Image", required=False)
