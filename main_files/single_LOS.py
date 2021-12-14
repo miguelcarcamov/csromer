@@ -11,13 +11,15 @@ from csromer.base import Dataset
 from csromer.reconstruction import Parameter
 from csromer.transformers import DFT1D, NUFFT1D
 from csromer.objectivefunction import OFunction
-from csromer.objectivefunction import TSV, TV, L1, Chi2
+from csromer.objectivefunction import TSV, L1, Chi2
+from csromer.dictionaries import DiscreteWavelet, UndecimatedWavelet
 from csromer.optimization import FISTA
 from csromer.transformers import MeanFlagger
 from csromer.faraday_sky import FaradaySky
 
 cubes = sys.argv[1]
 spc_idx = float(sys.argv[2])
+use_wavelet = eval(sys.argv[3])
 
 reader = Reader()
 IQUV_header, IQUV = reader.readCube(cubes)
@@ -68,9 +70,15 @@ noise = 0.5 * 0.5 * (np.std(F_dirty.real[np.abs(parameter.phi) > parameter.max_f
 parameter.data = F_dirty
 parameter.complex_data_to_real()
 
+if use_wavelet:
+    wav = DiscreteWavelet(wavelet_name="rbio5.5", mode="periodization")
+    # wav = UndecimatedWavelet(wavelet_name="haar")
+else:
+    wav = None
+
 lambda_l1 = np.sqrt(2 * len(measurements.data) + np.sqrt(4 * len(measurements.data))) * noise
 lambda_tsv = 0.0
-chi2 = Chi2(dft_obj=nufft)
+chi2 = Chi2(dft_obj=nufft, wavelet=wav)
 l1 = L1(reg=lambda_l1)
 tsv = TSV(reg=lambda_tsv)
 # F_func = [chi2(P, dft, W), L1(lambda_l1)]
@@ -85,6 +93,12 @@ g_obj = OFunction(g_func)
 opt = FISTA(guess_param=parameter, F_obj=F_obj, fx=chi2, gx=g_obj, noise=noise, verbose=True)
 obj, X = opt.run()
 
+if wav is not None:
+    coeffs = X.data.copy()
+    X.data = wav.reconstruct(X.data)
+else:
+    coeffs = None
+
 X.real_data_to_complex()
 
 F_residual = nufft.backward(measurements.residual)
@@ -94,61 +108,68 @@ phi_idx = np.argmax(np.abs(F_restored))
 print("Rotation Measure at peak {0:.2f}".format(parameter.phi[phi_idx]))
 print("Rotated intensity {0:.2f}".format(np.max(np.abs(F_restored))))
 
-fig, axs = plt.subplots(2, 4)
 
-# l2-squared data
-axs[0, 0].plot(measurements.lambda2, measurements.data.real, 'k.', label=r"Stokes $Q$")
-axs[0, 0].plot(measurements.lambda2, measurements.data.imag, 'c.', label=r"Stokes $U$")
-axs[0, 0].plot(measurements.lambda2, np.abs(measurements.data), 'g.', label=r"$|P|$")
-axs[0, 0].xlabel(r'$\lambda^2$[m$^{2}$]')
-axs[0, 0].ylabel(r'Jy/beam')
+fig, ax = plt.subplots(nrows=2, ncols=4, figsize=(18, 5))
 
-# l2-squared model
-axs[0, 1].plot(measurements.lambda2, measurements.model_data.real, 'k.', label=r"Stokes $Q$")
-axs[0, 1].plot(measurements.lambda2, measurements.model_data.imag, 'c.', label=r"Stokes $U$")
-axs[0, 1].plot(measurements.lambda2, np.abs(measurements.model_data), 'g.', label=r"$|P|$")
-axs[0, 1].xlabel(r'$\lambda^2$[m$^{2}$]')
-axs[0, 1].ylabel(r'Jy/beam')
+# Data
+ax[0, 0].plot(measurements.lambda2, measurements.data.real, 'k.', label=r"Stokes $Q$")
+ax[0, 0].plot(measurements.lambda2, measurements.data.imag, 'c.', label=r"Stokes $U$")
+ax[0, 0].plot(measurements.lambda2, np.abs(measurements.data), 'g.', label=r"$|P|$")
+ax[0, 0].set_xlabel(r'$\lambda^2$[m$^{2}$]')
+ax[0, 0].set_ylabel(r'Jy/beam')
+ax[0, 0].title.set_text("Data")
 
-# l2-squared residuals
-axs[0, 1].plot(measurements.lambda2, measurements.residual.real, 'k.', label=r"Stokes $Q$")
-axs[0, 1].plot(measurements.lambda2, measurements.residual.imag, 'c.', label=r"Stokes $U$")
-axs[0, 1].plot(measurements.lambda2, np.abs(measurements.residual), 'g.', label=r"$|P|$")
-axs[0, 1].xlabel(r'$\lambda^2$[m$^{2}$]')
-axs[0, 1].ylabel(r'Jy/beam')
+ax[1, 0].plot(parameter.phi, F_dirty.real, 'c--', label=r"Stokes $Q$")
+ax[1, 0].plot(parameter.phi, F_dirty.imag, 'c:', label=r"Stokes $U$")
+ax[1, 0].plot(parameter.phi, np.abs(F_dirty), 'k-', label=r"|P|")
+ax[1, 0].set_xlabel(r'$\phi$[rad m$^{-2}$]')
+ax[1, 0].set_ylabel(r'Jy/beam m$^2$ rad$^{-1}$ rmtf$^{-1}$')
+ax[1, 0].set_xlim([-1000, 1000])
 
-# Faraday dirty
-axs[1, 0].plot(parameter.phi, F_dirty.real, 'c--', label=r"Stokes $Q$")
-axs[1, 0].plot(parameter.phi, F_dirty.imag, 'c:', label=r"Stokes $U$")
-axs[1, 0].plot(parameter.phi, np.abs(F_dirty), 'k-', label=r"$|P|$")
-axs[1, 0].set_xlim([-1000, 1000])
-axs[1, 0].set_xlabel(r'$\phi$[rad m$^{-2}$]')
-axs[1, 0].set_ylabel(r'Jy/beam m$^2$ rad$^{-1}$ rmtf$^{-1}$')
-axs[1, 0].legend(loc='upper right')
-# Faraday model
-axs[1, 1].plot(parameter.phi, X.data.real, 'c--', label=r"Stokes $Q$")
-axs[1, 1].plot(parameter.phi, X.data.imag, 'c:', label=r"Stokes $U$")
-axs[1, 1].plot(parameter.phi, np.abs(X.data), 'k-', label=r"$|P|$")
-axs[1, 1].set_xlim([-1000, 1000])
-axs[1, 1].set_xlabel(r'$\phi$[rad m$^{-2}$]')
-axs[1, 1].set_ylabel(r'Jy/beam m$^2$ rad$^{-1}$ pix$^{-1}$')
-axs[1, 1].legend(loc='upper right')
-# Faraday residuals
-axs[1, 2].plot(parameter.phi, F_residual.real, 'c--', label=r"Stokes $Q$")
-axs[1, 2].plot(parameter.phi, F_residual.imag, 'c:', label=r"Stokes $U$")
-axs[1, 2].plot(parameter.phi, np.abs(F_residual), 'k-', label=r"$|P|$")
-axs[1, 2].set_xlim([-1000, 1000])
-axs[1, 2].set_xlabel(r'$\phi$[rad m$^{-2}$]')
-axs[1, 2].set_ylabel(r'Jy/beam m$^2$ rad$^{-1}$ rmtf$^{-1}$')
-axs[1, 2].legend(loc='upper right')
-# Faraday restored
-axs[1, 3].plot(parameter.phi, F_restored.real, 'c--', label=r"Stokes $Q$")
-axs[1, 3].plot(parameter.phi, F_restored.imag, 'c:', label=r"Stokes $U$")
-axs[1, 3].plot(parameter.phi, np.abs(F_restored), 'k-', label=r"$|P|$")
-axs[1, 3].set_xlim([-1000, 1000])
-axs[1, 3].set_xlabel(r'$\phi$[rad m$^{-2}$]')
-axs[1, 3].set_ylabel(r'Jy/beam m$^2$ rad$^{-1}$ rmtf$^{-1}$')
-axs[1, 3].legend(loc='upper right')
+# Model
+ax[0, 1].plot(measurements.lambda2, measurements.model_data.real, 'k.', label=r"Stokes $Q$")
+ax[0, 1].plot(measurements.lambda2, measurements.model_data.imag, 'c.', label=r"Stokes $U$")
+ax[0, 1].plot(measurements.lambda2, np.abs(measurements.model_data), 'g.', label=r"$|P|$")
+ax[0, 1].set_xlabel(r'$\lambda^2$[m$^{2}$]')
+ax[0, 1].set_ylabel(r'Jy/beam')
+ax[0, 1].title.set_text("Model")
 
-plt.tight_layout()
+ax[1, 1].plot(parameter.phi, X.data.real, 'c--', label=r"Stokes $Q$")
+ax[1, 1].plot(parameter.phi, X.data.imag, 'c:', label=r"Stokes $U$")
+ax[1, 1].plot(parameter.phi, np.abs(X.data), 'k-', label=r"$|P|$")
+ax[1, 1].set_xlabel(r'$\phi$[rad m$^{-2}$]')
+ax[1, 1].set_ylabel(r'Jy/beam m$^2$ rad$^{-1}$ pix$^{-1}$')
+ax[1, 1].set_xlim([-1000, 1000])
+
+# Residual
+
+ax[0, 2].plot(measurements.lambda2, measurements.residual.real, 'k.', label=r"Stokes $Q$")
+ax[0, 2].plot(measurements.lambda2, measurements.residual.imag, 'c.', label=r"Stokes $U$")
+ax[0, 2].plot(measurements.lambda2, np.abs(measurements.residual), 'g.', label=r"$|P|$")
+ax[0, 2].set_xlabel(r'$\lambda^2$[m$^{2}$]')
+ax[0, 2].set_ylabel(r'Jy/beam')
+ax[0, 2].title.set_text("Residual")
+
+ax[1, 2].plot(parameter.phi, F_residual.real, 'c--', label=r"Stokes $Q$")
+ax[1, 2].plot(parameter.phi, F_residual.imag, 'c:', label=r"Stokes $U$")
+ax[1, 2].plot(parameter.phi, np.abs(F_residual), 'k-', label=r"$|P|$")
+ax[1, 2].set_xlabel(r'$\phi$[rad m$^{-2}$]')
+ax[1, 2].set_ylabel(r'Jy/beam m$^2$ rad$^{-1}$ rmtf$^{-1}$')
+ax[1, 2].set_xlim([-1000, 1000])
+
+
+# Restored & Coeffs if any
+
+if coeffs is not None:
+    ax[0, 3].plot(coeffs)
+
+ax[1, 3].plot(parameter.phi, F_restored.real, 'c--', label=r"Stokes $Q$")
+ax[1, 3].plot(parameter.phi, F_restored.imag, 'c:', label=r"Stokes $U$")
+ax[1, 3].plot(parameter.phi, np.abs(F_restored), 'k-', label=r"$|P|$")
+ax[1, 3].set_xlim([-1000, 1000])
+ax[1, 3].set_xlabel(r'$\phi$[rad m$^{-2}$]')
+ax[1, 3].set_ylabel(r'Jy/beam m$^2$ rad$^{-1}$ rmtf$^{-1}$')
+ax[1, 3].title.set_text("Restored")
+
+fig.tight_layout()
 fig.savefig("single_los.pdf", dpi=600)
