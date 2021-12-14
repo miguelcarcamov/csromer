@@ -128,6 +128,7 @@ def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None, 
 def main():
     cubes, mfs_images, spectral_idx, lambda_reg, eta, nthreads, output, nsigmas, verbose = getopt()
     eta = float(eta)
+    nthreads = int(nthreads)
 
     reader = Reader()
     IQUV_header, IQUV = reader.readCube(cubes)
@@ -174,7 +175,7 @@ def main():
     global_dataset = Dataset(nu=nu, sigma=sigma)
 
     # Get Milky-way RM contribution
-    f_sky = FaradaySky(filename="/raid/scratch/carcamo/repos/csromer/faradaysky/faraday2020v2.hdf5")
+    f_sky = FaradaySky(filename="/share/nas2/carcamo/repos/csromer/faradaysky/faraday2020v2.hdf5")
 
     mean_sky, std_sky = f_sky.galactic_rm_image(IQUV_header, use_bilinear_interpolation=True)
 

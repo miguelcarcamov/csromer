@@ -167,7 +167,6 @@ ax2[2].set_ylabel(r'Jy/beam m$^2$ rad$^{-1}$ rmtf$^{-1}$')
 ax2[2].set_xlim([-1000, 1000])
 ax2[2].legend()
 
-
 # Restored & Coeffs if any
 
 ax2[3].plot(parameter.phi, F_restored.real, 'c--', label=r"Stokes $Q$")
