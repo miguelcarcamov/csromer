@@ -46,6 +46,8 @@ def getopt():
                         help="Regularization parameters separated by space")
     parser.add_argument("-e", "--eta", nargs='?',
                         help="Eta factor to increase or decrease L1 regularization", default=1.0, const=float)
+    parser.add_argument("-t", "--nthreads", nargs='?',
+                        help="Number of threads running in parallel", default=-3, const=int)
     parser.add_argument("-o", "--output",
                         help="Path/s and/or name/s of the output file/s in FITS/npy format", required=True)
     parser.add_argument("-I", "--index", nargs='?',
@@ -60,6 +62,7 @@ def getopt():
     freq_f = vars(args)['freq_file']
     reg_terms = vars(args)['lambdas']
     eta_term = vars(args)['eta']
+    nthreads = vars(args)['nthreads']
     output = vars(args)['output']
     index = vars(args)['index']
     nsigmas = vars(args)['sigmas']
@@ -70,7 +73,7 @@ def getopt():
         print("this is myprogram version 0.1")
         sys.exit(1)
 
-    return cubes, mfs_images, spec_idx, freq_f, reg_terms, eta_term, output, index, nsigmas, verbose
+    return cubes, mfs_images, spec_idx, freq_f, reg_terms, eta_term, nthreads, output, index, nsigmas, verbose
 
 
 def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None, noise=None,
@@ -130,7 +133,7 @@ def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None, 
 
 
 def main():
-    cubes, mfs_images, spectral_idx, freq_f, lambda_reg, eta, output, index, nsigmas, verbose = getopt()
+    cubes, mfs_images, spectral_idx, freq_f, lambda_reg, eta, nthreads, output, index, nsigmas, verbose = getopt()
     eta = float(eta)
     index = int(index)
     mfs_counter = len(mfs_images)
@@ -230,7 +233,7 @@ def main():
 
     del global_dataset
 
-    Parallel(n_jobs=-3, backend="multiprocessing", verbose=10)(delayed(reconstruct_cube)(
+    Parallel(n_jobs=nthreads, backend="multiprocessing", verbose=10)(delayed(reconstruct_cube)(
         F, data, sigma, nu, spectral_idx, None, workers_idxs, i, eta, False) for i in range(0, total_pixels))
 
     results_folder = os.path.join(output, '')
