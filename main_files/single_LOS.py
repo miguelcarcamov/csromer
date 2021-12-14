@@ -27,7 +27,7 @@ I, Q, U, nu = filter_cubes(IQUV[0], IQUV[1], IQUV[2], IQUV_header)
 Q = np.flipud(Q)
 U = np.flipud(U)
 
-coord = SkyCoord(ra=173.571 * un.deg, dec=49.151 * un.deg, frame=IQUV_header["RADESYS"])
+coord = SkyCoord(ra=173.571 * un.deg, dec=49.151 * un.deg, frame=IQUV_header["RADESYS"].lower())
 wcs = WCS(IQUV_header, naxis=2)
 
 x, y = coord.to_pixel(wcs, origin=0)
@@ -45,7 +45,7 @@ data = Q[:, y, x] + 1j * U[:, y, x]
 measurements = Dataset(nu=nu, data=data, sigma=sigma_qu, spectral_idx=spc_idx)
 
 f_sky = FaradaySky(filename="/raid/scratch/carcamo/repos/csromer/faradaysky/faraday2020v2.hdf5")
-gal_mean, gal_std = f_sky.galactic_rm(coord.ra, coord.dec, frame="fk5")
+gal_mean, gal_std = f_sky.galactic_rm(coord.ra, coord.dec, frame=IQUV_header["RADESYS"].lower())
 
 measurements.subtract_galacticrm(gal_mean.value)
 
