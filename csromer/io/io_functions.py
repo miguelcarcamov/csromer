@@ -46,7 +46,7 @@ class Reader:
         try:
             hdu = fits.open(file, memmap=memmap)
         except FileNotFoundError:
-            print("FileNotFoundError: The I FITS file cannot be found")
+            print("FileNotFoundError: The FITS file cannot be found")
             sys.exit(1)
 
         print("FITS shape: ", hdu[0].data.squeeze().shape)
