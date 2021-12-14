@@ -151,3 +151,4 @@ axs[1, 3].set_ylabel(r'Jy/beam m$^2$ rad$^{-1}$ rmtf$^{-1}$')
 axs[1, 3].legend(loc='upper right')
 
 plt.tight_layout()
+fig.savefig("single_los.pdf", dpi=600)
