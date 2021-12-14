@@ -27,7 +27,7 @@ I, Q, U, nu = filter_cubes(IQUV[0], IQUV[1], IQUV[2], IQUV_header)
 Q = np.flipud(Q)
 U = np.flipud(U)
 
-coord = SkyCoord(ra=173.571 * un.deg, dec=49.151 * un.deg, frame=IQUV_header["RADESYS"].lower())
+coord = SkyCoord(ra=149.60414 * un.deg, dec=2.4470554 * un.deg, frame=IQUV_header["RADESYS"].lower())
 wcs = WCS(IQUV_header, naxis=2)
 
 x, y = coord.to_pixel(wcs, origin=0)
