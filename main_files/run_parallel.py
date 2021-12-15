@@ -258,7 +258,7 @@ def main():
     # masked_pol_fraction = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P), pol_fraction,
     #                               np.nan)
     P_cube_from_faraday = np.sqrt(abs_F ** 2 - (2.3 * sigma_P ** 2))
-    P_from_faraday_peak = P_cube_from_faraday[max_faraday_depth_pos]
+    P_from_faraday_peak = np.sqrt(max_rotated_intensity ** 2 - (2.3 * sigma_P ** 2))
     Pfraction_from_faraday = P_from_faraday_peak / I_mfs
 
     sigma_phi_cube = global_parameter.rmtf_fwhm / (2. * P_cube_from_faraday / sigma_P)
