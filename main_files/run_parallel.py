@@ -257,8 +257,12 @@ def main():
                                  phi[max_faraday_depth_pos], np.nan)
     # masked_pol_fraction = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P), pol_fraction,
     #                               np.nan)
-    P_from_faraday = np.sqrt(max_rotated_intensity ** 2 - (2.3 * sigma_P ** 2))
-    Pfraction_from_faraday = P_from_faraday / I_mfs
+    P_cube_from_faraday = np.sqrt(abs_F ** 2 - (2.3 * sigma_P ** 2))
+    P_from_faraday_peak = P_cube_from_faraday[max_faraday_depth_pos]
+    Pfraction_from_faraday = P_from_faraday_peak / I_mfs
+
+    sigma_phi_cube = global_parameter.rmtf_fwhm / (2. * P_cube_from_faraday / sigma_P)
+    sigma_phi_peak = global_parameter.rmtf_fwhm / (2. * P_from_faraday_peak / sigma_P)
 
     writer = Writer()
 
@@ -266,13 +270,14 @@ def main():
                      output=results_folder + "max_rotated_intensity.fits")
 
     writer.writeFITS(data=max_faraday_depth, header=I_header, output=results_folder + "max_faraday_depth.fits")
-
     writer.writeFITS(data=Pfraction_from_faraday, header=I_header, output=results_folder + "polarization_fraction.fits")
+    writer.writeFITS(data=sigma_phi_peak, header=IQUV_header, output=results_folder + "sigma_phi_peak.fits")
 
     dirty_F[:, masked_idxs[0], masked_idxs[1]] = np.nan
     model_F[:, masked_idxs[0], masked_idxs[1]] = np.nan
     restored_F[:, masked_idxs[0], masked_idxs[1]] = np.nan
     residual_F[:, masked_idxs[0], masked_idxs[1]] = np.nan
+    sigma_phi_cube[:, masked_idxs[0], masked_idxs[1]] = np.nan
 
     writer.writeFITSCube(dirty_F, I_header, len(phi), phi, np.abs(phi[1] - phi[0]),
                          output=results_folder + "faraday_dirty.fits")
@@ -285,6 +290,9 @@ def main():
 
     writer.writeFITSCube(residual_F, I_header, len(phi), phi, np.abs(phi[1] - phi[0]),
                          output=results_folder + "faraday_residual.fits")
+
+    writer.writeFITSCube(sigma_phi_cube, I_header, len(phi), phi, np.abs(phi[1] - phi[0]),
+                         output=results_folder + "sigma_phi.fits")
 
     del global_parameter
 
