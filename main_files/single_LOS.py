@@ -67,28 +67,30 @@ F_dirty = dft.backward(measurements.data)
 noise = 0.5 * 0.5 * (np.std(F_dirty.real[np.abs(parameter.phi) > parameter.max_faraday_depth / 1.5]) + np.std(
     F_dirty.imag[np.abs(parameter.phi) > parameter.max_faraday_depth / 1.5]))
 
-parameter.data = F_dirty
-parameter.complex_data_to_real()
-
 if use_wavelet:
     wav = DiscreteWavelet(wavelet_name="rbio5.5", mode="periodization")
     # wav = UndecimatedWavelet(wavelet_name="haar")
 else:
     wav = None
+lambda_tsv = 0.0
 
 lambda_l1 = np.sqrt(2 * len(measurements.data) + np.sqrt(4 * len(measurements.data))) * noise
-lambda_tsv = 0.0
 chi2 = Chi2(dft_obj=nufft, wavelet=wav)
 l1 = L1(reg=lambda_l1)
 tsv = TSV(reg=lambda_tsv)
 # F_func = [chi2(P, dft, W), L1(lambda_l1)]
+
 F_func = [chi2, l1, tsv]
-f_func = [chi2]
-g_func = [l1, tsv]
+g_func = [l1]
 
 F_obj = OFunction(F_func)
-f_obj = OFunction(f_func)
 g_obj = OFunction(g_func)
+
+parameter.data = F_dirty
+parameter.complex_data_to_real()
+
+if wav is not None:
+    parameter.data = wav.decompose(parameter.data)
 
 opt = FISTA(guess_param=parameter, F_obj=F_obj, fx=chi2, gx=g_obj, noise=noise, verbose=True)
 obj, X = opt.run()
@@ -101,7 +103,7 @@ else:
 
 X.real_data_to_complex()
 
-F_residual = nufft.backward(measurements.residual)
+F_residual = dft.backward(measurements.residual)
 F_restored = X.convolve(normalized=True) + F_residual
 
 phi_idx = np.argmax(np.abs(F_restored))

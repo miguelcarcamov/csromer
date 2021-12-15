@@ -126,7 +126,7 @@ def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None, 
         X.data = wav.reconstruct(X.data)
 
     X.real_data_to_complex()
-    F_residual = nufft.backward(dataset.residual)
+    F_residual = dft.backward(dataset.residual)
     F[1, :, i, j] = X.data
     F[2, :, i, j] = X.convolve(normalized=True) + F_residual
     F[3, :, i, j] = F_residual
