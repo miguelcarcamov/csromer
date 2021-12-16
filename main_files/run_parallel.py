@@ -266,6 +266,8 @@ def main():
     # masked_pol_fraction = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P), pol_fraction,
     #                               np.nan)
     sigma_qu_faraday = 0.5 * (np.std(restored_F_edges.real, axis=0) + np.std(restored_F_edges.imag, axis=0))
+    sigma_qu_faraday = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P),
+                                sigma_qu_faraday, np.nan)
     P_from_faraday_peak = np.sqrt(max_rotated_intensity ** 2 - (2.3 * sigma_qu_faraday ** 2))
     Pfraction_from_faraday = P_from_faraday_peak / I_mfs
 
