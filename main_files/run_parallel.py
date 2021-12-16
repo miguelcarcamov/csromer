@@ -76,7 +76,7 @@ def getopt():
     return cubes, mfs_images, spec_idx, freq_f, reg_terms, eta_term, nthreads, output, index, nsigmas, verbose
 
 
-def reconstruct_cube(F=None, sigma_qu=None, data=None, sigma=None, nu=None, spectral_idx=None, noise=None,
+def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None, noise=None,
                      mask_idxs=None, idx=None, eta=1.0, use_wavelet=True):
     i = mask_idxs[0][idx]
     j = mask_idxs[1][idx]
@@ -97,7 +97,6 @@ def reconstruct_cube(F=None, sigma_qu=None, data=None, sigma=None, nu=None, spec
     else:
         noise_qu = noise
         noise = eta * noise_qu
-    sigma_qu[i, j] = noise_qu
 
     F[0, :, i, j] = F_dirty
 
@@ -231,7 +230,6 @@ def main():
     output_file_mmap = os.path.join(folder, 'output_mmap')
 
     F = np.memmap(output_file_mmap, dtype=np.complex64, shape=(4, global_parameter.n, M, N), mode='w+')
-    sigma_qu_faraday = np.ones((M, N), dtype=np.float32) * np.nan
 
     total_pixels = len(workers_idxs[0])
     print("LOS to reconstruct: ", total_pixels)
@@ -240,13 +238,16 @@ def main():
     del global_dataset
 
     Parallel(n_jobs=nthreads, backend="multiprocessing", verbose=10)(delayed(reconstruct_cube)(
-        F, sigma_qu_faraday, data, sigma, nu, spectral_idx, None, workers_idxs, i, eta, False) for i in
+        F, data, sigma, nu, spectral_idx, None, workers_idxs, i, eta, False) for i in
                                                                      range(0, total_pixels))
 
     results_folder = os.path.join(output, '')
     os.makedirs(results_folder, exist_ok=True)
 
     phi = global_parameter.phi
+    edges_phi = np.where(np.abs(phi) > global_parameter.max_faraday_depth / 1.5)
+
+    sigma_qu_faraday = 0.5 * (np.std(F[2, edges_phi].real, axis=0) + np.std(F[2, edges_phi].imag, axis=0))
     phi_output_idx = np.where((phi > -1000) & (phi < 1000))
     phi = phi[phi_output_idx]
     dirty_F = F[0, phi_output_idx].squeeze()
