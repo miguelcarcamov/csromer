@@ -97,7 +97,7 @@ def reconstruct_cube(F=None, sigma_qu=None, data=None, sigma=None, nu=None, spec
     else:
         noise_qu = noise
         noise = eta * noise_qu
-    sigma_qu[i, j] = noise
+    sigma_qu[i, j] = noise_qu
 
     F[0, :, i, j] = F_dirty
 
@@ -231,7 +231,7 @@ def main():
     output_file_mmap = os.path.join(folder, 'output_mmap')
 
     F = np.memmap(output_file_mmap, dtype=np.complex64, shape=(4, global_parameter.n, M, N), mode='w+')
-    sigma_qu_faraday = np.array((M, N), dtype=np.float32)
+    sigma_qu_faraday = np.ones((M, N), dtype=np.float32) * np.nan
 
     total_pixels = len(workers_idxs[0])
     print("LOS to reconstruct: ", total_pixels)
