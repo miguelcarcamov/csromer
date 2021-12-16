@@ -246,13 +246,13 @@ def main():
 
     phi = global_parameter.phi
     edges_phi = np.where(np.abs(phi) > global_parameter.max_faraday_depth / 1.5)
-
-    sigma_qu_faraday = 0.5 * (np.std(F[2, edges_phi].real, axis=0) + np.std(F[2, edges_phi].imag, axis=0))
     phi_output_idx = np.where((phi > -1000) & (phi < 1000))
+
     phi = phi[phi_output_idx]
     dirty_F = F[0, phi_output_idx].squeeze()
     model_F = F[1, phi_output_idx].squeeze()
     restored_F = F[2, phi_output_idx].squeeze()
+    restored_F_edges = F[2, edges_phi].squeeze()
     residual_F = F[3, phi_output_idx].squeeze()
 
     abs_F = np.abs(restored_F)
@@ -265,6 +265,7 @@ def main():
                                  phi[max_faraday_depth_pos], np.nan)
     # masked_pol_fraction = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P), pol_fraction,
     #                               np.nan)
+    sigma_qu_faraday = 0.5 * (np.std(restored_F_edges.real, axis=0) + np.std(restored_F_edges.imag, axis=0))
     P_from_faraday_peak = np.sqrt(max_rotated_intensity ** 2 - (2.3 * sigma_qu_faraday ** 2))
     Pfraction_from_faraday = P_from_faraday_peak / I_mfs
 
