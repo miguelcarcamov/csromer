@@ -69,7 +69,7 @@ def getopt():
     return cubes, mfs_images, spec_idx, reg_terms, eta_term, nthreads, output, nsigmas, verbose
 
 
-def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None, noise=None,
+def reconstruct_cube(F=None, sigma_qu=None, data=None, sigma=None, nu=None, spectral_idx=None, noise=None,
                      mask_idxs=None, idx=None, eta=1.0, use_wavelet=True):
     i = mask_idxs[0][idx]
     j = mask_idxs[1][idx]
@@ -85,7 +85,12 @@ def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None, 
 
     if noise is None:
         edges_idx = np.where(np.abs(parameter.phi) > parameter.max_faraday_depth / 1.5)
-        noise = eta * 0.5 * (np.std(F_dirty[edges_idx].real) + np.std(F_dirty[edges_idx].imag))
+        noise_qu = 0.5 * (np.std(F_dirty[edges_idx].real) + np.std(F_dirty[edges_idx].imag))
+        noise = eta * noise_qu
+    else:
+        noise_qu = noise
+        noise = eta * noise_qu
+    sigma_qu[i, j] = noise
 
     F[0, :, i, j] = F_dirty
 
@@ -209,6 +214,7 @@ def main():
     output_file_mmap = os.path.join(folder, 'output_mmap')
 
     F = np.memmap(output_file_mmap, dtype=np.complex64, shape=(4, global_parameter.n, M, N), mode='w+')
+    sigma_qu_faraday = np.array((M, N), dtype=np.float32)
 
     total_pixels = len(workers_idxs[0])
     print("LOS to reconstruct: ", total_pixels)
@@ -217,7 +223,7 @@ def main():
     del global_dataset
 
     Parallel(n_jobs=nthreads, backend="multiprocessing", verbose=10)(delayed(reconstruct_cube)(
-        F, data, sigma, nu, spectral_idx, None, workers_idxs, i, eta, False) for i in range(0, total_pixels))
+        F, sigma_qu_faraday, data, sigma, nu, spectral_idx, None, workers_idxs, i, eta, False) for i in range(0, total_pixels))
 
     results_folder = os.path.join(output, '')
     os.makedirs(results_folder, exist_ok=True)
@@ -240,12 +246,10 @@ def main():
                                  phi[max_faraday_depth_pos], np.nan)
     # masked_pol_fraction = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P), pol_fraction,
     #                               np.nan)
-    P_cube_from_faraday = np.sqrt(abs_F ** 2 - (2.3 * sigma_P ** 2))
-    P_from_faraday_peak = np.sqrt(max_rotated_intensity ** 2 - (2.3 * sigma_P ** 2))
+    P_from_faraday_peak = np.sqrt(max_rotated_intensity ** 2 - (2.3 * sigma_qu_faraday ** 2))
     Pfraction_from_faraday = P_from_faraday_peak / I_mfs
 
-    sigma_phi_cube = global_parameter.rmtf_fwhm / (2. * P_cube_from_faraday / sigma_P)
-    sigma_phi_peak = global_parameter.rmtf_fwhm / (2. * P_from_faraday_peak / sigma_P)
+    sigma_phi_peak = global_parameter.rmtf_fwhm / (2. * P_from_faraday_peak / sigma_qu_faraday)
 
     writer = Writer()
 
@@ -253,14 +257,15 @@ def main():
                      output=results_folder + "max_rotated_intensity.fits")
 
     writer.writeFITS(data=max_faraday_depth, header=IQUV_header, output=results_folder + "max_faraday_depth.fits")
-    writer.writeFITS(data=Pfraction_from_faraday, header=IQUV_header, output=results_folder + "polarization_fraction.fits")
+    writer.writeFITS(data=Pfraction_from_faraday, header=IQUV_header, output=results_folder + "polarization_fraction"
+                                                                                              ".fits")
     writer.writeFITS(data=sigma_phi_peak, header=IQUV_header, output=results_folder + "sigma_phi_peak.fits")
+    writer.writeFITS(data=sigma_qu_faraday, header=IQUV_header, output=results_folder + "sigma_qu_faraday.fits")
 
     dirty_F[:, masked_idxs[0], masked_idxs[1]] = np.nan
     model_F[:, masked_idxs[0], masked_idxs[1]] = np.nan
     restored_F[:, masked_idxs[0], masked_idxs[1]] = np.nan
     residual_F[:, masked_idxs[0], masked_idxs[1]] = np.nan
-    sigma_phi_cube[:, masked_idxs[0], masked_idxs[1]] = np.nan
 
     writer.writeFITSCube(dirty_F, IQUV_header, len(phi), phi, np.abs(phi[1] - phi[0]),
                          output=results_folder + "faraday_dirty.fits")
@@ -273,9 +278,6 @@ def main():
 
     writer.writeFITSCube(residual_F, IQUV_header, len(phi), phi, np.abs(phi[1] - phi[0]),
                          output=results_folder + "faraday_residual.fits")
-
-    writer.writeFITSCube(sigma_phi_cube, IQUV_header, len(phi), phi, np.abs(phi[1] - phi[0]),
-                         output=results_folder + "sigma_phi.fits")
 
     del global_parameter
 
