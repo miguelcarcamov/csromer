@@ -21,6 +21,16 @@ from csromer.transformers import MeanFlagger
 from csromer.faraday_sky import FaradaySky
 
 
+def check_is_number(n):
+    try:
+        num = float(n)
+        # check for "nan" floats
+        is_number = num == num  # or use `math.isnan(num)`
+    except ValueError:
+        is_number = False
+    return is_number
+
+
 def getopt():
     # initiate the parser
     parser = argparse.ArgumentParser(
@@ -148,9 +158,16 @@ def main():
     U_mfs = IQUV_mfs[2]
 
     if spectral_idx is None:
+        print("No spectral index image - Using constant value 0.0")
         spectral_idx = np.zeros_like(I_mfs)
     else:
-        alpha_header, alpha_mfs = reader.readImage(name=spectral_idx)
+        if isinstance(spectral_idx, str):
+            if check_is_number(spectral_idx):
+                print("Using constant spectral index value of {0:.2f}".format(float(spectral_idx)))
+                alpha_mfs = np.ones_like(I_mfs) * float(spectral_idx)
+            else:
+                alpha_header, alpha_mfs = reader.readImage(name=spectral_idx)
+
         spectral_idx = alpha_mfs
 
     sigma_I = calculate_noise(image=I_mfs, xn=300, yn=300, nsigma=3.0, use_sigma_clipped_stats=True)

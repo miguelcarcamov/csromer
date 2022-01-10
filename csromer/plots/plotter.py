@@ -1,10 +1,7 @@
-import cupy
 import matplotlib.pyplot as plt
 from astropy.wcs import WCS
 from astropy.io import fits
-import matplotlib.colors as colors
-from matplotlib.patches import Ellipse
-from astropy.stats import sigma_clip, sigma_clipped_stats
+from ..utils.utilities import calculate_noise
 from typing import Union, List
 import astropy.units as un
 from astropy.coordinates import SkyCoord
@@ -63,14 +60,6 @@ def astroquery_search(center_coordinate: SkyCoord = None, radius: Quantity = Non
 
     else:
         raise ValueError("Survey List or center coordinate cannot be Nonetype objects")
-
-
-def get_sigma_from_image(image: np.ndarray = None, nsigma=5.0):
-    if image is not None:
-        sigma = sigma_clipped_stats(image, sigma=nsigma)[2]
-        return sigma
-    else:
-        raise ValueError("Cannot get error if image is a Nonetype object")
 
 
 class Plotter:
@@ -170,11 +159,16 @@ class Plotter:
         self.additional_image = astroquery_search(center_coordinate=coord, radius=radius, pixels=pixels,
                                                   coordinates="J2000", surveys=surveys)
 
-    def plot_overlay(self, dpi: np.int32 = 600, xlabel: str = None, ylabel: str = None, sigma_list: list = None):
-        plt.figure(dpi=dpi)
+    def plot_overlay(self, dpi: np.int32 = 600, xlabel: str = None, ylabel: str = None, sigma_list: list = None,
+                     savefig: bool = False, save_path: str = "./plot_overlay", file_format: str = "pdf"):
+        fig = plt.figure(dpi=dpi)
         if self.use_latex:
-            plt.rcParams['mathtext.fontset'] = 'cm'
-            plt.rcParams['font.family'] = 'cmu serif'
+            plt.rcParams.update({
+                "font.family": "serif",
+                "text.usetex": True,
+                "pgf.rcfonts": False,
+                "pgf.texsystem": 'pdflatex',  # default is xetex
+            })
 
         plt.rc('font', size=MEDIUM_SIZE)  # controls default text sizes
         plt.rc('axes', titlesize=SMALL_SIZE)  # fontsize of the axes title
@@ -184,15 +178,15 @@ class Plotter:
         plt.rc('legend', fontsize=SMALL_SIZE)  # legend fontsize
 
         # get colour maps and set bad values to be transparent
-        bluecmap = plt.cm.Blues
+        bluecmap = plt.cm.get_cmap("Blues").copy()
         bluecmap.set_bad('white', 0)
-        redcmap = plt.cm.Reds
+        redcmap = plt.cm.get_cmap("Reds").copy()
         redcmap.set_bad('white', 0)
-        yellowcmap = plt.cm.YlOrBr_r
+        yellowcmap = plt.cm.get_cmap("YlOrBr_r").copy()
         yellowcmap.set_bad('white', 0)
-        purplecmap = plt.cm.Purples
+        purplecmap = plt.cm.get_cmap("Purples").copy()
         purplecmap.set_bad('white', 0)
-        greyscale = plt.cm.gray_r
+        greyscale = plt.cm.get_cmap("gray_r").copy()
         greyscale.set_bad('white', 0)
 
         # perceptively uniform cmap that will be used for contours
@@ -227,7 +221,7 @@ class Plotter:
         # Contours for X-ray data
         if self.xray_image is not None:
             wcs_xray = WCS(self.xray_image[0].header, naxis=2)
-            xray_image_sigma = sigma_list[0] * get_sigma_from_image(self.xray_image[0].data)
+            xray_image_sigma = sigma_list[0] * calculate_noise(self.xray_image[0].data, use_sigma_clipped_stats=True)
             purple_contours = [xray_image_sigma * i for i in contourmults]
             purple_data = self.xray_image[0].data
             purple_norm = normalize_data(purple_data, 0, 1)
@@ -242,7 +236,7 @@ class Plotter:
             # Contours for additional data
         if self.additional_image is not None:
             wcs_additional = WCS(self.additional_image.header, naxis=2)
-            add_image_sigma = sigma_list[1] * get_sigma_from_image(self.additional_image.data)
+            add_image_sigma = sigma_list[1] * calculate_noise(self.additional_image.data, use_sigma_clipped_stats=True)
             blue_contours = [add_image_sigma * i for i in contourmults]
             blue_data = self.additional_image.data
             blue_norm = normalize_data(blue_data, 0, 1)
@@ -257,7 +251,7 @@ class Plotter:
 
         # Contours for radio continuum
         if self.radio_image is not None:
-            radio_image_sigma = sigma_list[2] * get_sigma_from_image(radio_data.squeeze())
+            radio_image_sigma = sigma_list[2] * calculate_noise(radio_data.squeeze(), use_sigma_clipped_stats=True)
             red_contours = [radio_image_sigma * i for i in contourmults]
             red_data = radio_data.squeeze()
             red_norm = normalize_data(red_data, 0, 1)
@@ -271,11 +265,17 @@ class Plotter:
             ax.plot(0, 0, '-', c=red_color, label="JVLA", linewidth=3)
 
         # if self.z is not None or self.dist is not None:
-
         if xlabel is not None:
-            plt.xlabel(xlabel)
+            ax.coords[0].set_axislabel(xlabel)
         if ylabel is not None:
-            plt.ylabel(ylabel)
-        plt.gca().set_aspect("equal")
+            ax.coords[1].set_axislabel(ylabel)
+        ax.coords[0].set_format_unit(un.deg)
+        ax.coords[1].set_format_unit(un.deg)
+        plt.gca().set_aspect("equal", adjustable='box')
         plt.legend(loc=2)
+        fig.canvas.draw()
+        fig.tight_layout()
         plt.show()
+
+        if savefig:
+            fig.savefig(save_path, bbox_inches='tight', format=file_format, dpi=dpi)
