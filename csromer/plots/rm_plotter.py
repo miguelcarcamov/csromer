@@ -93,7 +93,7 @@ class RMPlotter:
         return xlim, ylim
 
     def plot(self, dpi=600, colorbar_label: Union[str, List[str]] = "", savefig: bool = False,
-             save_path: str = "./plot_rm", file_format: str = "pdf"):
+             save_path: str = "./plot_rm.pdf", file_format: str = "pdf"):
         fig = plt.figure(dpi=dpi)
         if self.use_latex:
             plt.rcParams.update({
@@ -129,10 +129,10 @@ class RMPlotter:
         # Get headers and data
         if isinstance(self.total_intensity_image, fits.HDUList):
             total_intensity_header = self.total_intensity_image[0].header
-            total_intensity_data = self.total_intensity_image[0].data
+            total_intensity_data = self.total_intensity_image[0].data.squeeze()
         else:
             total_intensity_header = self.total_intensity_image.header
-            total_intensity_data = self.total_intensity_image.data
+            total_intensity_data = self.total_intensity_image.data.squeeze()
 
         if isinstance(self.rm_image, fits.HDUList):
             rm_image_header = self.rm_image[0].header
@@ -167,9 +167,8 @@ class RMPlotter:
             wcs_pol_fraction = WCS(pol_fraction_header, naxis=2)
 
         # Get noise of total intensity image
-        total_intensity_noise = self.total_intensity_nsigma * calculate_noise(total_intensity_data.squeeze(),
+        total_intensity_noise = self.total_intensity_nsigma * calculate_noise(total_intensity_data,
                                                                               use_sigma_clipped_stats=True)
-
         # contour levels
         # the step parameter is the factor of 2^step each contour goes up by
         # so use step=1 for contours which double each time
@@ -180,7 +179,7 @@ class RMPlotter:
 
         if self.rm_image_error is not None and self.pol_fraction_image is not None:
             ax1 = fig.add_subplot(1, 3, 1, projection=wcs_rm_image, box_aspect=1)
-            c1 = ax1.imshow(rm_image_data, origin='lower', cmap=inferno, vmin=-150, vmax=150)
+            c1 = ax1.imshow(rm_image_data, origin='lower', cmap=inferno, vmin=-20, vmax=20)
             ax1.contour(total_intensity_data, transform=ax1.get_transform(wcs_total_intensity), levels=I_contours,
                         colors='black', alpha=0.6, linewidths=0.1)
 

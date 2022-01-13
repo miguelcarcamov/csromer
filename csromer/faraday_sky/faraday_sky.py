@@ -16,7 +16,7 @@ class FaradaySky:
         self.nside = nside
         self.ordering = ordering
         if filename is None:
-            self.filename = "./faradaysky/faraday2020v2.hdf5"
+            self.filename = pathlib.Path(__file__).parent.resolve() / "./faraday_sky_files/faraday2020v2.hdf5"
         else:
             self.filename = filename
         self.extension = pathlib.Path(self.filename).suffix
