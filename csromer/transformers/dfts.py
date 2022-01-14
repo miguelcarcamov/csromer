@@ -90,7 +90,7 @@ class DFT1D(FT):
 
     def RMTF(self, phi_x=0.0):
         x = np.zeros(self.parameter.n, dtype=np.float32) + 1j * np.zeros(self.parameter.n, dtype=np.float32)
-        l2 = self.dataset.lambda2 - self.dataset.lambda2_ref
+        l2 = self.dataset.lambda2 - self.dataset.l2_ref
         for i in range(0, self.parameter.n):
             x[i] = np.sum(self.dataset.w * np.exp(-2 * 1j * (self.parameter.phi[i] - phi_x) * l2))
 
