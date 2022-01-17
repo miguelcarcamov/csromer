@@ -89,4 +89,8 @@ class FaradaySky:
                                         use_bilinear_interpolation=use_bilinear_interpolation)
         rm_mean = rm_flattened[0].reshape(m, n)
         rm_std = rm_flattened[1].reshape(m, n)
+
+        rm_mean_field = np.mean(rm_mean)
+        rm_uncertainty_field = np.mean(rm_std)
+        print("The Galactic RM in the field is {0:.2f} \u00B1 {1:.2f}".format(rm_mean_field.value, rm_uncertainty_field))
         return rm_mean, rm_std
