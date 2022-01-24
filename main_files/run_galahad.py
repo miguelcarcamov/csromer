@@ -21,16 +21,6 @@ from csromer.transformers import MeanFlagger
 from csromer.faraday_sky import FaradaySky
 
 
-def check_is_number(n):
-    try:
-        num = float(n)
-        # check for "nan" floats
-        is_number = num == num  # or use `math.isnan(num)`
-    except ValueError:
-        is_number = False
-    return is_number
-
-
 def getopt():
     # initiate the parser
     parser = argparse.ArgumentParser(
@@ -95,11 +85,7 @@ def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None, 
 
     if noise is None:
         edges_idx = np.where(np.abs(parameter.phi) > parameter.max_faraday_depth / 1.5)
-        noise_qu = 0.5 * (np.std(F_dirty[edges_idx].real) + np.std(F_dirty[edges_idx].imag))
-        noise = eta * noise_qu
-    else:
-        noise_qu = noise
-        noise = eta * noise_qu
+        noise = eta * 0.5 * (np.std(F_dirty[edges_idx].real) + np.std(F_dirty[edges_idx].imag))
 
     F[0, :, i, j] = F_dirty
 
@@ -143,7 +129,6 @@ def main():
     cubes, mfs_images, spectral_idx, lambda_reg, eta, nthreads, output, nsigmas, verbose = getopt()
     eta = float(eta)
     nthreads = int(nthreads)
-
     reader = Reader()
     IQUV_header, IQUV = reader.readCube(cubes)
     I, Q, U, nu = filter_cubes(IQUV[0], IQUV[1], IQUV[2], IQUV_header)
@@ -158,16 +143,9 @@ def main():
     U_mfs = IQUV_mfs[2]
 
     if spectral_idx is None:
-        print("No spectral index image - Using constant value 0.0")
         spectral_idx = np.zeros_like(I_mfs)
     else:
-        if isinstance(spectral_idx, str):
-            if check_is_number(spectral_idx):
-                print("Using constant spectral index value of {0:.2f}".format(float(spectral_idx)))
-                alpha_mfs = np.ones_like(I_mfs) * float(spectral_idx)
-            else:
-                alpha_header, alpha_mfs = reader.readImage(name=spectral_idx)
-
+        alpha_header, alpha_mfs = reader.readImage(name=spectral_idx)
         spectral_idx = alpha_mfs
 
     sigma_I = calculate_noise(image=I_mfs, xn=300, yn=300, nsigma=3.0, use_sigma_clipped_stats=True)
@@ -244,14 +222,11 @@ def main():
     os.makedirs(results_folder, exist_ok=True)
 
     phi = global_parameter.phi
-    edges_phi = np.where(np.abs(phi) > global_parameter.max_faraday_depth / 1.5)
     phi_output_idx = np.where((phi > -1000) & (phi < 1000))
-
     phi = phi[phi_output_idx]
     dirty_F = F[0, phi_output_idx].squeeze()
     model_F = F[1, phi_output_idx].squeeze()
     restored_F = F[2, phi_output_idx].squeeze()
-    restored_F_edges = F[2, edges_phi].squeeze()
     residual_F = F[3, phi_output_idx].squeeze()
 
     abs_F = np.abs(restored_F)
@@ -264,13 +239,8 @@ def main():
                                  phi[max_faraday_depth_pos], np.nan)
     # masked_pol_fraction = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P), pol_fraction,
     #                               np.nan)
-    sigma_qu_faraday = 0.5 * (np.std(restored_F_edges.real, axis=0) + np.std(restored_F_edges.imag, axis=0))
-    sigma_qu_faraday = np.where((I_mfs >= nsigmas[0] * sigma_I) & (P_mfs >= nsigmas[1] * sigma_P),
-                                sigma_qu_faraday, np.nan)
-    P_from_faraday_peak = np.sqrt(max_rotated_intensity ** 2 - (2.3 * sigma_qu_faraday ** 2))
-    Pfraction_from_faraday = P_from_faraday_peak / I_mfs
-
-    sigma_phi_peak = global_parameter.rmtf_fwhm / (2. * P_from_faraday_peak / sigma_qu_faraday)
+    P_from_faraday = np.sqrt(max_rotated_intensity ** 2 - (2.3 * sigma_P ** 2))
+    Pfraction_from_faraday = P_from_faraday / I_mfs
 
     writer = Writer()
 
@@ -278,10 +248,8 @@ def main():
                      output=results_folder + "max_rotated_intensity.fits")
 
     writer.writeFITS(data=max_faraday_depth, header=IQUV_header, output=results_folder + "max_faraday_depth.fits")
-    writer.writeFITS(data=Pfraction_from_faraday, header=IQUV_header, output=results_folder + "polarization_fraction"
-                                                                                              ".fits")
-    writer.writeFITS(data=sigma_phi_peak, header=IQUV_header, output=results_folder + "sigma_phi_peak.fits")
-    writer.writeFITS(data=sigma_qu_faraday, header=IQUV_header, output=results_folder + "sigma_qu_faraday.fits")
+
+    writer.writeFITS(data=Pfraction_from_faraday, header=IQUV_header, output=results_folder + "polarization_fraction.fits")
 
     dirty_F[:, masked_idxs[0], masked_idxs[1]] = np.nan
     model_F[:, masked_idxs[0], masked_idxs[1]] = np.nan
