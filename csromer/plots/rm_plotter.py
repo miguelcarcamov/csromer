@@ -179,7 +179,7 @@ class RMPlotter:
 
         if self.rm_image_error is not None and self.pol_fraction_image is not None:
             ax1 = fig.add_subplot(1, 3, 1, projection=wcs_rm_image, box_aspect=1)
-            c1 = ax1.imshow(rm_image_data, origin='lower', cmap=inferno, vmin=-20, vmax=20)
+            c1 = ax1.imshow(rm_image_data, origin='lower', cmap=inferno, vmin=-150, vmax=150)
             ax1.contour(total_intensity_data, transform=ax1.get_transform(wcs_total_intensity), levels=I_contours,
                         colors='black', alpha=0.6, linewidths=0.1)
 

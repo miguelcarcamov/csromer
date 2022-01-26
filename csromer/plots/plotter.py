@@ -9,6 +9,10 @@ from astroquery.skyview import SkyView
 from astropy.units import Quantity
 from astropy.visualization import make_lupton_rgb
 from astropy.cosmology import Planck18
+from matplotlib.patches import Rectangle, Ellipse, PathPatch
+from matplotlib.text import TextPath
+from matplotlib.font_manager import FontProperties
+from matplotlib.transforms import IdentityTransform
 import numpy as np
 
 SMALL_SIZE = 6
@@ -16,6 +20,17 @@ MEDIUM_SIZE = 7
 BIGGER_SIZE = 8
 
 SKYVIEW_LIST = list(np.concatenate(list(SkyView.survey_dict.values())).flat)
+
+
+def add_number(ax: plt.Axes = None, ra: Quantity = None, dec: Quantity = None, frame: str = "fk5", wcs: WCS = None,
+               fp: FontProperties = None, text: str = None):
+    source = SkyCoord(ra=ra, dec=dec, frame=frame)
+    source_pix = source.to_pixel(wcs, origin=0)
+    source_text = TextPath((source_pix[0] - 45, source_pix[1]), text, prop=fp, size=30)
+    source_p1 = PathPatch(source_text, ec="w", lw=1, fc="w", alpha=0.75)
+    source_p2 = PathPatch(source_text, ec="none", fc="k")
+    ax.add_artist(source_p1)
+    ax.add_artist(source_p2)
 
 
 def normalize_data(data: np.ndarray = None, _min: float = None, _max: float = None):
@@ -75,6 +90,7 @@ class Plotter:
         self.use_latex = use_latex
         self.z = z
         self.scale_length_kpc = scalebar_length_kpc
+        self.sb_length_arcsec = None
 
         if self.scale_length_kpc is None:
             self.scale_length_kpc = 500 * un.kpc
@@ -86,9 +102,9 @@ class Plotter:
             self.xray_image = fits.open(self.xray_image)
 
         if dist is None and self.z is not None:
-            self.dist = Planck18.comoving_distance(self.z)  # distance in MPc
+            # self.dist = Planck18.comoving_distance(self.z)  # distance in MPc
             scale = Planck18.arcsec_per_kpc_comoving(self.z)  # scale in arcsec per kpc
-            self.sb_length_arcsec = scale * scalebar_length_kpc
+            self.sb_length_arcsec = scale * self.scale_length_kpc
 
     def get_optical(self, radio_image: Union[fits.Header, fits.PrimaryHDU, fits.HDUList] = None, rgb: bool = False,
                     filename: str = None):
@@ -271,6 +287,45 @@ class Plotter:
             ax.coords[1].set_axislabel(ylabel)
         ax.coords[0].set_format_unit(un.deg)
         ax.coords[1].set_format_unit(un.deg)
+        fp = FontProperties(size="xx-large", weight="extra bold")
+        x_ray_center = SkyCoord(ra=173.714 * un.deg, dec=49.091 * un.deg, frame="fk5")
+        x_center, y_center = x_ray_center.to_pixel(wcs, origin=0)
+        ax.scatter(x=x_center, y=y_center, marker="x", color="gold", s=35)
+
+        add_number(ax=ax, ra=173.453 * un.deg, dec=48.985 * un.deg, frame="fk5", text="1", fp=fp, wcs=wcs)
+        add_number(ax=ax, ra=173.496 * un.deg, dec=49.045 * un.deg, frame="fk5", text="2", fp=fp, wcs=wcs)
+        add_number(ax=ax, ra=173.496 * un.deg, dec=49.062 * un.deg, frame="fk5", text="3", fp=fp, wcs=wcs)
+        add_number(ax=ax, ra=173.521 * un.deg, dec=49.106 * un.deg, frame="fk5", text="4", fp=fp, wcs=wcs)
+        add_number(ax=ax, ra=173.571 * un.deg, dec=49.152 * un.deg, frame="fk5", text="5", fp=fp, wcs=wcs)
+        add_number(ax=ax, ra=173.693 * un.deg, dec=48.956 * un.deg, frame="fk5", text="6", fp=fp, wcs=wcs)
+        add_number(ax=ax, ra=173.705 * un.deg, dec=49.077 * un.deg, frame="fk5", text="7", fp=fp, wcs=wcs)
+        add_number(ax=ax, ra=173.762 * un.deg, dec=49.193 * un.deg, frame="fk5", text="8", fp=fp, wcs=wcs)
+        add_number(ax=ax, ra=173.803 * un.deg, dec=48.966 * un.deg, frame="fk5", text="9", fp=fp, wcs=wcs)
+        add_number(ax=ax, ra=173.933 * un.deg, dec=49.038 * un.deg, frame="fk5", text="10", fp=fp, wcs=wcs)
+        add_number(ax=ax, ra=173.943 * un.deg, dec=48.921 * un.deg, frame="fk5", text="11", fp=fp, wcs=wcs)
+
+        if self.radio_image is not None:
+            dx = -header["CDELT1"] * un.deg
+            bmaj = 0.003435974915822347 * un.deg
+            bmin = 0.003251787026723226 * un.deg
+            bpa = 49.36214065551758 * un.deg
+            bmaj_pix = (bmaj / dx).value
+            bmin_pix = (bmaj / dx).value
+
+            ellipse = Ellipse(xy=(20, 20), width=bmaj_pix, height=bmin_pix, angle=(bpa + 90 * un.deg).value,
+                              edgecolor='crimson', fc='None', lw=1)
+            ax.add_patch(ellipse)
+
+        if self.radio_image is not None and self.sb_length_arcsec is not None:
+            sb_length_pix = self.sb_length_arcsec / dx.to(un.arcsec)
+            scalebar = Rectangle(xy=(header["NAXIS1"] - 1 - sb_length_pix - 10, 10), width=sb_length_pix, height=4,
+                                 edgecolor='none',
+                                 fc='black', alpha=1)
+            ax.add_patch(scalebar)
+            scaletext = f'{self.scale_length_kpc:0.0f}'
+            plt.annotate(xy=(header["NAXIS1"] - 1 - (sb_length_pix / 2.) - 15, 25), text=scaletext, c='black',
+                         ha="center")
+
         plt.gca().set_aspect("equal", adjustable='box')
         plt.legend(loc=2)
         fig.canvas.draw()
