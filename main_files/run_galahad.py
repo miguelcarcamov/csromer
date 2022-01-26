@@ -275,12 +275,11 @@ def main():
     Pfraction_from_faraday = P_from_faraday_peak / I_mfs
 
     sigma_phi_peak = global_parameter.rmtf_fwhm / (2. * P_from_faraday_peak / sigma_qu_faraday)
-    
-    
+
     writer = Writer()
     
     np.save(results_folder+"rmtf.npy", rmtf) 
-    writer.writeFITS(data=max_rotated_intensity_image, header=IQUV_header,
+    writer.writeFITS(data=P_from_faraday_peak, header=IQUV_header,
                      output=results_folder + "max_rotated_intensity.fits")
 
     writer.writeFITS(data=max_faraday_depth, header=IQUV_header, output=results_folder + "max_faraday_depth.fits")

@@ -275,7 +275,7 @@ def main():
 
     writer = Writer()
 
-    writer.writeFITS(data=max_rotated_intensity_image, header=I_header,
+    writer.writeFITS(data=P_from_faraday_peak, header=I_header,
                      output=results_folder + "max_rotated_intensity.fits")
 
     writer.writeFITS(data=max_faraday_depth, header=I_header, output=results_folder + "max_faraday_depth.fits")
