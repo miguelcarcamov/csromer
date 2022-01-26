@@ -196,7 +196,7 @@ def main():
     global_dataset = Dataset(nu=nu, sigma=sigma)
 
     # Get Milky-way RM contribution
-    f_sky = FaradaySky(filename="/share/nas2/carcamo/repos/csromer/faradaysky/faraday2020v2.hdf5")
+    f_sky = FaradaySky()
 
     mean_sky, std_sky = f_sky.galactic_rm_image(IQUV_header, use_bilinear_interpolation=True)
 
@@ -218,6 +218,9 @@ def main():
 
     global_parameter = Parameter()
     global_parameter.calculate_cellsize(dataset=global_dataset, oversampling=8)
+    
+    dft = DFT1D(dataset=global_dataset, parameter=global_parameter)
+    rmtf = dft.RMTF()
 
     folder = './joblib_mmap'
     try:
@@ -248,6 +251,7 @@ def main():
     phi_output_idx = np.where((phi > -1000) & (phi < 1000))
 
     phi = phi[phi_output_idx]
+    rmtf = rmtf[phi_output_idx]
     dirty_F = F[0, phi_output_idx].squeeze()
     model_F = F[1, phi_output_idx].squeeze()
     restored_F = F[2, phi_output_idx].squeeze()
@@ -271,9 +275,11 @@ def main():
     Pfraction_from_faraday = P_from_faraday_peak / I_mfs
 
     sigma_phi_peak = global_parameter.rmtf_fwhm / (2. * P_from_faraday_peak / sigma_qu_faraday)
-
+    
+    
     writer = Writer()
-
+    
+    np.save(results_folder+"rmtf.npy", rmtf) 
     writer.writeFITS(data=max_rotated_intensity_image, header=IQUV_header,
                      output=results_folder + "max_rotated_intensity.fits")
 
