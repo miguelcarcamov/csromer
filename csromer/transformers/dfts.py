@@ -61,7 +61,7 @@ class DFT1D(FT):
             b[i] = np.sum(
                 x * np.exp(2 * 1j * self.parameter.phi * (self.dataset.lambda2[i] - self.dataset.l2_ref)))
 
-        return self.dataset.w * b * self.dataset.s
+        return b
 
     def forward_normalized(self, x):
 
@@ -121,8 +121,7 @@ class NUFFT1D(FT):
 
     def forward(self, x):
         b = self.nufft_obj.forward(x)
-        b *= self.dataset.s
-        return self.dataset.w * b
+        return b
 
     def forward_normalized(self, x):
         val = x * self.dataset.k / self.parameter.n

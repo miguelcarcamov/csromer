@@ -3,7 +3,8 @@ from astropy.wcs import WCS
 from astropy.io import fits
 from typing import Union, List
 import astropy.units as un
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import Angle, SkyCoord
+from regions import CircleSkyRegion, PixCoord, CirclePixelRegion
 from astropy.units import Quantity
 from ..utils.utilities import calculate_noise
 from mpl_toolkits import axes_grid1
@@ -13,6 +14,13 @@ import numpy as np
 SMALL_SIZE = 6
 MEDIUM_SIZE = 7
 BIGGER_SIZE = 8
+
+
+def create_circular_skyregion(ra, dec, radius, radius_unit="arcsec", unit="deg"):
+    center = SkyCoord(ra, dec, unit=unit)
+    radius = Angle(radius, radius_unit)
+    region = CircleSkyRegion(center, radius)
+    return region
 
 
 def add_colorbar(im, aspect=20, pad_fraction=0.5, **kwargs):
@@ -112,19 +120,19 @@ class RMPlotter:
 
         # Set colormaps
         plasmacmap = plt.cm.get_cmap("plasma").copy()
-        #plasmacmap.set_bad('grey', 0.5)
+        # plasmacmap.set_bad('grey', 0.5)
         rmcmap = plt.cm.get_cmap("seismic").copy()
-        #rmcmap.set_bad('gray', 0.5)
+        # rmcmap.set_bad('gray', 0.5)
         magmacmap = plt.cm.get_cmap("magma_r").copy()
-        #magmacmap.set_bad('gray', 0.5)
+        # magmacmap.set_bad('gray', 0.5)
         inferno = plt.cm.get_cmap("inferno_r").copy()
-        #inferno.set_bad('gray', 0.5)
+        # inferno.set_bad('gray', 0.5)
         viridis = plt.cm.get_cmap("viridis_r").copy()
-        #viridis.set_bad('gray', 0.2)
+        # viridis.set_bad('gray', 0.2)
         twilight = plt.cm.get_cmap("twilight").copy()
-        #twilight.set_bad('gray', 0.5)
+        # twilight.set_bad('gray', 0.5)
         cividis = plt.cm.get_cmap("cividis").copy()
-        #cividis.set_bad('gray', 0.5)
+        # cividis.set_bad('gray', 0.5)
 
         # Get headers and data
         if isinstance(self.total_intensity_image, fits.HDUList):
@@ -177,11 +185,20 @@ class RMPlotter:
 
         I_contours = [total_intensity_noise * i for i in contourmults]
 
+        core_region = create_circular_skyregion(173.4962263, 49.0629333, 15.782).to_pixel(wcs_rm_image)
+        north_region = create_circular_skyregion(173.4776803, 49.0761733, 41.295).to_pixel(wcs_rm_image)
+        south_region = create_circular_skyregion(173.4719210, 49.0538024, 42.187).to_pixel(wcs_rm_image)
+
         if self.rm_image_error is not None and self.pol_fraction_image is not None:
             ax1 = fig.add_subplot(1, 3, 1, projection=wcs_rm_image, box_aspect=1)
             c1 = ax1.imshow(rm_image_data, origin='lower', cmap=inferno, vmin=-150, vmax=150)
+            #ax1.text(x=173.4776803, y=49.0761733, s="N")
+            #ax1.text(x=173.4719210, y=49.0538024, ha="center", s="S", transform=ax1.get_transform(wcs_rm_image))
             ax1.contour(total_intensity_data, transform=ax1.get_transform(wcs_total_intensity), levels=I_contours,
                         colors='black', alpha=0.6, linewidths=0.1)
+            core_region.plot(ax=ax1, color='gold', lw=0.8)
+            north_region.plot(ax=ax1, color='royalblue', lw=0.8)
+            south_region.plot(ax=ax1, color='darkcyan', lw=0.8)
 
             ax2 = fig.add_subplot(1, 3, 2, projection=wcs_rm_image_error, box_aspect=1)
             c2 = ax2.imshow(rm_image_error_data, origin='lower', cmap=inferno, vmin=0, vmax=1)
