@@ -10,7 +10,7 @@ from astropy.io import fits
 import sys
 
 
-def filter_cubes(data_I, data_Q, data_U, header):
+def filter_cubes(data_I, data_Q, data_U, header, additional_outlier_idxs=None):
     init_freq = header["CRVAL3"]
     nfreqs = header["NAXIS3"]
     step_freq = header["CDELT3"]
@@ -19,6 +19,8 @@ def filter_cubes(data_I, data_Q, data_U, header):
     sum_Q = np.nansum(data_Q, axis=(1, 2))
     sum_U = np.nansum(data_U, axis=(1, 2))
     correct_freqs = np.where((sum_I != 0.0) | (sum_Q != 0.0) | (sum_U != 0.0))[0]
+    if additional_outlier_idxs:
+        correct_freqs = np.setxor1d(correct_freqs, additional_outlier_idxs)
     filtered_data = 100.0 * (nfreqs - len(correct_freqs))/nfreqs
     print("Filtering {0:.2f}% of the total data".format(filtered_data))
     return data_I[correct_freqs], data_Q[correct_freqs], data_U[correct_freqs], nu[correct_freqs]

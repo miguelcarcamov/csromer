@@ -92,13 +92,13 @@ class Parameter:
         if self.data.dtype == np.complex64:
             self.data = complex_to_real(self.data)
         else:
-            sys.exit("Parameter data is not complex64")
+            raise TypeError("Parameter data is not complex64")
 
     def real_data_to_complex(self):
         if self.data.dtype == np.float32 or self.data.dtype == np.float64:
             self.data = real_to_complex(self.data)
         else:
-            sys.exit("Parameter data is not real")
+            raise ValueError("Parameter data is not real")
 
     def convolve(self, x=None, normalized=True):
         gauss_rmtf = Gaussian(x=self.phi, mu=0.0, fwhm=self.rmtf_fwhm)
