@@ -13,7 +13,7 @@ class DiscreteWavelet(Wavelet):
 
     def calculate_ncoeffs(self, x):
         n = len(x)
-        return pywt.dwt_coeff_len(n, self.wavelet, mode=mode)
+        return pywt.dwt_coeff_len(n, self.wavelet, mode=self.mode)
 
     def calculate_max_level(self, x):
         n = len(x)

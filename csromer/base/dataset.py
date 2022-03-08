@@ -81,6 +81,7 @@ class Dataset:
         self.delta_l2_min = 0.0
         self.delta_l2_max = 0.0
         self.delta_l2_mean = 0.0
+        self.theo_noise = None
         self.w = None
         self.lambda2 = lambda2
         self.nu = nu
@@ -193,6 +194,14 @@ class Dataset:
         self.__m = val
 
     @property
+    def theo_noise(self):
+        return self.__theo_noise
+
+    @theo_noise.setter
+    def theo_noise(self, val):
+        self.__theo_noise = val
+
+    @property
     def w(self):
         return self.__w
 
@@ -205,6 +214,7 @@ class Dataset:
             self.__sigma = aux_copy
             self.__k = np.sum(val)
             self.__l2_ref = self.calculate_l2ref()
+        self.__theo_noise = self.calculate_theo_noise()
 
     @property
     def l2_ref(self):
@@ -286,7 +296,7 @@ class Dataset:
 
     def calculate_l2ref(self):
         if self.lambda2 is not None:
-            return (1. / self.k) * np.sum(self.w * self.lambda2)
+            return np.sum(self.w * self.lambda2) / self.k
         else:
             return None
 
@@ -301,6 +311,12 @@ class Dataset:
         self.delta_l2_min = delta_l2_min
         self.delta_l2_max = delta_l2_max
         self.delta_l2_mean = delta_l2_mean
+
+    def calculate_theo_noise(self):
+        if self.w is None:
+            return None
+        else:
+            return 1.0 / np.sqrt(np.sum(self.w))
 
     def calculate_residuals(self):
         self.residual = self.data - self.model_data

@@ -16,6 +16,11 @@ class FaradaySource(Dataset, metaclass=ABCMeta):
         self.remove_frac = remove_frac
         self.noise = noise
 
+        if noise is not None:
+            self.sigma = np.ones_like(self.lambda2) * self.noise
+        else:
+            self.sigma = np.ones_like(self.lambda2)
+
     def __add__(self, other):
         if isinstance(other, FaradaySource) and hasattr(other, 'data'):
             if (
@@ -85,6 +90,11 @@ class FaradaySource(Dataset, metaclass=ABCMeta):
     def apply_noise(self, noise=None, random_state=None):
         if noise is None:
             noise = self.noise
+        else:
+            self.noise = noise
+
+        self.sigma = np.ones_like(self.lambda2) * self.noise
+        
         if random_state is None:
             q_noise = np.random.normal(loc=0.0, scale=noise, size=self.m)
             u_noise = np.random.normal(loc=0.0, scale=noise, size=self.m)

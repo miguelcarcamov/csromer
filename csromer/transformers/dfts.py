@@ -56,10 +56,10 @@ class DFT1D(FT):
 
     def forward(self, x):
 
-        b = np.zeros(self.dataset.m, dtype=np.float32) + 1j * np.zeros(self.dataset.m, dtype=np.float32)
+        b = np.zeros(self.dataset.m, dtype=np.complex64)
         for i in range(0, self.dataset.m):
             b[i] = np.sum(
-                x * np.exp(2 * 1j * self.parameter.phi * (self.dataset.lambda2[i] - self.dataset.l2_ref)))
+                x * np.exp(2.0j * self.parameter.phi * (self.dataset.lambda2[i] - self.dataset.l2_ref)))
 
         return b
 
@@ -68,11 +68,11 @@ class DFT1D(FT):
         # change units of x so the transform give us W(\lambda^2)*P(\lambda^2)
         val = x * self.dataset.k / self.parameter.n
 
-        b = np.zeros(self.dataset.m, dtype=np.float32) + 1j * np.zeros(self.dataset.m, dtype=np.float32)
+        b = np.zeros(self.dataset.m, dtype=np.complex64)
 
         for i in range(0, self.dataset.m):
             b[i] = np.sum(
-                val * np.exp(2 * 1j * self.parameter.phi * (self.dataset.lambda2[i] - self.dataset.l2_ref)))
+                val * np.exp(2.0j * self.parameter.phi * (self.dataset.lambda2[i] - self.dataset.l2_ref)))
 
         notzero_idx = np.where(self.dataset.w != 0.0)
         zero_idx = np.where(self.dataset.w == 0.0)
@@ -81,18 +81,18 @@ class DFT1D(FT):
         return b * self.dataset.s
 
     def backward(self, b):
-        x = np.zeros(self.parameter.n, dtype=np.float32) + 1j * np.zeros(self.parameter.n, dtype=np.float32)
+        x = np.zeros(self.parameter.n, dtype=np.complex64)
         l2 = self.dataset.lambda2 - self.dataset.l2_ref
         for i in range(0, self.parameter.n):
-            x[i] = np.sum(self.dataset.w * b / self.dataset.s * np.exp(-2 * 1j * self.parameter.phi[i] * l2))
+            x[i] = np.sum(self.dataset.w * b / self.dataset.s * np.exp(-2.0j * self.parameter.phi[i] * l2))
 
         return x / self.dataset.k
 
     def RMTF(self, phi_x=0.0):
-        x = np.zeros(self.parameter.n, dtype=np.float32) + 1j * np.zeros(self.parameter.n, dtype=np.float32)
+        x = np.zeros(self.parameter.n, dtype=np.complex64)
         l2 = self.dataset.lambda2 - self.dataset.l2_ref
         for i in range(0, self.parameter.n):
-            x[i] = np.sum(self.dataset.w * np.exp(-2 * 1j * (self.parameter.phi[i] - phi_x) * l2))
+            x[i] = np.sum(self.dataset.w * np.exp(-2.0j * (self.parameter.phi[i] - phi_x) * l2))
 
         return x / self.dataset.k
 
@@ -145,4 +145,4 @@ class NUFFT1D(FT):
 
     def RMTF(self):
         x = self.nufft_obj.adjoint(self.dataset.w)
-        return (1. / self.dataset.k) * x
+        return x / self.dataset.k
