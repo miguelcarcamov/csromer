@@ -57,6 +57,9 @@ class UndecimatedWavelet(Wavelet):
 
         coeffs = pywt.swt(data=x_copy, wavelet=self.wavelet, level=self.level, trim_approx=self.trim_approx, norm=self.norm)
         coeffs_arr, self.coeff_slices = pywt.coeffs_to_array(coeffs)
+
+        if self.append_signal:
+            coeffs_arr = np.concatenate([x, coeffs_arr])
         return coeffs_arr
 
     def decompose_complex(self, x):
@@ -86,22 +89,45 @@ class UndecimatedWavelet(Wavelet):
         coeffs_arr_im, coeffs_slices_im = pywt.coeffs_to_array(coeffs_im)
 
         self.coeff_slices = coeffs_slices_re, coeffs_slices_im
+
+        if self.append_signal:
+            coeffs_arr_re = np.concatenate([x.real, coeffs_arr_re])
+            coeffs_arr_im = np.concatenate([x.imag, coeffs_arr_im])
         return coeffs_arr_re + 1j * coeffs_arr_im
 
     def reconstruct(self, input_coeffs):
-        coeffs = pywt.array_to_coeffs(input_coeffs, self.coeff_slices, output_format='wavedec')
-        signal = pywt.iswt(coeffs, self.wavelet, self.norm)
+
+        if self.append_signal:
+            signal = input_coeffs[0:self.n]
+            coeffs = pywt.array_to_coeffs(input_coeffs[self.n:len(input_coeffs)], self.coeff_slices, output_format='wavedec')
+        else:
+            coeffs = pywt.array_to_coeffs(input_coeffs, self.coeff_slices, output_format='wavedec')
+
+        signal_from_coeffs = pywt.iswt(coeffs, self.wavelet, self.norm)
 
         if self.pad_width is not None:
             # Undo padding
-            signal = signal[0: len(signal) - self.pad_width]
+            signal_from_coeffs = signal_from_coeffs[0: len(signal_from_coeffs) - self.pad_width]
             self.pad_width = None
+
+        if self.append_signal:
+            signal += signal_from_coeffs
+        else:
+            signal = signal_from_coeffs
 
         return signal
 
     def reconstruct_complex(self, input_coeffs):
-        coeffs_re = pywt.array_to_coeffs(input_coeffs.real, self.coeff_slices[0], output_format='wavedec')
-        coeffs_im = pywt.array_to_coeffs(input_coeffs.imag, self.coeff_slices[1], output_format='wavedec')
+
+        if self.append_signal:
+            signal = input_coeffs[0:self.n]
+            coeffs = input_coeffs[self.n:len(input_coeffs)]
+            coeffs_re = pywt.array_to_coeffs(coeffs.real, self.coeff_slices[0], output_format='wavedec')
+            coeffs_im = pywt.array_to_coeffs(coeffs.imag, self.coeff_slices[1], output_format='wavedec')
+
+        else:
+            coeffs_re = pywt.array_to_coeffs(input_coeffs.real, self.coeff_slices[0], output_format='wavedec')
+            coeffs_im = pywt.array_to_coeffs(input_coeffs.imag, self.coeff_slices[1], output_format='wavedec')
 
         signal_re = pywt.iswt(coeffs_re, self.wavelet, self.norm)
         signal_im = pywt.iswt(coeffs_im, self.wavelet, self.norm)
@@ -112,4 +138,11 @@ class UndecimatedWavelet(Wavelet):
             signal_im = signal_im[0: len(signal_im) - self.pad_width]
             self.pad_width = None
 
-        return signal_re + 1j * signal_im
+        signal_from_coeffs = signal_re + 1.0j * signal_im
+
+        if self.append_signal:
+            signal += signal_from_coeffs
+        else:
+            signal = signal_from_coeffs
+
+        return signal
