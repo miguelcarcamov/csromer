@@ -5,11 +5,13 @@ import sys
 
 
 class Wavelet(metaclass=ABCMeta):
-    def __init__(self, wavelet_name: str = None, level: int = None, mode: str = None):
+    def __init__(self, wavelet_name: str = None, level: int = None, mode: str = None, append_signal: bool = None):
         self.wavelet_name = wavelet_name
         self.mode = mode
         self.level = level
+        self.append_signal = append_signal
         self.ncoeffs = 0
+        self.n = 0
         self.wavelet = None
         self.coeff_slices = None
 
