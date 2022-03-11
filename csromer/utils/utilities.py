@@ -15,7 +15,7 @@ def real_to_complex(z):  # real vector of length 2n -> complex of length n
 
 
 def complex_to_real(z):  # complex vector of length n -> real of length 2n
-    return np.concatenate((np.real(z), np.imag(z)))
+    return np.concatenate([z.real, z.imag])
 
 
 def make_mask(I=np.array([]), sigma=0.0):

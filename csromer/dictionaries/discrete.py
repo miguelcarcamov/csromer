@@ -54,7 +54,8 @@ class DiscreteWavelet(Wavelet):
     def reconstruct(self, input_coeffs):
         if self.append_signal:
             signal = input_coeffs[0:self.n]
-            coeffs = pywt.array_to_coeffs(input_coeffs[self.n:len(input_coeffs)], self.coeff_slices, output_format='wavedec')
+            coeffs = pywt.array_to_coeffs(input_coeffs[self.n:len(input_coeffs)], self.coeff_slices,
+                                          output_format='wavedec')
             signal_from_coeffs = pywt.waverec(coeffs, self.wavelet, self.mode)
             signal += signal_from_coeffs
         else:

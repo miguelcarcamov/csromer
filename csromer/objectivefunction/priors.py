@@ -132,8 +132,10 @@ class Chi2(Fi):
 
     def evaluate(self, x):
         if self.wavelet is not None:
-            x = self.wavelet.reconstruct(x)
-        x_complex = real_to_complex(x) * self.norm_factor
+            x_ = self.wavelet.reconstruct(x.copy())
+        else:
+            x_ = x.copy()
+        x_complex = real_to_complex(x_) * self.norm_factor
         model_data = self.dft_obj.forward_normalized(x_complex)
         self.dft_obj.dataset.model_data = model_data
         # res = model_data - self.dft_obj.dataset.data

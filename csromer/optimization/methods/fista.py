@@ -46,10 +46,10 @@ def FISTA_algorithm(x=None, F=None, fx=None, g_prox=None, max_iter=None, tol=1e-
         if e <= tol:
             if verbose:
                 print("Exit due to tolerance: ", e, " < ", tol)
-                print("Iterations: ", it)
+                print("Iterations: ", it + 1)
             break
 
-        if verbose and it % 50 == 0:
+        if verbose:
             cost = F(x)
             if verbose:
                 print("Iteration: ", it,
