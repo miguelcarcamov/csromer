@@ -49,11 +49,10 @@ def FISTA_algorithm(x=None, F=None, fx=None, g_prox=None, max_iter=None, tol=1e-
                 print("Iterations: ", it + 1)
             break
 
-        if verbose:
+        if verbose and it % 10 == 0:
             cost = F(x)
-            if verbose:
-                print("Iteration: ", it,
-                      " objective function value: {0:0.5f}".format(cost))
+            print("Iteration: ", it,
+                  " objective function value: {0:0.5f}".format(cost))
         new_lambda = g_prox.getLambda() - noise
         if new_lambda > 0.0:
             g_prox.setLambda(reg=new_lambda)

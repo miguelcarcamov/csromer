@@ -96,11 +96,11 @@ class FaradaySource(Dataset, metaclass=ABCMeta):
         self.sigma = np.ones_like(self.lambda2) * self.noise
         
         if random_state is None:
-            q_noise = np.random.normal(loc=0.0, scale=noise, size=self.m)
-            u_noise = np.random.normal(loc=0.0, scale=noise, size=self.m)
+            q_noise = np.random.normal(loc=0.0, scale=self.noise, size=self.m)
+            u_noise = np.random.normal(loc=0.0, scale=self.noise, size=self.m)
         else:
-            q_noise = random_state.normal(loc=0.0, scale=noise, size=self.m)
-            u_noise = random_state.normal(loc=0.0, scale=noise, size=self.m)
+            q_noise = random_state.normal(loc=0.0, scale=self.noise, size=self.m)
+            u_noise = random_state.normal(loc=0.0, scale=self.noise, size=self.m)
         p_noise = q_noise + 1j * u_noise
         self.data += p_noise
 

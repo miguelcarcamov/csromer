@@ -104,12 +104,12 @@ class L1(Fi):
         for a_attribute in initlocals.keys():
             setattr(self, a_attribute, initlocals[a_attribute])
 
-    def evaluate(self, x, epsilon=1e-12):
+    def evaluate(self, x, epsilon=np.finfo(np.float32).tiny):
         val = np.sum(approx_abs(x, epsilon))
         # print("Evaluation on L1:", val)
         return val
 
-    def calculate_gradient(self, x, epsilon=1e-12):
+    def calculate_gradient(self, x, epsilon=np.finfo(np.float32).tiny):
         dx = np.zeros(len(x), x.dtype)
 
         dx = x / approx_abs(x, epsilon)
@@ -118,8 +118,8 @@ class L1(Fi):
 
     def calculate_prox(self, x, nu=0):
         # print(x)
-        x = np.sign(x) * np.maximum(np.abs(x) - self.reg, 0.0)
-        return x
+        l1_prox = np.sign(x) * np.maximum(np.abs(x) - self.reg, 0.0)
+        return l1_prox
 
 
 class Chi2(Fi):
@@ -147,15 +147,19 @@ class Chi2(Fi):
 
     def calculate_gradient(self, x):
         if self.wavelet is not None:
-            x = self.wavelet.reconstruct(x)
-        x_complex = real_to_complex(x) * self.norm_factor
+            x_ = self.wavelet.reconstruct(x.copy())
+        else:
+            x_ = x.copy()
+        x_complex = real_to_complex(x_) * self.norm_factor
         val = x_complex - self.F_dirty
         return complex_to_real(val)
 
     def calculate_gradient_fista(self, x):
         if self.wavelet is not None:
-            x = self.wavelet.reconstruct(x)
-        x_complex = real_to_complex(x) * self.norm_factor
+            x_ = self.wavelet.reconstruct(x.copy())
+        else:
+            x_ = x.copy()
+        x_complex = real_to_complex(x_) * self.norm_factor
         model_data = self.dft_obj.forward_normalized(x_complex)
         self.dft_obj.dataset.model_data = model_data
         # res = model_data - self.dft_obj.dataset.data
