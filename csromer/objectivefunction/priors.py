@@ -117,7 +117,6 @@ class L1(Fi):
         return dx
 
     def calculate_prox(self, x, nu=0):
-        # print(x)
         l1_prox = np.sign(x) * np.maximum(np.abs(x) - self.reg, 0.0)
         return l1_prox
 
