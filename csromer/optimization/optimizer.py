@@ -19,7 +19,7 @@ import copy
 
 class Optimizer(metaclass=ABCMeta):
 
-    def __init__(self, guess_param: Parameter = None, F_obj=None, maxiter=None, method=None, tol=1e-15, verbose=True):
+    def __init__(self, guess_param: Parameter = None, F_obj=None, maxiter=None, method=None, tol=np.finfo(np.float32).tiny, verbose=True):
         initlocals = locals()
         initlocals.pop('self')
         for a_attribute in initlocals.keys():

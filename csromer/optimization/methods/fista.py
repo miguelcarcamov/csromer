@@ -9,7 +9,7 @@ import numpy as np
 import sys
 
 
-def FISTA_algorithm(x=None, F=None, fx=None, g_prox=None, max_iter=None, tol=1e-12, n=None, noise=None,
+def FISTA_algorithm(x=None, F=None, fx=None, g_prox=None, max_iter=None, tol=np.finfo(np.float32).tiny, n=None, noise=None,
                     verbose=True):
     if x is None and n is not None:
         x = np.zeros(n, dtype=np.complex64)
@@ -40,14 +40,17 @@ def FISTA_algorithm(x=None, F=None, fx=None, g_prox=None, max_iter=None, tol=1e-
         x = g_prox.calc_prox(z)
 
         t0 = t
-        t = (1. + np.sqrt(1. + 4. * t ** 2)) / 2.
+        t = 0.5 * (1. + np.sqrt(1. + 4. * t ** 2))
         z = x + ((t0 - 1.) / t) * (x - xold)
-        e = np.sum(np.abs(x - xold)) / len(x)
-        if e <= tol:
-            if verbose:
-                print("Exit due to tolerance: ", e, " < ", tol)
-                print("Iterations: ", it + 1)
-            break
+        # e = np.sqrt(np.sum((x-xold)**2)) / np.sqrt(np.sum(xold**2))
+        # print(e)
+        # e = np.sum(np.abs(x - xold)) / len(x)
+
+        # if e <= tol:
+        #    if verbose:
+        #        print("Exit due to tolerance: ", e, " < ", tol)
+        #        print("Iterations: ", it + 1)
+        #    break
 
         if verbose and it % 10 == 0:
             cost = F(x)
