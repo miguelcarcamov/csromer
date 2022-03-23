@@ -13,18 +13,19 @@ class DiscreteWavelet(Wavelet):
             raise ValueError("The wavelet is not discrete")
 
     def calculate_ncoeffs(self, x):
-        self.n = len(x)
-        return pywt.dwt_coeff_len(self.n, self.wavelet, mode=self.mode)
+        n = len(x)
+        return pywt.dwt_coeff_len(n, self.wavelet, mode=self.mode)
 
     def calculate_max_level(self, x):
-        self.n = len(x)
-        return pywt.dwt_max_level(self.n, self.wavelet.dec_len)
+        n = len(x)
+        return pywt.dwt_max_level(n, self.wavelet.dec_len)
 
     def decompose(self, x):
         if self.level is not None:
             if self.level > self.calculate_max_level(x):
                 raise ValueError("You are trying to decompose into more levels than the maximum level expected")
 
+        self.n = len(x)
         # Return coefficients
         coeffs = pywt.wavedec(data=x, wavelet=self.wavelet, mode=self.mode, level=self.level)
         coeffs_arr, self.coeff_slices = pywt.coeffs_to_array(coeffs)

@@ -170,11 +170,7 @@ class Dataset:
             self.__nu_0 = np.median(self.__nu)
             if hasattr(self, 'spectral_idx'):
                 self.__s = (self.__nu / self.__nu_0) ** (-1.0 * self.__spectral_idx)
-            if self.__w is not None:
-                if len(val) != len(self.__w):
-                    self.w = np.ones(self.__m)
-            else:
-                self.w = np.ones(self.__m)
+            self.w = np.ones(self.__m)
             self.calculate_l2_cellsize()
 
     @property
@@ -208,7 +204,7 @@ class Dataset:
     @w.setter
     def w(self, val):
         self.__w = val
-        if val is not None:
+        if val is not None and isinstance(val, np.ndarray):
             aux_copy = val.copy()
             aux_copy[aux_copy != 0] = 1.0 / np.sqrt(aux_copy[aux_copy != 0])
             self.__sigma = aux_copy
@@ -301,16 +297,16 @@ class Dataset:
             return None
 
     def calculate_l2_cellsize(self):
+        if self.w is not None:
+            w_nozeros = np.where(self.w > 0.0)
+            lambda2_aux = self.lambda2[w_nozeros]
+            delta_l2_min = np.min(np.abs(np.diff(lambda2_aux)))
+            delta_l2_mean = np.mean(np.abs(np.diff(lambda2_aux)))
+            delta_l2_max = np.max(np.abs(np.diff(lambda2_aux)))
 
-        w_nozeros = np.where(self.w > 0.0)
-        lambda2_aux = self.lambda2[w_nozeros]
-        delta_l2_min = np.min(np.abs(np.diff(lambda2_aux)))
-        delta_l2_mean = np.mean(np.abs(np.diff(lambda2_aux)))
-        delta_l2_max = np.max(np.abs(np.diff(lambda2_aux)))
-
-        self.delta_l2_min = delta_l2_min
-        self.delta_l2_max = delta_l2_max
-        self.delta_l2_mean = delta_l2_mean
+            self.delta_l2_min = delta_l2_min
+            self.delta_l2_max = delta_l2_max
+            self.delta_l2_mean = delta_l2_mean
 
     def calculate_theo_noise(self):
         if self.w is None:

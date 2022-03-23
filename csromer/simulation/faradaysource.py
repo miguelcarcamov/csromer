@@ -10,16 +10,21 @@ from ..base.dataset import Dataset
 class FaradaySource(Dataset, metaclass=ABCMeta):
     def __init__(self, s_nu=None, remove_frac=None, noise=None, **kwargs):
         super().__init__(**kwargs)
-        # self.dataset = Dataset(nu=nu)
 
         self.s_nu = s_nu
         self.remove_frac = remove_frac
         self.noise = noise
 
         if noise is not None:
-            self.sigma = np.ones_like(self.lambda2) * self.noise
+            if isinstance(self.lambda2, np.ndarray):
+                self.sigma = np.ones_like(self.lambda2) * self.noise
+            else:
+                self.sigma = self.noise
         else:
-            self.sigma = np.ones_like(self.lambda2)
+            if isinstance(self.lambda2, np.ndarray):
+                self.sigma = np.ones_like(self.lambda2)
+            else:
+                self.sigma = 1.0
 
     def __add__(self, other):
         if isinstance(other, FaradaySource) and hasattr(other, 'data'):

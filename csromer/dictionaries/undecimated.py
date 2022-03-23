@@ -34,8 +34,8 @@ class UndecimatedWavelet(Wavelet):
         self.pad_width = None
 
     def calculate_max_level(self, x):
-        self.n = len(x)
-        return pywt.swt_max_level(self.n)
+        n = len(x)
+        return pywt.swt_max_level(n)
 
     def decompose(self, x):
         if self.level is not None:
@@ -48,6 +48,7 @@ class UndecimatedWavelet(Wavelet):
             array_size = 2 ** self.level
 
         signal_size = len(x)
+        self.n = signal_size
         x_copy = x.copy()
         if signal_size and (array_size % signal_size) == 0:
             print("Your signal length is not multiple of 2**" + str(self.level) + ". Padding array...")
@@ -72,12 +73,16 @@ class UndecimatedWavelet(Wavelet):
             array_size = 2 ** self.level
 
         signal_size = len(x)
+        self.n = signal_size
         x_copy = x.copy()
         if signal_size and (array_size % signal_size) == 0:
             print("Your signal length is not multiple of 2**" + str(self.level) + ". Padding array...")
             padded_size = int(array_size * round(float(signal_size) / array_size))
             self.pad_width = padded_size - signal_size
-            x_copy = np.pad(x_copy, (0, self.pad_width))
+            if self.mode is None:
+                x_copy = np.pad(x_copy, (0, self.pad_width))
+            else:
+                x_copy = pywt.pad(x=x_copy, pad_widths=(0, self.pad_width), mode=self.mode)
 
         # Return coefficients
         coeffs_re = pywt.swt(data=x_copy.real, wavelet=self.wavelet, level=self.level, trim_approx=self.trim_approx,
