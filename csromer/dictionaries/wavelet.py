@@ -15,6 +15,9 @@ class Wavelet(metaclass=ABCMeta):
         self.wavelet = None
         self.coeff_slices = None
 
+        if not isinstance(self.wavelet_name, str):
+            raise TypeError("The wavelet name is not a string")
+
     @abstractmethod
     def calculate_max_level(self, x):
         return

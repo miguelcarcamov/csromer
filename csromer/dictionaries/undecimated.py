@@ -16,7 +16,7 @@ class UndecimatedWavelet(Wavelet):
             filter_bank = [g, h, delta, delta]
             self.wavelet = pywt.Wavelet('IUWT', filter_bank=filter_bank)
         else:
-            raise ValidationError("The wavelet does not exist")
+            raise NotImplementedError("The wavelet has not been implemented by pywavelets")
 
         if trim_approx is None:
             self.trim_approx = True

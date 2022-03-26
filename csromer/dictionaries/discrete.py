@@ -8,9 +8,9 @@ class DiscreteWavelet(Wavelet):
         super().__init__(**kwargs)
 
         if self.wavelet_name is not None and self.wavelet_name in pywt.wavelist(kind="discrete"):
-            self.wavelet = pywt.Wavelet(self.wavelet_name)
+                self.wavelet = pywt.Wavelet(self.wavelet_name)
         else:
-            raise ValueError("The wavelet is not discrete")
+            raise NotImplementedError("The wavelet has not been implemented by pywavelets")
 
     def calculate_ncoeffs(self, x):
         n = len(x)
