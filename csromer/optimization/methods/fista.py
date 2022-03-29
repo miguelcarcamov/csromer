@@ -19,15 +19,18 @@ def FISTA_algorithm(x=None, F=None, fx=None, g_prox=None, max_iter=None, tol=np.
 
     if max_iter is None and noise is not None:
         if noise is not np.nan:
-            max_iter = int(np.floor(g_prox.getLambda() / noise))
+            if noise != 0.0:
+                max_iter = int(np.floor(g_prox.getLambda() / noise))
+            else:
+                noise = 1e-5
+                max_iter = int(np.floor(g_prox.getLambda() / noise))
         else:
-            raise ValueError("Noise must be a number"
-                             )
+            raise ValueError("Noise must be a number")
         if verbose:
             print("Iterations set to " + str(max_iter))
 
     if noise is None:
-        noise = 0.0
+        noise = 1e-5
 
     if noise >= g_prox.getLambda():
         if verbose:
@@ -44,13 +47,13 @@ def FISTA_algorithm(x=None, F=None, fx=None, g_prox=None, max_iter=None, tol=np.
         z = x + ((t0 - 1.) / t) * (x - xold)
         # e = np.sqrt(np.sum((x-xold)**2)) / np.sqrt(np.sum(xold**2))
         # print(e)
-        # e = np.sum(np.abs(x - xold)) / len(x)
+        e = np.sum(np.abs(x - xold)) / len(x)
 
-        # if e <= tol:
-        #    if verbose:
-        #        print("Exit due to tolerance: ", e, " < ", tol)
-        #        print("Iterations: ", it + 1)
-        #    break
+        if e <= tol:
+            if verbose:
+               print("Exit due to tolerance: ", e, " < ", tol)
+            print("Iterations: ", it + 1)
+            break
 
         if verbose and it % 10 == 0:
             cost = F(x)

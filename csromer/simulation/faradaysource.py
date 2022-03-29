@@ -17,7 +17,10 @@ class FaradaySource(Dataset, metaclass=ABCMeta):
 
         if noise is not None:
             if isinstance(self.lambda2, np.ndarray):
-                self.sigma = np.ones_like(self.lambda2) * self.noise
+                if self.noise != 0.0:
+                    self.sigma = np.ones_like(self.lambda2) * self.noise
+                else:
+                    self.sigma = np.ones_like(self.lambda2)
             else:
                 self.sigma = self.noise
         else:
@@ -51,7 +54,8 @@ class FaradaySource(Dataset, metaclass=ABCMeta):
             remove_frac = 1.0 - remove_frac
 
         if chunksize is None:
-            chunksize = self.m // 8
+            chunksize = self.m // (10  + (10 * (1. - remove_frac)))
+
         _chansremoved = []
         while True:
             if random_state is None:
@@ -98,7 +102,11 @@ class FaradaySource(Dataset, metaclass=ABCMeta):
         else:
             self.noise = noise
 
-        self.sigma = np.ones_like(self.lambda2) * self.noise
+        if self.noise != 0.0:
+            self.sigma = np.ones_like(self.lambda2) * self.noise
+        else:
+            self.sigma = np.ones_like(self.lambda2)
+            return
         
         if random_state is None:
             q_noise = np.random.normal(loc=0.0, scale=self.noise, size=self.m)

@@ -312,7 +312,13 @@ class Dataset:
         if self.w is None:
             return None
         else:
-            return 1.0 / np.sqrt(np.sum(self.w))
+            if isinstance(self.w, np.ndarray):
+                if (self.w == 1.0).all():
+                        return None
+                else:
+                    return 1.0 / np.sqrt(np.sum(self.w))
+            else:
+                return None
 
     def calculate_residuals(self):
         self.residual = self.data - self.model_data

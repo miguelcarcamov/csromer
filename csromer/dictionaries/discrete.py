@@ -28,7 +28,7 @@ class DiscreteWavelet(Wavelet):
         self.n = len(x)
         # Return coefficients
         coeffs = pywt.wavedec(data=x, wavelet=self.wavelet, mode=self.mode, level=self.level)
-        coeffs_arr, self.coeff_slices = pywt.coeffs_to_array(coeffs)
+        coeffs_arr, self.coeff_slices = pywt.coeffs_to_array(coeffs=coeffs)
 
         if self.append_signal:
             coeffs_arr = np.concatenate([x, coeffs_arr])
@@ -42,8 +42,8 @@ class DiscreteWavelet(Wavelet):
         coeffs_re = pywt.wavedec(data=x.real, wavelet=self.wavelet, mode=self.mode, level=self.level)
         coeffs_im = pywt.wavedec(data=x.imag, wavelet=self.wavelet, mode=self.mode, level=self.level)
 
-        coeffs_arr_re, coeffs_slices_re = pywt.coeffs_to_array(coeffs_re)
-        coeffs_arr_im, coeffs_slices_im = pywt.coeffs_to_array(coeffs_im)
+        coeffs_arr_re, coeffs_slices_re = pywt.coeffs_to_array(coeffs=coeffs_re)
+        coeffs_arr_im, coeffs_slices_im = pywt.coeffs_to_array(coeffs=coeffs_im)
 
         if self.append_signal:
             coeffs_arr_re = np.concatenate([x.real, coeffs_arr_re])
@@ -54,31 +54,33 @@ class DiscreteWavelet(Wavelet):
 
     def reconstruct(self, input_coeffs):
         if self.append_signal:
-            signal = input_coeffs[0:self.n]
-            coeffs = pywt.array_to_coeffs(input_coeffs[self.n:len(input_coeffs)], self.coeff_slices,
+            coeffs = input_coeffs.copy()
+            signal = coeffs[0:self.n]
+            coeffs_ = pywt.array_to_coeffs(arr=coeffs[self.n:len(input_coeffs)], coeff_slices=self.coeff_slices,
                                           output_format='wavedec')
-            signal_from_coeffs = pywt.waverec(coeffs, self.wavelet, self.mode)
+            signal_from_coeffs = pywt.waverec(coeffs=coeffs_, wavelet=self.wavelet, mode=self.mode)
             signal += signal_from_coeffs
         else:
-            coeffs = pywt.array_to_coeffs(input_coeffs, self.coeff_slices, output_format='wavedec')
-            signal = pywt.waverec(coeffs, self.wavelet, self.mode)
+            coeffs = pywt.array_to_coeffs(arr=input_coeffs, coeff_slices=self.coeff_slices, output_format='wavedec')
+            signal = pywt.waverec(coeffs=coeffs, wavelet=self.wavelet, mode=self.mode)
         # Return signal
         return signal
 
     def reconstruct_complex(self, input_coeffs):
         if self.append_signal:
-            signal = input_coeffs[0:self.n]
-            coeffs = input_coeffs[self.n:len(input_coeffs)]
-            coeffs_re = pywt.array_to_coeffs(coeffs.real, self.coeff_slices[0], output_format='wavedec')
-            coeffs_im = pywt.array_to_coeffs(coeffs.imag, self.coeff_slices[1], output_format='wavedec')
-            signal_re_from_coeffs = pywt.waverec(coeffs_re, self.wavelet, self.mode)
-            signal_im_from_coeffs = pywt.waverec(coeffs_im, self.wavelet, self.mode)
+            coeffs = input_coeffs.copy()
+            signal = coeffs[0:self.n]
+            coeffs_ = coeffs[self.n:len(input_coeffs)]
+            coeffs_re = pywt.array_to_coeffs(arr=coeffs_.real, coeff_slices=self.coeff_slices[0], output_format='wavedec')
+            coeffs_im = pywt.array_to_coeffs(arr=coeffs_.imag, coeff_slices=self.coeff_slices[1], output_format='wavedec')
+            signal_re_from_coeffs = pywt.waverec(coeffs=coeffs_re, wavelet=self.wavelet, mode=self.mode)
+            signal_im_from_coeffs = pywt.waverec(coeffs=coeffs_im, wavelet=self.wavelet, mode=self.mode)
             signal_from_coeffs = signal_re_from_coeffs + 1j * signal_im_from_coeffs
             signal += signal_from_coeffs
         else:
-            coeffs_re = pywt.array_to_coeffs(input_coeffs.real, self.coeff_slices[0], output_format='wavedec')
-            coeffs_im = pywt.array_to_coeffs(input_coeffs.imag, self.coeff_slices[1], output_format='wavedec')
-            signal_re = pywt.waverec(coeffs_re, self.wavelet, self.mode)
-            signal_im = pywt.waverec(coeffs_im, self.wavelet, self.mode)
+            coeffs_re = pywt.array_to_coeffs(arr=input_coeffs.real, coeff_slices=self.coeff_slices[0], output_format='wavedec')
+            coeffs_im = pywt.array_to_coeffs(arr=input_coeffs.imag, coeff_slices=self.coeff_slices[1], output_format='wavedec')
+            signal_re = pywt.waverec(coeffs=coeffs_re, wavelet=self.wavelet, mode=self.mode)
+            signal_im = pywt.waverec(coeffs=coeffs_im, wavelet=self.wavelet, mode=self.mode)
             signal = signal_re + 1j * signal_im
         return signal
