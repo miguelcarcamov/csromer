@@ -28,7 +28,7 @@ class DiscreteWavelet(Wavelet):
         self.n = len(x)
         # Return coefficients
         coeffs = pywt.wavedec(data=x, wavelet=self.wavelet, mode=self.mode, level=self.level)
-        coeffs_arr, self.coeff_slices = pywt.coeffs_to_array(coeffs=coeffs)
+        coeffs_arr, self.coeff_slices, self.coeff_shapes = pywt.ravel_coeffs(coeffs=coeffs)
 
         if self.append_signal:
             coeffs_arr = np.concatenate([x, coeffs_arr])
@@ -56,12 +56,13 @@ class DiscreteWavelet(Wavelet):
         if self.append_signal:
             coeffs = input_coeffs.copy()
             signal = coeffs[0:self.n]
-            coeffs_ = pywt.array_to_coeffs(arr=coeffs[self.n:len(input_coeffs)], coeff_slices=self.coeff_slices,
-                                          output_format='wavedec')
+            coeffs_ = pywt.unravel_coeffs(arr=coeffs[self.n:len(coeffs)], coeff_slices=self.coeff_slices,
+                                          coeff_shapes=self.coeff_shapes, output_format='wavedec')
             signal_from_coeffs = pywt.waverec(coeffs=coeffs_, wavelet=self.wavelet, mode=self.mode)
             signal += signal_from_coeffs
         else:
-            coeffs = pywt.array_to_coeffs(arr=input_coeffs, coeff_slices=self.coeff_slices, output_format='wavedec')
+            coeffs = pywt.unravel_coeffs(arr=input_coeffs, coeff_slices=self.coeff_slices,
+                                          coeff_shapes=self.coeff_shapes, output_format='wavedec')
             signal = pywt.waverec(coeffs=coeffs, wavelet=self.wavelet, mode=self.mode)
         # Return signal
         return signal

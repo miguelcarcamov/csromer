@@ -1,6 +1,7 @@
 from .wavelet import Wavelet
 import pywt
 import numpy as np
+from ..utils import nextPowerOf2
 
 
 class UndecimatedWavelet(Wavelet):
@@ -43,24 +44,27 @@ class UndecimatedWavelet(Wavelet):
                 raise ValueError("You are trying to decompose into more levels than the maximum level expected")
 
         if self.level is None:
-            array_size = 2 ** self.calculate_max_level(x)
+            max_level = self.calculate_max_level(x)
+            array_size = 2 ** max_level
         else:
             array_size = 2 ** self.level
 
         signal_size = len(x)
         self.n = signal_size
         x_copy = x.copy()
-        if signal_size and (array_size % signal_size) == 0:
+
+        if signal_size and (signal_size % array_size) != 0:
             print("Your signal length is not multiple of 2**" + str(self.level) + ". Padding array...")
-            padded_size = int(array_size * round(float(signal_size) / array_size))
+            padded_size = nextPowerOf2(signal_size)
             self.pad_width = padded_size - signal_size
+
             if self.mode is None:
                 x_copy = np.pad(x_copy, (0, self.pad_width))
             else:
                 x_copy = pywt.pad(x=x_copy, pad_widths=(0, self.pad_width), mode=self.mode)
 
         coeffs = pywt.swt(data=x_copy, wavelet=self.wavelet, level=self.level, trim_approx=self.trim_approx, norm=self.norm)
-        coeffs_arr, self.coeff_slices = pywt.coeffs_to_array(coeffs)
+        coeffs_arr, self.coeff_slices, self.coeff_shapes = pywt.ravel_coeffs(coeffs)
 
         if self.append_signal:
             coeffs_arr = np.concatenate([x, coeffs_arr])
@@ -78,9 +82,10 @@ class UndecimatedWavelet(Wavelet):
         signal_size = len(x)
         self.n = signal_size
         x_copy = x.copy()
-        if signal_size and (array_size % signal_size) == 0:
+        if signal_size and (signal_size % array_size) != 0:
             print("Your signal length is not multiple of 2**" + str(self.level) + ". Padding array...")
-            padded_size = int(array_size * round(float(signal_size) / array_size))
+            # padded_size = int(array_size * round(float(signal_size) / array_size))
+            padded_size = nextPowerOf2(signal_size)
             self.pad_width = padded_size - signal_size
             if self.mode is None:
                 x_copy = np.pad(x_copy, (0, self.pad_width))
@@ -107,9 +112,11 @@ class UndecimatedWavelet(Wavelet):
 
         if self.append_signal:
             signal = input_coeffs[0:self.n].copy()
-            coeffs = pywt.array_to_coeffs(input_coeffs[self.n:len(input_coeffs)], self.coeff_slices, output_format='wavedec')
+            coeffs = pywt.unravel_coeffs(arr=input_coeffs[self.n:len(input_coeffs)], coeff_slices=self.coeff_slices,
+                                coeff_shapes=self.coeff_shapes, output_format='wavedec')
         else:
-            coeffs = pywt.array_to_coeffs(input_coeffs, self.coeff_slices, output_format='wavedec')
+            coeffs = pywt.unravel_coeffs(arr=input_coeffs, coeff_slices=self.coeff_slices,
+                                         coeff_shapes=self.coeff_shapes, output_format='wavedec')
 
         signal_from_coeffs = pywt.iswt(coeffs, self.wavelet, self.norm)
 

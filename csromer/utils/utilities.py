@@ -9,6 +9,19 @@ import numpy as np
 from astropy.wcs import WCS
 from astropy.stats import sigma_clipped_stats
 
+def nextPowerOf2(n):
+    count = 0;
+    # First n in the below  
+    # condition is for the  
+    # case where n is 0 
+    if (n and not (n & (n - 1))):
+        return n
+
+    while (n != 0):
+        n >>= 1
+        count += 1
+
+    return 1 << count;
 
 def real_to_complex(z):  # real vector of length 2n -> complex of length n
     return z[:len(z) // 2] + 1j * z[len(z) // 2:]

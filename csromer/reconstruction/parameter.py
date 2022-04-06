@@ -2,12 +2,14 @@ from __future__ import annotations
 from scipy.constants import pi
 import numpy as np
 from ..utils.analytical_functions import Gaussian
-from ..utils.utilities import real_to_complex, complex_to_real
+from ..utils import real_to_complex, complex_to_real, nextPowerOf2
 from scipy import signal as sci_signal
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..base import Dataset
+
+
 
 
 class Parameter:
@@ -47,7 +49,7 @@ class Parameter:
     def n(self, val):
         self.__n = val
 
-    def calculate_cellsize(self, dataset: Dataset = None, oversampling=4, verbose=True):
+    def calculate_cellsize(self, dataset: Dataset = None, oversampling=4, set_size_pow_2=False, verbose=True):
 
         if dataset is not None:
             l2_min = np.min(dataset.lambda2[np.nonzero(dataset.lambda2)])
@@ -74,7 +76,11 @@ class Parameter:
             phi_r = delta_phi / oversampling
 
             temp = np.int32(np.floor(2 * phi_max / phi_r))
-            self.n = int(temp - np.mod(temp, 32))
+
+            if set_size_pow_2:
+                self.n = nextPowerOf2(temp)
+            else:
+                self.n = int(temp - np.mod(temp, 32))
             self.cellsize = 2 * phi_max / self.n
             self.phi = self.cellsize * np.arange(-(self.n / 2), (self.n / 2), 1)
             self.data = np.zeros_like(self.phi, dtype=np.complex64)
