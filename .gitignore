@@ -108,3 +108,4 @@ venv.bak/
 *.png
 *.npy
 *.fits
+*.orig
