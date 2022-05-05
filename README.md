@@ -58,6 +58,7 @@ A thin+thick or mixed source is simply a superposition/sum of a thin source and 
 ```python
 mixedsource = thinsource + thicksource
 ```
+The result will be a `FaradaySource` object.
 
 ### Adding noise to your simulations
 ### Remove frequency channels randomly as you were doing RFI flagging
