@@ -1,7 +1,16 @@
 # CS-ROMER
 *Compressed Sensing ROtation MEasure Reconstruction*
 
+Compressed sensing reconstruction framework for Faraday depth spectra. 
+Please feel free to open an issue if you spot a bug. This is an open source project, and therefore you can fork, make changes and submit a [pull request](https://github.com/miguelcarcamov/csromer/pulls) of any of your additions and modifications.
+
 ## Features
+- Simulation of Faraday depth sources
+- Subtraction of Galactic RM
+- Reconstruction of Faraday depth sources from linearly polarized data
+- Reconstruction of Faraday depth sources using Compressed Sensing
+- More than 100 wavelet filters provided by `Pywavelets`
+
 
 This code will run in a Python >= 3.9.7 environment with all the packages installed (see `requirements.txt` file).
 
