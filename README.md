@@ -4,6 +4,8 @@
 Compressed sensing reconstruction framework for Faraday depth spectra. 
 Please feel free to open an issue if you spot a bug. This is an open source project, and therefore you can fork, make changes and submit a [pull request](https://github.com/miguelcarcamov/csromer/pulls) of any of your additions and modifications.
 
+- This paper explains what is [Faraday rotation measure synthesis](https://www.aanda.org/articles/aa/abs/2005/39/aa2990-05/aa2990-05.html)
+- Wikipedia information about [Faraday effect](https://en.wikipedia.org/wiki/Faraday_effect)
 ## Features
 - Simulation of Faraday depth sources
 - Subtraction of Galactic RM
