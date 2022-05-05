@@ -1,7 +1,11 @@
 # CS-ROMER
 *Compressed Sensing ROtation MEasure Reconstruction*
 
+## Features
+
 This code will run in a Python >= 3.9.7 environment with all the packages installed (see `requirements.txt` file).
+
+## Citing 
 The paper of this software is under submission but if you use it you can cite it as:
 
 ```
@@ -29,6 +33,8 @@ The software can be installed as a python package locally or using Pypi
 `pip install -e .`
 ### From Pypi
 `pip install csromer`
+### From Github
+`pip install -U git+https://github.com/miguelcarcamov/csromer.git`
 ## Simulate Faraday sources directly in frequency space
 CS-ROMER is able to simulate Faraday depth spectra directly in wavelength-squared space. The classes `FaradayThinSource` and `FaradayThickSource` inherit directly from `Dataset`, and therefore you can directly use them as an input to your reconstruction.
 ### Thin sources
@@ -69,7 +75,7 @@ mixedsource = thinsource + thicksource
 ```
 The result will be a `FaradaySource` object.
 
-### Remove frequency channels randomly as you were doing RFI flagging
+### Remove frequency channels randomly as if you were doing RFI flagging
 The framework also allows you to randomly remove data with the function `remove_channels` to simulate RFI flagging
 ```python
 # Let's say that we want to randomly remove 20% of the data
