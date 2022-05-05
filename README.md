@@ -83,12 +83,57 @@ If we want to add random Gaussian noise to our simulation we can simply call the
 sigma = 0.2*mixedsource.s_nu
 mixedsource.apply_noise(sigma)
 ```
-
-
-
 ## Reconstruct 1D Faraday sources
+To illustrate how to reconstruct Faraday depth signals with CS-ROMER first we will reconstruct the mixed source that we have just constructed
+### Dirty Faraday depth spectra
+```python
+from csromer.reconstruction import Parameter
+from csromer.transformers import DFT1D
+# We first need to initialize the parameter object that will contain our Faraday depth
+# data either in Faraday-depth space or in wavelet space
+parameter = Parameter()
+# We calculate the cellsize in Faraday depth space using an oversampling factor of 8
+# Here parameter data is set as a complex array of zeros
+parameter.calculate_cellsize(dataset=mixedsource, oversampling=8)
+# We instantiate our discrete Fourier transform
+dft = DFT1D(dataset=mixedsource, parameter=parameter)
+# We calculate the dirty Faraday depth spectra
+F_dirty = dft.backward(mixedsource.data)
+```
+### Reconstruct simulated data
+```python
+from csromer.transformers import NUFFT1D
+# We instantiate our non-uniform FFT
+nufft = NUFFT1D(dataset=mixedsource, parameter=parameter, solve=True)
+# At this point we can use either the parameter data set with zeros or we can 
+# use the dirty Faraday depth spectra
+parameter.data = F_dirty
+# You can set the L1 lambda regularization manually or estimate it as
+lambda_l1 = np.sqrt(mixedsource.m + 2*np.sqrt(mixedsource.m)) * np.sqrt(2) * np.mean(mixedsource.sigma)
+```
+### Objective function
+```python
+from csromer.objectivefunction import L1, Chi2
+from csromer.objectivefunction import OFunction
+# We instantiate each part of our objective function 
+chi2 = Chi2(dft_obj=nufft, wavelet=None) # chi-squared
+l1 = L1(reg=lambda_l1) # L1-norm regularization
 
-### Reconstruct a simulation
+F_obj = OFunction([chi2, l1]) # Whole objective function
+f_obj = OFunction([chi2]) # Only chi-squared
+g_obj = OFunction([l1]) # Just regularizations
+```
+### Optimization algorithm
+One of the ways to optimize the objective function is to use the FISTA algorithm.
+```python
+from csromer.optimization import FISTA
+# We instantiate our FISTA object as
+opt = FISTA(guess_param=parameter, F_obj=F_obj, fx=chi2, gx=g_obj, noise=mixedsource.theo_noise, verbose=False)
+# We run the optimization algorithm
+obj, X = opt.run()
+```
+This returns the objective function value `obj` and `X`a `Parameter` instance object. Therefore in this case `X.data` will hold the reconstructed Faraday depth spectra.
+### Using discrete or undecimated wavelets
 
 ### Reconstruct real data
 
