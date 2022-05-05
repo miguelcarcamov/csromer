@@ -50,7 +50,7 @@ from csromer.simulation import FaradayThickSource
 nu = np.linspace(start=1.008e9, stop=2.031e9, num=1000)
 # Let's say that the peak polarized intensity will be 0.0035 mJy/beam with a spectral index = 1.0
 peak_thicksource = 0.0035
-# The Faraday source will be positioned at phi_0 = -200 rad/m^2 and with have a width of 140 rad/m^2
+# The Faraday source will be positioned at phi_0 = 200 rad/m^2 and with have a width of 140 rad/m^2
 thicksource = FaradayThickSource(nu=nu, s_nu=peak_thicksource, phi_fg=140, phi_center=200, spectral_idx=1.0)
 ```
 ### Mixed sources
@@ -59,7 +59,7 @@ A thin+thick or mixed source is simply a superposition/sum of a thin source and 
 thicksource = thinsource + thicksource
 ```
 
-### Adding noise to your simulation
+### Adding noise to your simulations
 ### Remove frequency channels randomly as you were doing RFI flagging
 
 
