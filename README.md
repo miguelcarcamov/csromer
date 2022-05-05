@@ -157,6 +157,8 @@ parameter.complex_data_to_real() # We convert the data to real
 # Here we do a wavelet decomposition of our Faraday depth space
 # We set the coefficients of the decomposition as our parameter data
 parameter.data = wav.decompose(parameter.data)
+# Don't forget to change your chi-squared
+chi2 = Chi2(dft_obj=nufft, wavelet=wav)
 ```
 You might have noticed that at the end of the optimization we will end up with fitted coefficients instead of a Faraday depth spectrum.
 Therefore, we need to reconstruct the Faraday depth spectrum from our coefficients doing
