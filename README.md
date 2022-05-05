@@ -30,10 +30,34 @@ The software can be installed as a python package locally or using Pypi
 ### From Pypi
 `pip install csromer`
 ## Simulate Faraday sources directly in frequency space
-
+CS-ROMER is able to simulate Faraday depth spectra directly in wavelenth-squared space. The classes FaradayThinSource and FaradayThickSource inherit directly from dataset, and therefore you can directly use them as an input to your reconstruction.
 ### Thin sources
+```python
+import numpy
+from csromer.simulation import FaradayThinSource
+# Let's create an evenly spaced frequency vector from 1.008 to 2.031 GHz (JVLA setup) 
+nu = np.linspace(start=1.008e9, stop=2.031e9, num=1000)
+# Let's say that the peak polarized intensity will be 0.0035 mJy/beam with a spectral index = 1.0
+peak_thinsource = 0.0035
+# The Faraday source will be positioned at phi_0 = -200 rad/m^2
+thinsource = FaradayThinSource(nu=nu, s_nu=peak_thinsource, phi_gal=-200, spectral_idx=1.0)
+```
 ### Thick sources
+```python
+import numpy
+from csromer.simulation import FaradayThickSource
+# Let's create an evenly spaced frequency vector from 1.008 to 2.031 GHz (JVLA setup) 
+nu = np.linspace(start=1.008e9, stop=2.031e9, num=1000)
+# Let's say that the peak polarized intensity will be 0.0035 mJy/beam with a spectral index = 1.0
+peak_thicksource = 0.0035
+# The Faraday source will be positioned at phi_0 = -200 rad/m^2 and with have a width of 140 rad/m^2
+thicksource = FaradayThickSource(nu=nu, s_nu=peak_thicksource, phi_fg=140, phi_center=200, spectral_idx=1.0)
+```
 ### Mixed sources
+A thin+thick or mixed source is simply a superposition/sum of a thin source and thick source. Therefore we have overriden the `+` operator in order to sum these two objects.
+```python
+thicksource = thinsource + thicksource
+```
 
 ### Adding noise to your simulation
 ### Remove frequency channels randomly as you were doing RFI flagging
