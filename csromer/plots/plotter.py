@@ -289,6 +289,7 @@ class Plotter:
         ax.coords[1].set_format_unit(un.deg)
         fp = FontProperties(size="xx-large", weight="extra bold")
         x_ray_center = SkyCoord(ra=173.714 * un.deg, dec=49.091 * un.deg, frame="fk5")
+        # print(x_ray_center.to_string('hmsdms'))
         x_center, y_center = x_ray_center.to_pixel(wcs, origin=0)
         ax.scatter(x=x_center, y=y_center, marker="x", color="gold", s=35)
 

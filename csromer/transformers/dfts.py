@@ -18,9 +18,21 @@ if TYPE_CHECKING:
 
 
 class FT(metaclass=ABCMeta):
-    def __init__(self, dataset: Dataset = None, parameter: Parameter = None):
+    def __init__(self, dataset: Dataset = None, parameter: Parameter = None, use_weights=True):
         self.dataset = dataset
         self.s = None
+        self.use_weights = use_weights
+
+        if self.dataset is not None:
+            if self.use_weights:
+                self.weights = self.dataset.w
+            else:
+                self.weights = np.ones_like(self.dataset.w)
+            self.k = np.sum(self.weights)
+        else:
+            self.weights = None
+            self.k = None
+
         if parameter is not None:
             self.parameter = copy.deepcopy(parameter)
         else:
@@ -66,7 +78,7 @@ class DFT1D(FT):
     def forward_normalized(self, x):
 
         # change units of x so the transform give us W(\lambda^2)*P(\lambda^2)
-        val = x * self.dataset.k / self.parameter.n
+        val = x * self.k / self.parameter.n
 
         b = np.zeros(self.dataset.m, dtype=np.complex64)
 
@@ -74,9 +86,9 @@ class DFT1D(FT):
             b[i] = np.sum(
                 val * np.exp(2.0j * self.parameter.phi * (self.dataset.lambda2[i] - self.dataset.l2_ref)))
 
-        notzero_idx = np.where(self.dataset.w != 0.0)
-        zero_idx = np.where(self.dataset.w == 0.0)
-        b[notzero_idx] /= self.dataset.w[notzero_idx]
+        notzero_idx = np.where(self.weights != 0.0)
+        zero_idx = np.where(self.weights == 0.0)
+        b[notzero_idx] /= self.weights[notzero_idx]
         b[zero_idx] = 0.0
         return b * self.dataset.s
 
@@ -84,9 +96,9 @@ class DFT1D(FT):
         x = np.zeros(self.parameter.n, dtype=np.complex64)
         l2 = self.dataset.lambda2 - self.dataset.l2_ref
         for i in range(0, self.parameter.n):
-            x[i] = np.sum(self.dataset.w * b / self.dataset.s * np.exp(-2.0j * self.parameter.phi[i] * l2))
+            x[i] = np.sum(self.weights * b / self.dataset.s * np.exp(-2.0j * self.parameter.phi[i] * l2))
 
-        return x / self.dataset.k
+        return x / self.k
 
     def RMTF(self, phi_x=0.0):
         x = np.zeros(self.parameter.n, dtype=np.complex64)
@@ -94,7 +106,7 @@ class DFT1D(FT):
         for i in range(0, self.parameter.n):
             x[i] = np.sum(self.dataset.w * np.exp(-2.0j * (self.parameter.phi[i] - phi_x) * l2))
 
-        return x / self.dataset.k
+        return x / self.k
 
 
 class NUFFT1D(FT):
@@ -124,23 +136,24 @@ class NUFFT1D(FT):
         return b
 
     def forward_normalized(self, x):
-        val = x * self.dataset.k / self.parameter.n
+        val = x * self.k / self.parameter.n
         b = self.nufft_obj.forward(val)
         b *= self.dataset.s
         notzero_idx = np.where(self.dataset.w != 0.0)
         zero_idx = np.where(self.dataset.w == 0.0)
-        b[notzero_idx] /= self.dataset.w[notzero_idx]
+        b[notzero_idx] /= self.weights[notzero_idx]
         b[zero_idx] = 0.0
         return b
 
     def backward(self, b, solver="cg", maxiter=1):
         if self.solve:
-            x = self.nufft_obj.solve(self.dataset.w * b / self.dataset.s, solver=solver, maxiter=maxiter)
+            x = self.nufft_obj.solve(self.weights * b / self.dataset.s, solver=solver, maxiter=maxiter)
         else:
-            x = self.nufft_obj.adjoint(self.dataset.w * b / self.dataset.s)
+            x = self.nufft_obj.adjoint(self.weights * b / self.dataset.s)
 
         if self.normalize:
-            x *= self.parameter.n / self.dataset.k
+            x *= self.parameter.n / self.k
+            # x *= self.parameter.n / len(self.dataset.w)
         return x
 
     def RMTF(self):

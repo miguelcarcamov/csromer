@@ -107,3 +107,4 @@ venv.bak/
 *.pdf
 *.png
 *.npy
+*.fits

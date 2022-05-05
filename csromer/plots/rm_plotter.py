@@ -185,7 +185,7 @@ class RMPlotter:
 
         I_contours = [total_intensity_noise * i for i in contourmults]
 
-        core_region = create_circular_skyregion(173.4962263, 49.0629333, 15.782).to_pixel(wcs_rm_image)
+        core_region = create_circular_skyregion(173.4962263, 49.0629333, 17.782).to_pixel(wcs_rm_image)
         north_region = create_circular_skyregion(173.4776803, 49.0761733, 41.295).to_pixel(wcs_rm_image)
         south_region = create_circular_skyregion(173.4719210, 49.0538024, 42.187).to_pixel(wcs_rm_image)
 
