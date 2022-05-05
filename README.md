@@ -174,6 +174,19 @@ from csromer.base import Dataset
 # alpha is the spectral index at this line of sight
 dataset = Dataset(nu=nu, data=data, sigma=sigma, spectral_idx=alpha)
 ```
+### Subtracting the galactic RM contribution
+We use [S. Hutschenreuter et al.](https://www.aanda.org/articles/aa/full_html/2022/01/aa40486-21/aa40486-21.html) Faraday sky HealPIX image to subtract the galactic RM contribution at a certain position of the sky using the object `FaradaySky`.
+Note that you can omit this step, and subtract any RM value that you might have estimated.
+```python
+from csromer.faraday_sky import FaradaySky
+from astropy.coordinates import SkyCoord
+import astropy.units as un
+
+f_sky = FaradaySky()
+coord = SkyCoord(ra=173.694*un.deg, dec=48.957*un.deg, frame="fk5")
+gal_mean, gal_std = f_sky.galactic_rm(coord.ra, coord.dec, frame="fk5")
+dataset.subtract_galacticrm(gal_mean.value)
+```
 
 ## Reconstruct a cube
 
