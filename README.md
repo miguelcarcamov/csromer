@@ -56,7 +56,7 @@ thicksource = FaradayThickSource(nu=nu, s_nu=peak_thicksource, phi_fg=140, phi_c
 ### Mixed sources
 A thin+thick or mixed source is simply a superposition/sum of a thin source and thick source. Therefore we have overriden the `+` operator in order to sum these two objects.
 ```python
-thicksource = thinsource + thicksource
+mixedsource = thinsource + thicksource
 ```
 
 ### Adding noise to your simulations
