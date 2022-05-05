@@ -1,7 +1,7 @@
 # CS-ROMER
 *Compressed Sensing ROtation MEasure Reconstruction*
 
-This code will run in a Python >= 3.9.7 environment with all the packages installed (see requirements.txt file).
+This code will run in a Python >= 3.9.7 environment with all the packages installed (see `requirements.txt` file).
 The paper of this software is under submission but if you use it you can cite it as:
 
 ```
@@ -30,7 +30,7 @@ The software can be installed as a python package locally or using Pypi
 ### From Pypi
 `pip install csromer`
 ## Simulate Faraday sources directly in frequency space
-CS-ROMER is able to simulate Faraday depth spectra directly in wavelength-squared space. The classes FaradayThinSource and FaradayThickSource inherit directly from `Dataset`, and therefore you can directly use them as an input to your reconstruction.
+CS-ROMER is able to simulate Faraday depth spectra directly in wavelength-squared space. The classes `FaradayThinSource` and `FaradayThickSource` inherit directly from `Dataset`, and therefore you can directly use them as an input to your reconstruction.
 ### Thin sources
 ```python
 import numpy
