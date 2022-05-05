@@ -108,6 +108,7 @@ nufft = NUFFT1D(dataset=mixedsource, parameter=parameter, solve=True)
 # At this point we can use either the parameter data set with zeros or we can 
 # use the dirty Faraday depth spectra
 parameter.data = F_dirty
+parameter.complex_data_to_real() # We convert the complex data to real
 # You can set the L1 lambda regularization manually or estimate it as
 lambda_l1 = np.sqrt(mixedsource.m + 2*np.sqrt(mixedsource.m)) * np.sqrt(2) * np.mean(mixedsource.sigma)
 ```
@@ -131,11 +132,48 @@ from csromer.optimization import FISTA
 opt = FISTA(guess_param=parameter, F_obj=F_obj, fx=chi2, gx=g_obj, noise=mixedsource.theo_noise, verbose=False)
 # We run the optimization algorithm
 obj, X = opt.run()
+X.real_data_to_complex() # We convert the data back to complex when the optimization finishes
 ```
 This returns the objective function value `obj` and `X`a `Parameter` instance object. Therefore in this case `X.data` will hold the reconstructed Faraday depth spectra.
-### Using discrete or undecimated wavelets
+At this point you can also access to the model and residual data in wavelength-squared as `mixedsource.model_data` and `mixedsource.residual`, respectively. You can calculate the residuals in Faraday depth spectra by using the DFT object as
+```python
+F_residual = dft.backward(mixedsource.residual)
+```
 
-### Reconstruct real data
+### Using discrete or undecimated wavelets
+CS-ROMER has about 100 filters to user with discrete wavelet transforms or undecimated wavelet transforms. We use the `Pywavelets` package, for more information please refer to [PyWavelets](https://pywavelets.readthedocs.io/en/latest/index.html). To use the wavelets in cs-romer you can do:
+```python
+from csromer.dictionaries import DiscreteWavelet, UndecimatedWavelet
+# This line instantiates a discrete wavelet
+wav = DiscreteWavelet(wavelet_name="coif3", mode="periodization", append_signal=False)
+# This line instantiates an undecimated wavelet
+wav = UndecimatedWavelet(wavelet_name="sym2", mode="periodization", append_signal=True)
+```
+The `append_signal` parameter plugs the Faraday depth spectrum to your coefficients resulting in redundancy in your coefficients. If you just want the wavelet coefficients then set `append_signal=False`.
+At this point our parameter object data needs to be our coefficients and not our Faraday depth spectra, therefore, we do
+```python
+parameter.data = F_dirty # Suppose that you set your parameter data with your dirty Faraday depth spectrum
+parameter.complex_data_to_real() # We convert the data to real
+# Here we do a wavelet decomposition of our Faraday depth space
+# We set the coefficients of the decomposition as our parameter data
+parameter.data = wav.decompose(parameter.data)
+```
+You might have noticed that at the end of the optimization we will end up with fitted coefficients instead of a Faraday depth spectrum.
+Therefore, we need to reconstruct the Faraday depth spectrum from our coefficients doing
+```python
+X.data = wav.reconstruct(X.data) # We reconstruct the Faraday depth spectrum from coefficients
+X.real_data_to_complex() # We convert the real Faraday depth spectrum into complex
+```
+### Reconstruct a real line of sight data
+To reconstruct real data your main script should follow the same workflow. The only difference is that you need to instantiate a `Dataset` object.
+```python
+from csromer.base import Dataset
+# nu is the irregular spaced frequency
+# data is the polarized emission
+# sigma is the error per channel (this can be an array of ones or rms calculation per image channel)
+# alpha is the spectral index at this line of sight
+dataset = Dataset(nu=nu, data=data, sigma=sigma, spectral_idx=alpha)
+```
 
 ## Reconstruct a cube
 
