@@ -174,7 +174,7 @@ from csromer.base import Dataset
 # alpha is the spectral index at this line of sight
 dataset = Dataset(nu=nu, data=data, sigma=sigma, spectral_idx=alpha)
 ```
-### Subtracting the Galactic RM contribution
+### Subtracting the Milky Way RM contribution
 We use [S. Hutschenreuter et al.](https://www.aanda.org/articles/aa/full_html/2022/01/aa40486-21/aa40486-21.html) Faraday sky HealPIX image to subtract the galactic RM contribution at a certain position of the sky using the object `FaradaySky`.
 Note that you can omit this step, and subtract any RM value that you might have estimated.
 ```python
