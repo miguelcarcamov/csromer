@@ -53,6 +53,15 @@ peak_thicksource = 0.0035
 # The Faraday source will be positioned at phi_0 = 200 rad/m^2 and with have a width of 140 rad/m^2
 thicksource = FaradayThickSource(nu=nu, s_nu=peak_thicksource, phi_fg=140, phi_center=200, spectral_idx=1.0)
 ```
+
+### Simulate
+Once you have set your source parameters, you can call the `simulate()` function as
+```python
+thinsource.simulate()
+thicksource.simulate()
+```
+This call will simulate the linealy polarized emission and it will assign the data to the `data` attribute.
+
 ### Mixed sources
 A thin+thick or mixed source is simply a superposition/sum of a thin source and thick source. Therefore we have overriden the `+` operator in order to sum these two objects.
 ```python
@@ -60,11 +69,28 @@ mixedsource = thinsource + thicksource
 ```
 The result will be a `FaradaySource` object.
 
-### Adding noise to your simulations
 ### Remove frequency channels randomly as you were doing RFI flagging
+The framework also allows you to randomly remove data with the function `remove_channels` to simulate RFI flagging
+```python
+# Let's say that we want to randomly remove 20% of the data
+mixedsource.remove_channels(0.2)
+```
+### Adding noise to your simulations
+If we want to add random Gaussian noise to our simulation we can simply call the function `apply_noise`
+```python
+# Let's add Gaussian random noise with mean 0 and standard deviation equal 
+# to 20% the peak of the signal.
+sigma = 0.2*mixedsource.s_nu
+mixedsource.apply_noise(sigma)
+```
+
 
 
 ## Reconstruct 1D Faraday sources
+
+### Reconstruct a simulation
+
+### Reconstruct real data
 
 ## Reconstruct a cube
 
