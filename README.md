@@ -152,7 +152,7 @@ obj, X = opt.run()
 X.real_data_to_complex() # We convert the data back to complex when the optimization finishes
 ```
 This returns the objective function value `obj` and `X`a `Parameter` instance object. Therefore in this case `X.data` will hold the reconstructed Faraday depth spectra.
-At this point you can also access to the model and residual data in wavelength-squared as `mixedsource.model_data` and `mixedsource.residual`, respectively. You can calculate the residuals in Faraday depth spectra by using the DFT object as
+At this point you can also access to the model and residual data in wavelength-squared as `mixedsource.model_data` and `mixedsource.residual`, respectively. You can calculate the residuals in Faraday depth space by using the DFT object as
 ```python
 F_residual = dft.backward(mixedsource.residual)
 ```
@@ -206,8 +206,11 @@ coord = SkyCoord(ra=173.694*un.deg, dec=48.957*un.deg, frame="fk5")
 gal_mean, gal_std = f_sky.galactic_rm(coord.ra, coord.dec, frame="fk5")
 dataset.subtract_galacticrm(gal_mean.value)
 ```
-
 ## Reconstruct a cube
+We warn the users that not all framework functions are yet implemented to work with data cubes. Therefore, we need to use python broadcasting and the package `joblib`.
+```
+
+```
 
 ## Contact
 Please if you have any problem, issue or you catch a bug using this software please use the [issues tab](https://github.com/miguelcarcamov/csromer/issues) if you have a common question or you look for any help please use the [discussions tab](https://github.com/miguelcarcamov/csromer/discussions).
