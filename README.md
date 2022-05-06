@@ -207,7 +207,7 @@ gal_mean, gal_std = f_sky.galactic_rm(coord.ra, coord.dec, frame="fk5")
 dataset.subtract_galacticrm(gal_mean.value)
 ```
 ## Reconstruct a cube
-We warn the users that not all framework functions are yet implemented to work with data cubes. Therefore, we need to use numpy broadcasting and the package `joblib`.
+We warn the users that not all framework functions are yet implemented to work with data cubes. Therefore, we need to use `numpy` broadcasting and the package `joblib`.
 ```
 
 ```
