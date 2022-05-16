@@ -50,7 +50,7 @@ The software can be installed as a python package locally or using Pypi
 CS-ROMER is able to simulate Faraday depth spectra directly in wavelength-squared space. The classes `FaradayThinSource` and `FaradayThickSource` inherit directly from `Dataset`, and therefore you can directly use them as an input to your reconstruction.
 ### Thin sources
 ```python
-import numpy
+import numpy as np
 from csromer.simulation import FaradayThinSource
 # Let's create an evenly spaced frequency vector from 1.008 to 2.031 GHz (JVLA setup) 
 nu = np.linspace(start=1.008e9, stop=2.031e9, num=1000)
@@ -61,7 +61,7 @@ thinsource = FaradayThinSource(nu=nu, s_nu=peak_thinsource, phi_gal=-200, spectr
 ```
 ### Thick sources
 ```python
-import numpy
+import numpy as np
 from csromer.simulation import FaradayThickSource
 # Let's create an evenly spaced frequency vector from 1.008 to 2.031 GHz (JVLA setup) 
 nu = np.linspace(start=1.008e9, stop=2.031e9, num=1000)
