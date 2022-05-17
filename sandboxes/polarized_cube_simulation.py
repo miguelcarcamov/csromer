@@ -188,7 +188,7 @@ nu_0 = np.median(nu)
 
 
 lambda_sq = (c/nu)**2
-lambda_sq = lambda_sq[::-1]
+# lambda_sq = lambda_sq[::-1]
 
 
 # In[16]:
@@ -314,6 +314,21 @@ cube[:, y_idx_depolarized, x_idx_depolarized] *= np.exp(-2. * random_sigma_rm_de
 # In[31]:
 
 
+lambda_sq = lambda_sq[::-1]
+cube_before_depolarization = np.flipud(cube_before_depolarization)
+cube = np.flipud(cube)
+
+
+# In[32]:
+
+
+print(cube_before_depolarization.shape)
+print(cube.shape)
+
+
+# In[33]:
+
+
 # Convolution with clean-beam
 # Assumming bmaj == bmin for now
 bmaj = 5e-03 # degrees
@@ -321,52 +336,52 @@ bmaj_pix = bmaj / -pix_size
 bmin_pix = bmaj_pix
 
 
-# In[32]:
+# In[34]:
 
 
 bmaj_pix
 
 
-# In[33]:
+# In[35]:
 
 
 gkernel = gkern(11, bmaj_pix)
 
 
-# In[34]:
+# In[36]:
 
 
 gkernel.shape
 
 
-# In[35]:
+# In[37]:
 
 
 plt.imshow(gkernel)
 plt.colorbar()
 
 
-# In[36]:
+# In[38]:
 
 
 np.max(gkernel)
 
 
-# In[37]:
+# In[39]:
 
 
 cube = signal.convolve(cube, gkernel[np.newaxis, :, :], mode="same")
 cube_before_depolarization = signal.convolve(cube_before_depolarization, gkernel[np.newaxis, :, :], mode="same")
 
 
-# In[38]:
+# In[40]:
 
 
 remove_frac = 0.3
 final_idxs = remove_channels(lambda2=lambda_sq, remove_frac=remove_frac, random_state=None, chunksize=None)
 
 
-# In[39]:
+# In[41]:
 
 
 cube = cube[final_idxs]
@@ -374,75 +389,75 @@ cube_before_depolarization = cube_before_depolarization[final_idxs]
 lambda_sq = lambda_sq[final_idxs]
 
 
-# In[40]:
+# In[42]:
 
 
 plt.imshow(np.abs(cube[5].real))
 plt.colorbar()
 
 
-# In[41]:
+# In[43]:
 
 
 print(y_idx_thin)
 
 
-# In[42]:
+# In[44]:
 
 
 print(x_idx_thin)
 
 
-# In[43]:
+# In[45]:
 
 
 print(y_idx_thick)
 
 
-# In[44]:
+# In[46]:
 
 
 print(x_idx_thick)
 
 
-# In[45]:
+# In[47]:
 
 
 print(x_idx_mix)
 
 
-# In[46]:
+# In[48]:
 
 
 print(y_idx_mix)
 
 
-# In[47]:
+# In[49]:
 
 
 x_idx_depolarized
 
 
-# In[48]:
+# In[50]:
 
 
 y_idx_depolarized
 
 
-# In[49]:
+# In[51]:
 
 
 random_sigma_rm_depol
 
 
-# In[55]:
+# In[57]:
 
 
-x_idx_test = 142
-y_idx_test = 103
+x_idx_test = 24
+y_idx_test = 142
 
 
-# In[56]:
+# In[58]:
 
 
 plt.plot(lambda_sq, cube_before_depolarization[:, y_idx_test, x_idx_test].real, '.')
@@ -450,7 +465,7 @@ plt.plot(lambda_sq, cube_before_depolarization[:, y_idx_test, x_idx_test].imag, 
 plt.plot(lambda_sq, np.abs(cube_before_depolarization[:, y_idx_test, x_idx_test]), '.')
 
 
-# In[57]:
+# In[59]:
 
 
 plt.plot(lambda_sq, cube[:, y_idx_test, x_idx_test].real, '.')
@@ -458,13 +473,13 @@ plt.plot(lambda_sq, cube[:, y_idx_test, x_idx_test].imag, '.')
 plt.plot(lambda_sq, np.abs(cube[:, y_idx_test, x_idx_test]), '.')
 
 
-# In[53]:
+# In[55]:
 
 
 output_cube = np.concatenate((cube.real[:,None],cube.imag[:,None]),axis=1)
 
 
-# In[54]:
+# In[56]:
 
 
 fits.writeto("test.fits", output_cube, overwrite=True)
