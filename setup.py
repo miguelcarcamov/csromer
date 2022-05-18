@@ -5,6 +5,7 @@ from typing import List
 from pathlib import Path
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
+requirements = this_directory / "requirements.txt"
 
 def _parse_requirements(filename: str) -> List[str]:
     """Return requirements from requirements file."""
@@ -16,11 +17,12 @@ setup(
     version='0.0.1',
     description='Compressed Sensing Rotation Measure Reconstructor',
     license="GNU GPL",
+    url="https://github.com/miguelcarcamov/csromer",
     long_description=long_description,
     long_description_content_type='text/markdown',
     author='Miguel Carcamo',
     author_email='miguel.carcamo@manchester.ac.uk',
     packages=['csromer'],  # same as name
-    install_requires=_parse_requirements('requirements.txt'),  # external packages as dependencies
+    install_requires=_parse_requirements(requirements.as_posix()),  # external packages as dependencies
     scripts=[]
 )
