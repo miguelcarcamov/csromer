@@ -13,7 +13,7 @@ def _parse_requirements(filename: str) -> List[str]:
 
 setup(
     name='csromer',
-    version='0.0.1',
+    version='0.0.2',
     description='Compressed Sensing Rotation Measure Reconstructor',
     license="GNU GPL",
     url="https://github.com/miguelcarcamov/csromer",
