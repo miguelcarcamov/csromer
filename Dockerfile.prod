@@ -13,10 +13,11 @@ RUN apt-get update -y && \
     apt-get install -y libblas-dev && \
     apt-get install -y liblapack-dev && \
     apt-get install -y liblapacke-dev && \
-    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* && \
-    pip install -U git+https://github.com/miguelcarcamov/csromer.git
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* \
 
 RUN python3 --version
 RUN pip3 --version
+RUN echo "Installing CS-ROMER"
+RUN pip3 install git+https://github.com/miguelcarcamov/csromer.git
 RUN echo "Hello from CS-ROMER production image"
 LABEL org.opencontainers.image.source="https://github.com/miguelcarcamov/csromer"
