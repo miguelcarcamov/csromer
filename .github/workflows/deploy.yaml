@@ -6,7 +6,7 @@ on:
     branches:
       - master
     paths:
-      - Dockerfile
+      - 'Dockerfile'
 jobs:
   Deploy:
     runs-on: ubuntu-latest

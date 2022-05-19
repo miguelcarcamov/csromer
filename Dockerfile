@@ -13,3 +13,4 @@ RUN apt-get update -y && \
 
 RUN python3 --version
 RUN pip3 --version
+LABEL org.opencontainers.image.source="https://github.com/miguelcarcamov/csromer"
