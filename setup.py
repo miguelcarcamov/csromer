@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 import distutils.text_file
 from typing import List
 # read the contents of your README file
@@ -21,7 +21,7 @@ setup(
     long_description_content_type='text/markdown',
     author='Miguel Carcamo',
     author_email='miguel.carcamo@manchester.ac.uk',
-    packages=['csromer'],  # same as name
+    packages=find_packages(),  # same as name
     install_requires=_parse_requirements("requirements.txt"),  # external packages as dependencies
     scripts=[]
 )
