@@ -1,10 +1,11 @@
 name: Deploy Docker
 
 # Run workflow on tags starting with v (eg. v2, v1.2.0)
-on:
-  push:
-    tags:
-      - v*
+on: [push, pull_request]
+  branches:
+    - master
+  paths:
+    - Dockerfile
 
 jobs:
   Deploy:

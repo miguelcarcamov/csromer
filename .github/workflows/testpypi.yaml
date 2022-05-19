@@ -7,8 +7,9 @@ name: Publish CS-ROMER package to testPyPI
 
 on:
   push:
-    tags:
-      - '*.*.*'
+    pull_request:
+      branches:
+        - master
 
 permissions:
   contents: read
