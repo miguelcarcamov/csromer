@@ -7,11 +7,16 @@ name: Publish CS-ROMER package to testPyPI
 
 on:
   push:
-    pull_request:
-      branches:
-        - master
-      paths:
-        - 'setup.py'
+    branches:
+      - master
+    paths:
+      - 'setup.py'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'setup.py'
+
 
 permissions:
   contents: read
