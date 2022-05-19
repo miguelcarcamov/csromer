@@ -3,7 +3,7 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: Publish CS-ROMER package to PyPI
+name: pypi-publish
 
 on:
   release:
@@ -15,11 +15,11 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-20.04
-      container:
-        image: ghcr.io/${{ github.repository }}:latest
-        credentials:
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.REGISTRY_TOKEN }}
+    container:
+      image: ghcr.io/${{ github.repository }}:latest
+      credentials:
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.REGISTRY_TOKEN }}
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python

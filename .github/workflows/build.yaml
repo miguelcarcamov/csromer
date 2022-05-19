@@ -1,4 +1,4 @@
-name: Build CS-ROMER in container
+name: build
 
 on: [push]
 

@@ -1,4 +1,4 @@
-name: Build docker container and push it to Github Registry
+name: build-container
 
 on:
   push:
