@@ -2,11 +2,16 @@ name: Deploy Docker
 
 on:
   push:
+    branches:
+      - master
+      paths:
+        - 'Dockerfile'
   pull_request:
     branches:
       - master
-    paths:
-      - 'Dockerfile'
+      paths:
+        - 'Dockerfile'
+
 jobs:
   Deploy:
     runs-on: ubuntu-latest
