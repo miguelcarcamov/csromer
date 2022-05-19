@@ -1,0 +1,30 @@
+on: [push]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/${{ github.repository }}:latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.x'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip wheel setuptools
+          pip install build
+      - name: Build package
+        run: python -m build
+      - name: Build bdist package
+        run: python setup.py bdist_wheel
+      - name: Install csromersion
+        run: pip install dist/*.tar.gz
+      - name: Run commands to test that everything is ffinished
+        run: | 
+              pip freeze | grep "pyralysis"
+              python -c "import pyralysis"

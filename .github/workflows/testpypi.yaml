@@ -23,7 +23,9 @@ permissions:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/${{ github.repository }}:latest
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python
