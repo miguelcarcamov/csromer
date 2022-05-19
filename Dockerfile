@@ -8,7 +8,7 @@ RUN apt-get update -y && \
     python3-wheel \
     python3-setuptools && \
     apt-get install -y libblas-dev && \
-    apt-get install liblapack-dev && \
+    apt-get install -y liblapack-dev && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* \
 
 RUN pip3 install --no-cache-dir -U install setuptools pip
