@@ -17,4 +17,5 @@ RUN apt-get update -y && \
 
 RUN python3 --version
 RUN pip3 --version
+RUN echo "Hello from CS-ROMER base image"
 LABEL org.opencontainers.image.source="https://github.com/miguelcarcamov/csromer"
