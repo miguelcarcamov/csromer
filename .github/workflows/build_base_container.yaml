@@ -1,4 +1,4 @@
-name: build-container
+name: build-base-container
 
 on:
   push:
@@ -29,4 +29,4 @@ jobs:
         with:
           push: true # Will only build if this is not here
           tags: |
-            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:base
