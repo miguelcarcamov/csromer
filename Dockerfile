@@ -11,5 +11,5 @@ RUN apt-get update -y && \
     apt-get install -y liblapack-dev && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-RUN python --version
+RUN python3 --version
 RUN pip3 --version
