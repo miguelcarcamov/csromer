@@ -11,6 +11,8 @@ on:
       - master
     paths:
       - 'Dockerfile'
+env:
+  REGISTRY: ghcr.io
 
 jobs:
   build:
@@ -21,7 +23,7 @@ jobs:
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v1
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.repository_owner }}
           password: ${{ secrets.REGISTRY_TOKEN }}
       - name: Setup Docker Buildx
@@ -30,5 +32,4 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           push: true # Will only build if this is not here
-          tags: |
-            ghcr.io/${{ github.repository }}:base
+          tags: ${{ env.REGISTRY }}/${{ github.repository }}:base
