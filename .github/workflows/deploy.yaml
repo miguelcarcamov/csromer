@@ -5,9 +5,8 @@ on:
   pull_request:
     branches:
       - master
-  paths:
-    - Dockerfile
-
+    paths:
+      - Dockerfile
 jobs:
   Deploy:
     runs-on: ubuntu-latest
