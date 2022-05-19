@@ -9,6 +9,7 @@ RUN apt-get update -y && \
     python3-setuptools && \
     apt-get install -y libblas-dev && \
     apt-get install -y liblapack-dev && \
-    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-RUN pip3 install --no-cache-dir -U install setuptools pip
+RUN python --version
+RUN pip3 --version
