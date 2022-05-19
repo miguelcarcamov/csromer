@@ -1,4 +1,4 @@
-name: Deploy Docker
+name: Build docker container and push it to Github Registry
 
 on:
   push:
