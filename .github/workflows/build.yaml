@@ -1,0 +1,39 @@
+name: build
+
+on: [push]
+
+env:
+  REGISTRY: ghcr.io
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/${{ github.repository }}:base
+      credentials:
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.REGISTRY_TOKEN }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip wheel setuptools
+          python3 -m pip install virtualenv
+          python3 -m pip install build
+      - name: Build package
+        run: python3 -m build
+      - name: Build bdist package
+        run: python3 setup.py bdist_wheel
+      - name: Install csromer
+        run: pip3 install dist/*.tar.gz
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          path: dist/*
+      - name: Run commands to test that everything is finished
+        run: | 
+              pip3 freeze | grep "csromer"
+              python3 -c "import csromer"
