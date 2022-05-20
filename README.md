@@ -40,12 +40,24 @@ The paper of this software is under submission but if you use it you can cite it
 ```
 ## Installation
 The software can be installed as a python package locally or using Pypi
-### Locally
-`pip install -e .`
-### From Pypi
+### Locally after cloning the project
+```shell
+git clone https://github.com/miguelcarcamov/csromer.git
+cd csromer
+pip install .
+```
+###  Locally as developer
+```shell
+git clone git@github.com:miguelcarcamov/csromer.git
+cd csromer
+pip install -e .
+```
+### From PyPI
 `pip install csromer`
 ### From Github
 `pip install -U git+https://github.com/miguelcarcamov/csromer.git`
+### From latest docker container
+`docker pull ghcr.io/miguelcarcamov/csromer:latest`
 ## Simulate Faraday sources directly in frequency space
 CS-ROMER is able to simulate Faraday depth spectra directly in wavelength-squared space. The classes `FaradayThinSource` and `FaradayThickSource` inherit directly from `Dataset`, and therefore you can directly use them as an input to your reconstruction.
 ### Thin sources
