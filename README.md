@@ -219,10 +219,103 @@ gal_mean, gal_std = f_sky.galactic_rm(coord.ra, coord.dec, frame="fk5")
 dataset.subtract_galacticrm(gal_mean.value)
 ```
 ## Reconstruct a cube
-We warn the users that not all framework functions are yet implemented to work with data cubes. Therefore, we need to use `numpy` broadcasting and the package `joblib`.
+We warn the users that not all framework functions are yet implemented to work with data cubes. Therefore, we need to use `numpy` broadcasting and the package `joblib`. Let's say that you have read your polarized cube and frequency array using `np.load`. For this example we will assume that you will reconstruct with uniform weights.
+```python
+import numpy as np
+from csromer.reconstruction import Parameter
+from csromer.base import Dataset
+from joblib import Parallel, delayed
+
+QU_cubes = np.load('qu_cubes.npy') # Shape (freqs, m, n)
+nu = np.load('nu.npy') # Shape (freqs,)
+m = QU_cubes.shape[1]
+n = QU_cubes.shape[2]
+
+Q = QU_cubes[0]
+U = QU_cubes[1]
+data = Q + 1j * U
+sigma = np.ones_like(nu) # Uniform weights
+# We will construct a dataset only to obtain Faraday-space array shapes
+foo_dataset = Dataset(nu=nu, sigma=sigma, spectral_idx=0.0)
+foo_parameter = Parameter()
+parameter.calculate_cellsize(dataset=foo_dataset, oversampling=8)
+# Faraday dispersion function cube
+# Note that ee add another dimension to store dirty, model, residual and restored signals
+F = np.zeros(4, foo_parameter.n, m, n, dtype=np.complex64)
+
+# Parallelize your for loop using joblib
+total_pixels = m*n
+nthreads = 8
+workers_1d_idxs = np.arange(total_pixels)
+workers_idxs = np.unravel_index(workers_1d_idxs, (M,N))
+Parallel(n_jobs=nthreads, backend="multiprocessing", verbose=10)(delayed(reconstruct_cube)(
+        F, data, sigma, nu, 0.0, workers_idxs, i, eta, False) for i in range(0, total_pixels))
+```
+```python
+def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None, noise=None,
+                     workers_idxs=None, idx=None, eta=1.0, use_wavelet=True):
+    i = workers_idxs[0][idx]
+    j = workers_idxs[1][idx]
+    
+    if spectral_idx is None:
+        spectral_idx = 0.0
+    
+    dataset = Dataset(nu=nu, sigma=sigma, data=data[:, i, j], spectral_idx=spectral_idx)
+    parameter = Parameter()
+    parameter.calculate_cellsize(dataset=dataset, oversampling=8, verbose=False)
+
+    dft = DFT1D(dataset=dataset, parameter=parameter)
+    nufft = NUFFT1D(dataset=dataset, parameter=parameter, solve=True)
+
+    F_dirty = dft.backward(dataset.data)
+
+    # We can estimate the noise from the edges of the FDF
+    edges_idx = np.where(np.abs(parameter.phi) > parameter.max_faraday_depth / 1.5)
+    noise = eta * 0.5 * (np.std(F_dirty[edges_idx].real) + np.std(F_dirty[edges_idx].imag))
+    
+    # We store the FDF
+    F[0, :, i, j] = F_dirty
+    
+    # Let's say that if use_wavelet is True then we use the coif2 wavelet
+    if use_wavelet:
+        wav = UndecimatedWavelet(wavelet_name="coif2")
+    else:
+        wav = None
+    
+    # We estimate lambda for L1 norm
+    lambda_l1 = np.sqrt(2 * len(dataset.data) + np.sqrt(4 * len(dataset.data))) * noise
+    chi2 = Chi2(dft_obj=nufft, wavelet=wav)
+    l1 = L1(reg=lambda_l1)
+    F_func = [chi2, l1]
+    f_func = [chi2]
+    g_func = [l1]
+
+    F_obj = OFunction(F_func)
+    g_obj = OFunction(g_func)
+
+    parameter.data = F_dirty
+    parameter.complex_data_to_real()
+
+    if use_wavelet:
+        parameter.data = wav.decompose(parameter.data)
+
+    opt = FISTA(guess_param=parameter, F_obj=F_obj, fx=chi2, gx=g_obj, noise=noise, verbose=False)
+    obj, X = opt.run()
+
+    if use_wavelet:
+        X.data = wav.reconstruct(X.data)
+
+    X.real_data_to_complex()
+    F_residual = dft.backward(dataset.residual)
+    F[1, :, i, j] = X.data
+    F[2, :, i, j] = X.convolve(normalized=True) + F_residual
+    F[3, :, i, j] = F_residual
 ```
 
+Note that if your Faraday depth cube is large, then probably it won't fit in your memory. Therefore, we can use `memory map`. In that case you would need to define your Faraday depth cube as:
+```python
+output_file_mmap = os.path.join(folder, 'output_mmap')
+F = np.memmap(output_file_mmap, dtype=np.complex64, shape=(4, foo_parameter.n, M, N), mode='w+')
 ```
-
 ## Contact
 Please if you have any problem, issue or you catch a bug using this software please use the [issues tab](https://github.com/miguelcarcamov/csromer/issues) if you have a common question or you look for any help please use the [discussions tab](https://github.com/miguelcarcamov/csromer/discussions).
