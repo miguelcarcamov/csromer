@@ -41,6 +41,18 @@ class FaradaySource(Dataset, metaclass=ABCMeta):
             else:
                 raise TypeError("Data attribute in sources cannot be NoneType")
 
+    def __iadd__(self, other):
+        if isinstance(other, FaradaySource) and hasattr(other, 'data'):
+            if (
+                    self.nu == other.nu).all() and self.data is not None and other.data is not None and self.s_nu is not None and other.s_nu is not None:
+                source_copy = copy(self)
+                source_copy.data = self.data + other.data  # Sums the polarized data
+                w = self.s_nu + other.s_nu
+                source_copy.spectral_idx = (self.s_nu * self.spectral_idx + other.s_nu * other.spectral_idx) / w
+                return source_copy
+            else:
+                raise TypeError("Data attribute in sources cannot be NoneType")
+
     @abstractmethod
     def simulate(self):
         pass
