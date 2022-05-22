@@ -3,6 +3,7 @@ name: build-latest-container
 on:
   push:
     branches:
+      - master
       - production
     paths:
       - 'Dockerfile.prod'
