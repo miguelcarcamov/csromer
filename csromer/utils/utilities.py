@@ -9,22 +9,24 @@ import numpy as np
 from astropy.wcs import WCS
 from astropy.stats import sigma_clipped_stats
 
+
 def nextPowerOf2(n):
-    count = 0;
-    # First n in the below  
-    # condition is for the  
-    # case where n is 0 
-    if (n and not (n & (n - 1))):
+    count = 0
+    # First n in the below
+    # condition is for the
+    # case where n is 0
+    if n and not (n & (n - 1)):
         return n
 
-    while (n != 0):
+    while n != 0:
         n >>= 1
         count += 1
 
-    return 1 << count;
+    return 1 << count
+
 
 def real_to_complex(z):  # real vector of length 2n -> complex of length n
-    return z[:len(z) // 2] + 1j * z[len(z) // 2:]
+    return z[: len(z) // 2] + 1j * z[len(z) // 2 :]
 
 
 def complex_to_real(z):  # complex vector of length n -> real of length 2n
@@ -37,8 +39,15 @@ def make_mask(I=np.array([]), sigma=0.0):
     return indexes, masked_idxs
 
 
-def make_mask_faraday(I=np.array([]), P=np.array([]), cube_Q=None, cube_U=None, spectral_idx=None,
-                      sigma_I=0.0, sigma_P=0.0):
+def make_mask_faraday(
+    I=np.array([]),
+    P=np.array([]),
+    cube_Q=None,
+    cube_U=None,
+    spectral_idx=None,
+    sigma_I=0.0,
+    sigma_P=0.0,
+):
     if cube_Q is not None:
         Q_nan = np.isnan(cube_Q).any(axis=0)
 
@@ -57,7 +66,15 @@ def make_mask_faraday(I=np.array([]), P=np.array([]), cube_Q=None, cube_U=None, 
     return indexes, masked_idxs
 
 
-def calculate_noise(image=np.array([]), x0=None, xn=None, y0=None, yn=None, nsigma=3, use_sigma_clipped_stats=False):
+def calculate_noise(
+    image=np.array([]),
+    x0=None,
+    xn=None,
+    y0=None,
+    yn=None,
+    nsigma=3,
+    use_sigma_clipped_stats=False,
+):
     if x0 is None:
         x0 = 0
 
@@ -83,7 +100,9 @@ def calculate_noise(image=np.array([]), x0=None, xn=None, y0=None, yn=None, nsig
             sigma = np.nanstd(image[y0:yn, x0:xn])
     else:
         if image.ndim > 2:
-            mean, median, sigma = sigma_clipped_stats(image[:, y0:yn, x0:xn], sigma=nsigma, axis=(1, 2))
+            mean, median, sigma = sigma_clipped_stats(
+                image[:, y0:yn, x0:xn], sigma=nsigma, axis=(1, 2)
+            )
         else:
             mean, median, sigma = sigma_clipped_stats(image[y0:yn, x0:xn], sigma=nsigma)
 

@@ -21,14 +21,27 @@ def filter_cubes(data_I, data_Q, data_U, header, additional_outlier_idxs=None):
     correct_freqs = np.where((sum_I != 0.0) | (sum_Q != 0.0) | (sum_U != 0.0))[0]
     if additional_outlier_idxs:
         correct_freqs = np.setxor1d(correct_freqs, additional_outlier_idxs)
-    filtered_data = 100.0 * (nfreqs - len(correct_freqs))/nfreqs
+    filtered_data = 100.0 * (nfreqs - len(correct_freqs)) / nfreqs
     print("Filtering {0:.2f}% of the total data".format(filtered_data))
-    return data_I[correct_freqs], data_Q[correct_freqs], data_U[correct_freqs], nu[correct_freqs]
+    return (
+        data_I[correct_freqs],
+        data_Q[correct_freqs],
+        data_U[correct_freqs],
+        nu[correct_freqs],
+    )
 
 
 class Reader:
-    def __init__(self, stokes_I_name=None, stokes_Q_name=None, stokes_U_name=None, Q_cube_name=None, U_cube_name=None,
-                 freq_file_name=None, numpy_file=None):
+    def __init__(
+        self,
+        stokes_I_name=None,
+        stokes_Q_name=None,
+        stokes_U_name=None,
+        Q_cube_name=None,
+        U_cube_name=None,
+        freq_file_name=None,
+        numpy_file=None,
+    ):
         self.stokes_I_name = stokes_I_name
         self.stokes_Q_name = stokes_Q_name
         self.stokes_U_name = stokes_U_name
@@ -128,36 +141,71 @@ class Reader:
 
 
 class Writer:
-
     def __init__(self, output=""):
         self.output = output
 
     def writeFITSCube(self, cube, header, nphi, phi, dphi, output=None, overwrite=True):
-        header['NAXIS'] = 3
-        header['NAXIS3'] = (nphi, 'Length of Faraday depth axis')
-        header['CTYPE3'] = 'Phi'
-        header['CDELT3'] = dphi
-        header['CUNIT3'] = 'rad/m/m'
-        header['CRVAL3'] = phi[0]
+        header["NAXIS"] = 3
+        header["NAXIS3"] = (nphi, "Length of Faraday depth axis")
+        header["CTYPE3"] = "Phi"
+        header["CDELT3"] = dphi
+        header["CUNIT3"] = "rad/m/m"
+        header["CRVAL3"] = phi[0]
 
         if output is None:
             if cube.dtype == np.complex64 or cube.dtype == np.complex128:
                 string_tuple = self.output.partition(".fits")
                 output_real = string_tuple[0] + "_real" + string_tuple[1]
                 output_imag = string_tuple[0] + "_imag" + string_tuple[1]
-                fits.writeto(output_real, data=cube.real, header=header, overwrite=overwrite,  output_verify='silentfix')
-                fits.writeto(output_imag, data=cube.imag, header=header, overwrite=overwrite,  output_verify='silentfix')
+                fits.writeto(
+                    output_real,
+                    data=cube.real,
+                    header=header,
+                    overwrite=overwrite,
+                    output_verify="silentfix",
+                )
+                fits.writeto(
+                    output_imag,
+                    data=cube.imag,
+                    header=header,
+                    overwrite=overwrite,
+                    output_verify="silentfix",
+                )
             else:
-                fits.writeto(self.output, data=cube, header=header, overwrite=overwrite,  output_verify='silentfix')
+                fits.writeto(
+                    self.output,
+                    data=cube,
+                    header=header,
+                    overwrite=overwrite,
+                    output_verify="silentfix",
+                )
         else:
             if cube.dtype == np.complex64 or cube.dtype == np.complex128:
                 string_tuple = output.partition(".fits")
                 output_real = string_tuple[0] + "_real" + string_tuple[1]
                 output_imag = string_tuple[0] + "_imag" + string_tuple[1]
-                fits.writeto(output_real, data=cube.real, header=header, overwrite=overwrite, output_verify='silentfix')
-                fits.writeto(output_imag, data=cube.imag, header=header, overwrite=overwrite,  output_verify='silentfix')
+                fits.writeto(
+                    output_real,
+                    data=cube.real,
+                    header=header,
+                    overwrite=overwrite,
+                    output_verify="silentfix",
+                )
+                fits.writeto(
+                    output_imag,
+                    data=cube.imag,
+                    header=header,
+                    overwrite=overwrite,
+                    output_verify="silentfix",
+                )
             else:
-                fits.writeto(output, data=cube, header=header, overwrite=overwrite,  output_verify='silentfix')
+                fits.writeto(
+                    output,
+                    data=cube,
+                    header=header,
+                    overwrite=overwrite,
+                    output_verify="silentfix",
+                )
 
     def writeNPCube(self, cube, output=None):
         if output is None:

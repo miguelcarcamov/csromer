@@ -21,7 +21,7 @@ def approx_abs(x, epsilon):
 class Fi(metaclass=ABCMeta):
     def __init__(self, reg=1.0, norm_factor=1.0, wavelet=None):
         initlocals = locals()
-        initlocals.pop('self')
+        initlocals.pop("self")
         for a_attribute in initlocals.keys():
             setattr(self, a_attribute, initlocals[a_attribute])
 
@@ -42,7 +42,7 @@ class TV(Fi):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         initlocals = locals()
-        initlocals.pop('self')
+        initlocals.pop("self")
         for a_attribute in initlocals.keys():
             setattr(self, a_attribute, initlocals[a_attribute])
 
@@ -71,7 +71,7 @@ class TSV(Fi):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         initlocals = locals()
-        initlocals.pop('self')
+        initlocals.pop("self")
         for a_attribute in initlocals.keys():
             setattr(self, a_attribute, initlocals[a_attribute])
 
@@ -100,7 +100,7 @@ class L1(Fi):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         initlocals = locals()
-        initlocals.pop('self')
+        initlocals.pop("self")
         for a_attribute in initlocals.keys():
             setattr(self, a_attribute, initlocals[a_attribute])
 
@@ -139,7 +139,7 @@ class Chi2(Fi):
         self.dft_obj.dataset.model_data = model_data
         # res = model_data - self.dft_obj.dataset.data
         res = -self.dft_obj.dataset.residual
-        chi2_vector = self.dft_obj.dataset.w * (res.real ** 2 + res.imag ** 2)
+        chi2_vector = self.dft_obj.dataset.w * (res.real**2 + res.imag**2)
         val = 0.5 * np.sum(chi2_vector)
         # print("Evaluation on chi2:", val)
         return val

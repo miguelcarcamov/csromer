@@ -30,25 +30,39 @@ class FaradaySource(Dataset, metaclass=ABCMeta):
                 self.sigma = 1.0
 
     def __add__(self, other):
-        if isinstance(other, FaradaySource) and hasattr(other, 'data'):
+        if isinstance(other, FaradaySource) and hasattr(other, "data"):
             if (
-                    self.nu == other.nu).all() and self.data is not None and other.data is not None and self.s_nu is not None and other.s_nu is not None:
+                (self.nu == other.nu).all()
+                and self.data is not None
+                and other.data is not None
+                and self.s_nu is not None
+                and other.s_nu is not None
+            ):
                 source_copy = copy.deepcopy(self)
                 source_copy.data = self.data + other.data  # Sums the polarized data
                 w = self.s_nu + other.s_nu
-                source_copy.spectral_idx = (self.s_nu * self.spectral_idx + other.s_nu * other.spectral_idx) / w
+                source_copy.spectral_idx = (
+                    self.s_nu * self.spectral_idx + other.s_nu * other.spectral_idx
+                ) / w
                 return source_copy
             else:
                 raise TypeError("Data attribute in sources cannot be NoneType")
 
     def __iadd__(self, other):
-        if isinstance(other, FaradaySource) and hasattr(other, 'data'):
+        if isinstance(other, FaradaySource) and hasattr(other, "data"):
             if (
-                    self.nu == other.nu).all() and self.data is not None and other.data is not None and self.s_nu is not None and other.s_nu is not None:
+                (self.nu == other.nu).all()
+                and self.data is not None
+                and other.data is not None
+                and self.s_nu is not None
+                and other.s_nu is not None
+            ):
                 source_copy = copy(self)
                 source_copy.data = self.data + other.data  # Sums the polarized data
                 w = self.s_nu + other.s_nu
-                source_copy.spectral_idx = (self.s_nu * self.spectral_idx + other.s_nu * other.spectral_idx) / w
+                source_copy.spectral_idx = (
+                    self.s_nu * self.spectral_idx + other.s_nu * other.spectral_idx
+                ) / w
                 return source_copy
             else:
                 raise TypeError("Data attribute in sources cannot be NoneType")
@@ -61,7 +75,7 @@ class FaradaySource(Dataset, metaclass=ABCMeta):
         if sigma_rm is None:
             sigma_rm = 0.0
 
-        self.data *= np.exp(-2. * sigma_rm** 2 * (self.lambda2 - self.l2_ref)**2)
+        self.data *= np.exp(-2.0 * sigma_rm**2 * (self.lambda2 - self.l2_ref) ** 2)
 
     def remove_channels(self, remove_frac=None, random_state=None, chunksize=None):
         if remove_frac is None:
@@ -72,7 +86,7 @@ class FaradaySource(Dataset, metaclass=ABCMeta):
             remove_frac = 1.0 - remove_frac
 
         if chunksize is None:
-            chunksize = self.m // (10  + (10 * (1. - remove_frac)))
+            chunksize = self.m // (10 + (10 * (1.0 - remove_frac)))
 
         _chansremoved = []
         while True:
@@ -125,7 +139,7 @@ class FaradaySource(Dataset, metaclass=ABCMeta):
         else:
             self.sigma = np.ones_like(self.lambda2)
             return
-        
+
         if random_state is None:
             q_noise = np.random.normal(loc=0.0, scale=self.noise, size=self.m)
             u_noise = np.random.normal(loc=0.0, scale=self.noise, size=self.m)
@@ -147,8 +161,8 @@ class FaradayThinSource(FaradaySource):
     def simulate(self):
         nu = c / np.sqrt(self.lambda2)
         k = (nu / self.nu_0) ** (-1.0 * self.spectral_idx)
-        mu_q = np.cos(2. * self.phi_gal * (self.lambda2 - self.l2_ref))
-        mu_u = np.sin(2. * (self.phi_gal * (self.lambda2 - self.l2_ref) + self.dchi))
+        mu_q = np.cos(2.0 * self.phi_gal * (self.lambda2 - self.l2_ref))
+        mu_u = np.sin(2.0 * (self.phi_gal * (self.lambda2 - self.l2_ref) + self.dchi))
 
         # p = np.mean(np.sqrt(mu_q ** 2 + mu_u ** 2))
 
@@ -166,11 +180,11 @@ class FaradayThickSource(FaradaySource):
     def simulate(self):
         nu = c / np.sqrt(self.lambda2)
         k = (nu / self.nu_0) ** (-1.0 * self.spectral_idx)
-        phi_fg = self.phi_fg / 2.
-        j = 2. * (self.lambda2 - self.l2_ref) * (self.phi_center + phi_fg)
-        k = 2. * (self.lambda2 - self.l2_ref) * (self.phi_center - phi_fg)
+        phi_fg = self.phi_fg / 2.0
+        j = 2.0 * (self.lambda2 - self.l2_ref) * (self.phi_center + phi_fg)
+        k = 2.0 * (self.lambda2 - self.l2_ref) * (self.phi_center - phi_fg)
         mu_q = np.sin(j) - np.sin(k)
-        const = self.s_nu * k / (2. * self.phi_fg * (self.lambda2 - self.l2_ref))
+        const = self.s_nu * k / (2.0 * self.phi_fg * (self.lambda2 - self.l2_ref))
         mu_u = np.cos(j) - np.cos(k)
 
         self.data = const * (mu_q + mu_u / 1j)

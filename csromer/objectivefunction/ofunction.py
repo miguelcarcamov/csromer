@@ -12,7 +12,7 @@ import numpy as np
 class OFunction:
     def __init__(self, F=None):
         initlocals = locals()
-        initlocals.pop('self')
+        initlocals.pop("self")
         for a_attribute in initlocals.keys():
             setattr(self, a_attribute, initlocals[a_attribute])
 

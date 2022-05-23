@@ -9,8 +9,17 @@ import numpy as np
 import sys
 
 
-def FISTA_algorithm(x=None, F=None, fx=None, g_prox=None, max_iter=None, tol=np.finfo(np.float32).tiny, n=None, noise=None,
-                    verbose=True):
+def FISTA_algorithm(
+    x=None,
+    F=None,
+    fx=None,
+    g_prox=None,
+    max_iter=None,
+    tol=np.finfo(np.float32).tiny,
+    n=None,
+    noise=None,
+    verbose=True,
+):
     if x is None and n is not None:
         x = np.zeros(n, dtype=np.complex64)
     t = 1
@@ -43,13 +52,13 @@ def FISTA_algorithm(x=None, F=None, fx=None, g_prox=None, max_iter=None, tol=np.
         x = g_prox.calc_prox(z)
 
         t0 = t
-        t = 0.5 * (1. + np.sqrt(1. + 4. * t ** 2))
-        z = x + ((t0 - 1.) / t) * (x - xold)
+        t = 0.5 * (1.0 + np.sqrt(1.0 + 4.0 * t**2))
+        z = x + ((t0 - 1.0) / t) * (x - xold)
         # e = np.sqrt(np.sum((x-xold)**2)) / np.sqrt(np.sum(xold**2))
         # print(e)
         e = np.sum(np.abs(x - xold)) / len(x)
 
-        #if e <= tol:
+        # if e <= tol:
         #    if verbose:
         #       print("Exit due to tolerance: ", e, " < ", tol)
         #    print("Iterations: ", it + 1)
@@ -57,8 +66,7 @@ def FISTA_algorithm(x=None, F=None, fx=None, g_prox=None, max_iter=None, tol=np.
 
         if verbose and it % 10 == 0:
             cost = F(x)
-            print("Iteration: ", it,
-                  " objective function value: {0:0.5f}".format(cost))
+            print("Iteration: ", it, " objective function value: {0:0.5f}".format(cost))
         new_lambda = g_prox.getLambda() - noise
         if new_lambda > 0.0:
             g_prox.setLambda(reg=new_lambda)

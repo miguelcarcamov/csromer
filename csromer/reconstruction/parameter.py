@@ -10,8 +10,6 @@ if TYPE_CHECKING:
     from ..base import Dataset
 
 
-
-
 class Parameter:
     def __init__(self, phi=None, cellsize=None, data=None):
         self.phi = phi
@@ -49,7 +47,13 @@ class Parameter:
     def n(self, val):
         self.__n = val
 
-    def calculate_cellsize(self, dataset: Dataset = None, oversampling=4, set_size_pow_2=False, verbose=True):
+    def calculate_cellsize(
+        self,
+        dataset: Dataset = None,
+        oversampling=4,
+        set_size_pow_2=False,
+        verbose=True,
+    ):
 
         if dataset is not None:
             l2_min = np.min(dataset.lambda2[np.nonzero(dataset.lambda2)])
@@ -68,10 +72,21 @@ class Parameter:
             self.max_faraday_depth = phi_max
 
             if verbose:
-                print("FWHM of the main peak of the RMTF: {0:.3f} rad/m^2".format(self.rmtf_fwhm))
-                print("Maximum recovered width structure: {0:.3f} rad/m^2".format(self.max_recovered_width))
-                print("Maximum Faraday Depth to which one has more than 50% sensitivity: {0:.3f}".format(
-                    self.max_faraday_depth))
+                print(
+                    "FWHM of the main peak of the RMTF: {0:.3f} rad/m^2".format(
+                        self.rmtf_fwhm
+                    )
+                )
+                print(
+                    "Maximum recovered width structure: {0:.3f} rad/m^2".format(
+                        self.max_recovered_width
+                    )
+                )
+                print(
+                    "Maximum Faraday Depth to which one has more than 50% sensitivity: {0:.3f}".format(
+                        self.max_faraday_depth
+                    )
+                )
 
             phi_r = delta_phi / oversampling
 
@@ -88,7 +103,9 @@ class Parameter:
     def calculate_sparsity(self):
         if self.data.dtype == np.complex64 or self.data.dtype == np.complex128:
             n = 2 * len(self.data)
-            non_zeros = len(np.nonzero(self.data.real)) + len(np.nonzero(self.data.imag))
+            non_zeros = len(np.nonzero(self.data.real)) + len(
+                np.nonzero(self.data.imag)
+            )
         else:
             n = len(self.data)
             non_zeros = len(np.nonzero(self.data))
@@ -111,9 +128,11 @@ class Parameter:
         gauss_rmtf_array = gauss_rmtf.run(normalized=normalized)
 
         if x is None:
-            x = sci_signal.convolve(self.data, gauss_rmtf_array, mode='full', method='auto')
+            x = sci_signal.convolve(
+                self.data, gauss_rmtf_array, mode="full", method="auto"
+            )
         else:
-            x = sci_signal.convolve(x, gauss_rmtf_array, mode='full', method='auto')
+            x = sci_signal.convolve(x, gauss_rmtf_array, mode="full", method="auto")
 
-        return x[self.n // 2:(self.n // 2) + self.n]
+        return x[self.n // 2 : (self.n // 2) + self.n]
         # F_restored = F_conv[n // 2:(n // 2) + n] + F_residual

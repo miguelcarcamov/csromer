@@ -14,13 +14,23 @@ if TYPE_CHECKING:
 import copy
 
 
-def calculate_sigma(image=None, x0=0, xn=0, y0=0, yn=0, sigma_error=None, residual_cal_error=None,
-                    nbeam=None):
+def calculate_sigma(
+    image=None,
+    x0=0,
+    xn=0,
+    y0=0,
+    yn=0,
+    sigma_error=None,
+    residual_cal_error=None,
+    nbeam=None,
+):
     if sigma_error is None and residual_cal_error is None and nbeam is None:
         sigma = np.sqrt(np.mean(image[y0:yn, x0:xn] ** 2))
     else:
         flux = np.sum(image)
-        sigma = np.sqrt((residual_cal_error * flux) ** 2 + (sigma_error * np.sqrt(nbeam)) ** 2)
+        sigma = np.sqrt(
+            (residual_cal_error * flux) ** 2 + (sigma_error * np.sqrt(nbeam)) ** 2
+        )
 
     return sigma
 
@@ -28,12 +38,14 @@ def calculate_sigma(image=None, x0=0, xn=0, y0=0, yn=0, sigma_error=None, residu
 def autocorr_gridded(x: np.ndarray):
     variance = x.var()
     x_input = x - x.mean()
-    result = sci_signal.correlate(x_input, x_input, mode='full', method='auto')
+    result = sci_signal.correlate(x_input, x_input, mode="full", method="auto")
     result /= variance * len(x)
-    return result[result.size // 2:]
+    return result[result.size // 2 :]
 
 
-def boxpierce(x: np.ndarray = None, k: Union[List, int] = None, conf_level: float = 0.95):
+def boxpierce(
+    x: np.ndarray = None, k: Union[List, int] = None, conf_level: float = 0.95
+):
     n = len(x)
     if type(k) == list:
         res = []
@@ -53,7 +65,9 @@ def boxpierce(x: np.ndarray = None, k: Union[List, int] = None, conf_level: floa
         return np.array(x_sum), scipy.stats.chi2.ppf(conf_level, df=k)
 
 
-def ljungbox(x: np.ndarray = None, k: Union[List, int] = None, conf_level: float = 0.95):
+def ljungbox(
+    x: np.ndarray = None, k: Union[List, int] = None, conf_level: float = 0.95
+):
     n = len(x)
     if isinstance(k, list):
         res = []
@@ -74,7 +88,16 @@ def ljungbox(x: np.ndarray = None, k: Union[List, int] = None, conf_level: float
 
 
 class Dataset:
-    def __init__(self, nu=None, lambda2=None, data=None, w=None, sigma=None, spectral_idx=None, gridded=None):
+    def __init__(
+        self,
+        nu=None,
+        lambda2=None,
+        data=None,
+        w=None,
+        sigma=None,
+        spectral_idx=None,
+        gridded=None,
+    ):
         self.k = None
         self.l2_ref = None
         self.nu_0 = None
@@ -168,7 +191,7 @@ class Dataset:
             self.__m = len(val)
             self.__nu = c / np.sqrt(val)
             self.__nu_0 = np.median(self.__nu)
-            if hasattr(self, 'spectral_idx'):
+            if hasattr(self, "spectral_idx"):
                 self.__s = (self.__nu / self.__nu_0) ** (-1.0 * self.__spectral_idx)
             self.w = np.ones(self.__m)
             self.calculate_l2_cellsize()
@@ -227,7 +250,7 @@ class Dataset:
     @sigma.setter
     def sigma(self, val):
         if val is not None:
-            self.w = 1.0 / (val ** 2)
+            self.w = 1.0 / (val**2)
         self.__sigma = val
 
     @property
@@ -242,7 +265,7 @@ class Dataset:
             else:
                 self.__m = len(val)
                 self.__data = val
-            if hasattr(self, 'model_data'):
+            if hasattr(self, "model_data"):
                 if self.__model_data is None:
                     self.__model_data = np.zeros_like(val, dtype=self.data.dtype)
         else:
@@ -268,7 +291,7 @@ class Dataset:
         lambda2 = (c / self.nu) ** 2
         self.lambda2 = lambda2[::-1]
 
-    def calculate_amplitude(self, column: 'str' = 'data'):
+    def calculate_amplitude(self, column: "str" = "data"):
         if hasattr(self, column):
             data = getattr(self, column)
             if data.dtype == np.complex64 or data.dtype == np.complex128:
@@ -279,7 +302,7 @@ class Dataset:
         else:
             raise ValueError("Column does not exist")
 
-    def calculate_polangle(self, column: 'str' = 'data'):
+    def calculate_polangle(self, column: "str" = "data"):
         if hasattr(self, column):
             data = getattr(self, column)
             if data.dtype == np.complex64 or data.dtype == np.complex128:
@@ -314,7 +337,7 @@ class Dataset:
         else:
             if isinstance(self.w, np.ndarray):
                 if (self.w == 1.0).all():
-                        return None
+                    return None
                 else:
                     return 1.0 / np.sqrt(np.sum(self.w))
             else:
@@ -329,12 +352,14 @@ class Dataset:
         p_hat = p * galrm_shift
         self.data = p_hat
 
-    def assess_residuals(self, gridding_object: Gridding = None, confidence_interval: float = 0.95):
+    def assess_residuals(
+        self, gridding_object: Gridding = None, confidence_interval: float = 0.95
+    ):
         if self.gridded:
             autocorr_real = autocorr_gridded(self.residual.real)
             autocorr_imag = autocorr_gridded(self.residual.imag)
-            autocorr_real_sq = autocorr_gridded(self.residual.real ** 2)
-            autocorr_imag_sq = autocorr_gridded(self.residual.imag ** 2)
+            autocorr_real_sq = autocorr_gridded(self.residual.real**2)
+            autocorr_imag_sq = autocorr_gridded(self.residual.imag**2)
             lags = sci_signal.correlation_lags(self.m, self.m, mode="full")
         else:
             # Grid the irregular data
@@ -342,9 +367,11 @@ class Dataset:
             gridded_data = gridding.run()
             autocorr_real = autocorr_gridded(gridded_data.residual.real)
             autocorr_imag = autocorr_gridded(gridded_data.residual.imag)
-            autocorr_real_sq = autocorr_gridded(gridded_data.residual.real ** 2)
-            autocorr_imag_sq = autocorr_gridded(gridded_data.residual.imag ** 2)
-            lags = sci_signal.correlation_lags(gridded_data.m, gridded_data.m, mode="full")
+            autocorr_real_sq = autocorr_gridded(gridded_data.residual.real**2)
+            autocorr_imag_sq = autocorr_gridded(gridded_data.residual.imag**2)
+            lags = sci_signal.correlation_lags(
+                gridded_data.m, gridded_data.m, mode="full"
+            )
 
         autocorr_res = autocorr_real + 1j * autocorr_imag
         autocorr_res_sq = autocorr_real_sq + 1j * autocorr_imag_sq
@@ -360,16 +387,29 @@ class Dataset:
         elem_imag = ((autocorr_res.imag > -bound) & (autocorr_res.imag < bound)).sum()
         percentage_imag_in = 100.0 * elem_imag / len(lags)
 
-        elem_real_sq = ((autocorr_res_sq.real > -bound) & (autocorr_res_sq.real < bound)).sum()
+        elem_real_sq = (
+            (autocorr_res_sq.real > -bound) & (autocorr_res_sq.real < bound)
+        ).sum()
         percentage_real_in_sq = 100.0 * elem_real_sq / len(lags)
-        elem_imag_sq = ((autocorr_res_sq.imag > -bound) & (autocorr_res_sq.imag < bound)).sum()
+        elem_imag_sq = (
+            (autocorr_res_sq.imag > -bound) & (autocorr_res_sq.imag < bound)
+        ).sum()
         percentage_imag_in_sq = 100.0 * elem_imag_sq / len(lags)
 
-        return lags, autocorr_res, autocorr_res_sq, bound, percentage_real_in, percentage_imag_in, percentage_real_in_sq, percentage_imag_in_sq
+        return (
+            lags,
+            autocorr_res,
+            autocorr_res_sq,
+            bound,
+            percentage_real_in,
+            percentage_imag_in,
+            percentage_real_in_sq,
+            percentage_imag_in_sq,
+        )
 
     def histogram_residuals(self):
-        hist_real, bins_real = np.histogram(self.residual.real, bins='auto')
-        hist_imag, bins_imag = np.histogram(self.residual.imag, bins='auto')
+        hist_real, bins_real = np.histogram(self.residual.real, bins="auto")
+        hist_imag, bins_imag = np.histogram(self.residual.imag, bins="auto")
 
         # You can plot the histograms this way:
         # plt.bar(bins[:-1], hist, width=np.diff(bins), edgecolor="black", align="edge")
