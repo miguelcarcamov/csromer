@@ -11,8 +11,6 @@ import prox_tv as ptv
 from ..utils.utilities import real_to_complex, complex_to_real
 
 
-
-
 def approx_abs(x, epsilon):
     return np.sqrt(x * x + epsilon)
 
