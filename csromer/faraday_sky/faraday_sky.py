@@ -1,3 +1,5 @@
+import pathlib
+from typing import Union, List
 from astropy.io import fits
 from astropy_healpix import HEALPix
 from astropy.coordinates import Galactic
@@ -5,20 +7,18 @@ from astropy.units import Quantity
 from astropy.wcs import WCS
 from astropy.coordinates import SkyCoord
 import astropy.units as un
-from typing import Union, List
 import numpy as np
 import h5py
-import pathlib
 
 
 class FaradaySky:
+
     def __init__(self, filename=None, nside=512, ordering="nested"):
         self.nside = nside
         self.ordering = ordering
         if filename is None:
             self.filename = (
-                pathlib.Path(__file__).parent.resolve()
-                / "./faraday_sky_files/faraday2020v2.hdf5"
+                pathlib.Path(__file__).parent.resolve() / "./faraday_sky_files/faraday2020v2.hdf5"
             )
         else:
             self.filename = filename
@@ -67,14 +67,10 @@ class FaradaySky:
 
         if use_bilinear_interpolation:
             rm_value_mean = (
-                self.hp.interpolate_bilinear_skycoord(coord, self.data[0])
-                * un.rad
-                / un.m**2
+                self.hp.interpolate_bilinear_skycoord(coord, self.data[0]) * un.rad / un.m**2
             )
             rm_value_std = (
-                self.hp.interpolate_bilinear_skycoord(coord, self.data[1])
-                * un.rad
-                / un.m**2
+                self.hp.interpolate_bilinear_skycoord(coord, self.data[1]) * un.rad / un.m**2
             )
         else:
             healpix_idx = self.hp.skycoord_to_healpix(coord)

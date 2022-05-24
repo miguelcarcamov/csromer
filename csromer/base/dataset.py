@@ -1,17 +1,16 @@
 from __future__ import annotations
-from scipy.constants import speed_of_light as c
 import sys
+from typing import Union, List
+from typing import TYPE_CHECKING
+from scipy.constants import speed_of_light as c
 import numpy as np
 import scipy.signal as sci_signal
 import astropy.units as u
 from scipy import special
-from typing import Union, List
 import scipy.stats
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..transformers.gridding import Gridding
-import copy
 
 
 def calculate_sigma(
@@ -25,12 +24,10 @@ def calculate_sigma(
     nbeam=None,
 ):
     if sigma_error is None and residual_cal_error is None and nbeam is None:
-        sigma = np.sqrt(np.mean(image[y0:yn, x0:xn] ** 2))
+        sigma = np.sqrt(np.mean(image[y0:yn, x0:xn]**2))
     else:
         flux = np.sum(image)
-        sigma = np.sqrt(
-            (residual_cal_error * flux) ** 2 + (sigma_error * np.sqrt(nbeam)) ** 2
-        )
+        sigma = np.sqrt((residual_cal_error * flux)**2 + (sigma_error * np.sqrt(nbeam))**2)
 
     return sigma
 
@@ -40,12 +37,10 @@ def autocorr_gridded(x: np.ndarray):
     x_input = x - x.mean()
     result = sci_signal.correlate(x_input, x_input, mode="full", method="auto")
     result /= variance * len(x)
-    return result[result.size // 2 :]
+    return result[result.size // 2:]
 
 
-def boxpierce(
-    x: np.ndarray = None, k: Union[List, int] = None, conf_level: float = 0.95
-):
+def boxpierce(x: np.ndarray = None, k: Union[List, int] = None, conf_level: float = 0.95):
     n = len(x)
     if type(k) == list:
         res = []
@@ -53,7 +48,7 @@ def boxpierce(
             if i < 1:
                 raise ValueError("Cannot calculate for lags lower than 1")
             idx = np.arange(1, i + 1, 1)
-            x_sum = n * np.sum(x[idx] ** 2)
+            x_sum = n * np.sum(x[idx]**2)
             res.append(x_sum)
         chi2 = scipy.stats.chi2.ppf(conf_level, df=k)
         return np.array(res), chi2
@@ -61,13 +56,11 @@ def boxpierce(
         if k < 1:
             raise ValueError("The lag cannot be less than 1")
         idx = np.arange(1, k + 1, 1)
-        x_sum = n * np.sum(x[idx] ** 2)
+        x_sum = n * np.sum(x[idx]**2)
         return np.array(x_sum), scipy.stats.chi2.ppf(conf_level, df=k)
 
 
-def ljungbox(
-    x: np.ndarray = None, k: Union[List, int] = None, conf_level: float = 0.95
-):
+def ljungbox(x: np.ndarray = None, k: Union[List, int] = None, conf_level: float = 0.95):
     n = len(x)
     if isinstance(k, list):
         res = []
@@ -75,7 +68,7 @@ def ljungbox(
             if i < 1:
                 raise ValueError("Cannot calculate for lags lower than 1")
             idx = np.arange(1, i + 1, 1)
-            x_sum = n * (n + 2) * np.sum(x[idx] ** 2 / (n - idx))
+            x_sum = n * (n + 2) * np.sum(x[idx]**2 / (n - idx))
             res.append(x_sum)
         chi2 = scipy.stats.chi2.ppf(conf_level, df=k)
         return np.array(res), chi2
@@ -83,11 +76,12 @@ def ljungbox(
         if k < 1:
             raise ValueError("The lag cannot be less than 1")
         idx = np.arange(1, k + 1, 1)
-        x_sum = n * (n + 2) * np.sum(x[idx] ** 2 / (n - idx))
+        x_sum = n * (n + 2) * np.sum(x[idx]**2 / (n - idx))
         return np.array(x_sum), scipy.stats.chi2.ppf(conf_level, df=k)
 
 
 class Dataset:
+
     def __init__(
         self,
         nu=None,
@@ -151,7 +145,7 @@ class Dataset:
 
         if self.__lambda2 is not None and self.__nu_0 is not None:
             nu = c / np.sqrt(self.__lambda2)
-            self.__s = (nu / self.__nu_0) ** (-1.0 * self.__spectral_idx)
+            self.__s = (nu / self.__nu_0)**(-1.0 * self.__spectral_idx)
 
     @property
     def s(self):
@@ -192,7 +186,7 @@ class Dataset:
             self.__nu = c / np.sqrt(val)
             self.__nu_0 = np.median(self.__nu)
             if hasattr(self, "spectral_idx"):
-                self.__s = (self.__nu / self.__nu_0) ** (-1.0 * self.__spectral_idx)
+                self.__s = (self.__nu / self.__nu_0)**(-1.0 * self.__spectral_idx)
             self.w = np.ones(self.__m)
             self.calculate_l2_cellsize()
 
@@ -288,7 +282,7 @@ class Dataset:
             self.__model_data = None
 
     def nu_to_l2(self):
-        lambda2 = (c / self.nu) ** 2
+        lambda2 = (c / self.nu)**2
         self.lambda2 = lambda2[::-1]
 
     def calculate_amplitude(self, column: "str" = "data"):
@@ -352,9 +346,7 @@ class Dataset:
         p_hat = p * galrm_shift
         self.data = p_hat
 
-    def assess_residuals(
-        self, gridding_object: Gridding = None, confidence_interval: float = 0.95
-    ):
+    def assess_residuals(self, gridding_object: Gridding = None, confidence_interval: float = 0.95):
         if self.gridded:
             autocorr_real = autocorr_gridded(self.residual.real)
             autocorr_imag = autocorr_gridded(self.residual.imag)
@@ -369,9 +361,7 @@ class Dataset:
             autocorr_imag = autocorr_gridded(gridded_data.residual.imag)
             autocorr_real_sq = autocorr_gridded(gridded_data.residual.real**2)
             autocorr_imag_sq = autocorr_gridded(gridded_data.residual.imag**2)
-            lags = sci_signal.correlation_lags(
-                gridded_data.m, gridded_data.m, mode="full"
-            )
+            lags = sci_signal.correlation_lags(gridded_data.m, gridded_data.m, mode="full")
 
         autocorr_res = autocorr_real + 1j * autocorr_imag
         autocorr_res_sq = autocorr_real_sq + 1j * autocorr_imag_sq
@@ -387,13 +377,9 @@ class Dataset:
         elem_imag = ((autocorr_res.imag > -bound) & (autocorr_res.imag < bound)).sum()
         percentage_imag_in = 100.0 * elem_imag / len(lags)
 
-        elem_real_sq = (
-            (autocorr_res_sq.real > -bound) & (autocorr_res_sq.real < bound)
-        ).sum()
+        elem_real_sq = ((autocorr_res_sq.real > -bound) & (autocorr_res_sq.real < bound)).sum()
         percentage_real_in_sq = 100.0 * elem_real_sq / len(lags)
-        elem_imag_sq = (
-            (autocorr_res_sq.imag > -bound) & (autocorr_res_sq.imag < bound)
-        ).sum()
+        elem_imag_sq = ((autocorr_res_sq.imag > -bound) & (autocorr_res_sq.imag < bound)).sum()
         percentage_imag_in_sq = 100.0 * elem_imag_sq / len(lags)
 
         return (

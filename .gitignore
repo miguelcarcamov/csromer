@@ -109,3 +109,4 @@ venv.bak/
 *.npy
 *.fits
 *.orig
+csromer/_version.py

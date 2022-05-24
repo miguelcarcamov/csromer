@@ -5,13 +5,10 @@ Created on Tue Nov  5 09:38:54 2019
 
 @author: miguel
 """
+from abc import ABCMeta, abstractmethod
 import numpy as np
 import prox_tv as ptv
 from ..utils.utilities import real_to_complex, complex_to_real
-from abc import ABCMeta, abstractmethod
-from ..optimization.optimizer import FixedPointMethod, GradientBasedMethod
-import pywt
-import sys
 
 
 def approx_abs(x, epsilon):
@@ -19,6 +16,7 @@ def approx_abs(x, epsilon):
 
 
 class Fi(metaclass=ABCMeta):
+
     def __init__(self, reg=1.0, norm_factor=1.0, wavelet=None):
         initlocals = locals()
         initlocals.pop("self")
@@ -39,6 +37,7 @@ class Fi(metaclass=ABCMeta):
 
 
 class TV(Fi):
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         initlocals = locals()
@@ -68,6 +67,7 @@ class TV(Fi):
 
 
 class TSV(Fi):
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         initlocals = locals()
@@ -81,7 +81,7 @@ class TSV(Fi):
         tv = 0.0
         n = x.shape[0]
         for i in range(0, n - 1):
-            tv += np.abs(x[i + 1] - x[i]) ** 2
+            tv += np.abs(x[i + 1] - x[i])**2
         return tv
 
     def calculate_gradient(self, x):
@@ -97,6 +97,7 @@ class TSV(Fi):
 
 
 class L1(Fi):
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         initlocals = locals()
@@ -122,6 +123,7 @@ class L1(Fi):
 
 
 class Chi2(Fi):
+
     def __init__(self, dft_obj=None, **kwargs):
         super().__init__(**kwargs)
         self.dft_obj = dft_obj

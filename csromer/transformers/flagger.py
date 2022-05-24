@@ -23,12 +23,8 @@ def hampel(array, w, nsigma, imputation=False):
     rolling_mean = moving_average(array_copy, w)
     rolling_median = np.median(rolling_mean)
     rolling_sigma = k * median_absolute_deviation(rolling_mean)
-    preserved_idxs = np.where(
-        np.abs(array_copy - rolling_median) <= (nsigma * rolling_sigma)
-    )[0]
-    outlier_idxs = np.where(
-        np.abs(array_copy - rolling_median) > (nsigma * rolling_sigma)
-    )[0]
+    preserved_idxs = np.where(np.abs(array_copy - rolling_median) <= (nsigma * rolling_sigma))[0]
+    outlier_idxs = np.where(np.abs(array_copy - rolling_median) > (nsigma * rolling_sigma))[0]
     if imputation:
         array_copy[outlier_idxs] = rolling_median
         return array_copy, preserved_idxs, outlier_idxs
@@ -48,9 +44,8 @@ def normal_flagging(x, mean_sigma=None, nsigma=0.0):
 
 
 class Flagger(metaclass=ABCMeta):
-    def __init__(
-        self, data: Union[Dataset, np.ndarray] = None, delete_channels=None, nsigma=None
-    ):
+
+    def __init__(self, data: Union[Dataset, np.ndarray] = None, delete_channels=None, nsigma=None):
         self.data = data
 
         if nsigma is None:
@@ -69,6 +64,7 @@ class Flagger(metaclass=ABCMeta):
 
 
 class ManualFlagger(Flagger):
+
     def __init__(self, **kwargs):
         super(ManualFlagger, self).__init__(**kwargs)
 
@@ -112,6 +108,7 @@ class ManualFlagger(Flagger):
 
 
 class MeanFlagger(Flagger):
+
     def __init__(self, **kwargs):
         super(MeanFlagger, self).__init__(**kwargs)
 
@@ -148,6 +145,7 @@ class MeanFlagger(Flagger):
 
 
 class HampelFlagger(Flagger):
+
     def __init__(self, w=3, imputation=False, **kwargs):
         super(HampelFlagger, self).__init__(**kwargs)
         self.w = w
@@ -169,9 +167,7 @@ class HampelFlagger(Flagger):
                 return None
             else:
                 sigma_array = self.data.sigma.copy()
-                idxs, outlier_idxs = hampel(
-                    sigma_array, self.w, nsigma, self.imputation
-                )
+                idxs, outlier_idxs = hampel(sigma_array, self.w, nsigma, self.imputation)
                 flagged_percentage = (len(outlier_idxs) / original_length) * 100.0
                 if self.delete_channels:
                     self.data.lambda2 = self.data.lambda2[idxs]
@@ -193,9 +189,7 @@ class HampelFlagger(Flagger):
                 print("Imputing {0:.2f}% of the data".format(flagged_percentage))
                 return None
             else:
-                idxs, outlier_idxs = hampel(
-                    self.data.sigma, self.w, nsigma, self.imputation
-                )
+                idxs, outlier_idxs = hampel(self.data.sigma, self.w, nsigma, self.imputation)
                 if self.delete_channels:
                     self.data = self.data[idxs]
                 else:

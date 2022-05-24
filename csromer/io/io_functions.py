@@ -5,9 +5,9 @@ Created on Tue Nov  5 15:45:42 2019
 
 @author: miguel
 """
+import sys
 import numpy as np
 from astropy.io import fits
-import sys
 
 
 def filter_cubes(data_I, data_Q, data_U, header, additional_outlier_idxs=None):
@@ -32,6 +32,7 @@ def filter_cubes(data_I, data_Q, data_U, header, additional_outlier_idxs=None):
 
 
 class Reader:
+
     def __init__(
         self,
         stokes_I_name=None,
@@ -141,6 +142,7 @@ class Reader:
 
 
 class Writer:
+
     def __init__(self, output=""):
         self.output = output
 

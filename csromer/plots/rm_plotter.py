@@ -35,6 +35,7 @@ def add_colorbar(im, aspect=20, pad_fraction=0.5, **kwargs):
 
 
 class RMPlotter:
+
     def __init__(
         self,
         rm_image: Union[fits.PrimaryHDU, fits.HDUList, str] = None,
@@ -75,9 +76,7 @@ class RMPlotter:
             if self.center_coord.isscalar:
                 raise ValueError("Coordinate cannot be an scalar")
             else:
-                self.center_coord = SkyCoord(
-                    ra=self.center_coord[0], dec=self.center_coord[1]
-                )
+                self.center_coord = SkyCoord(ra=self.center_coord[0], dec=self.center_coord[1])
 
         if isinstance(self.radius, Quantity):
             if not self.radius.isscalar:
@@ -204,21 +203,16 @@ class RMPlotter:
 
         I_contours = [total_intensity_noise * i for i in contourmults]
 
-        core_region = create_circular_skyregion(
-            173.4962263, 49.0629333, 17.782
-        ).to_pixel(wcs_rm_image)
-        north_region = create_circular_skyregion(
-            173.4776803, 49.0761733, 41.295
-        ).to_pixel(wcs_rm_image)
-        south_region = create_circular_skyregion(
-            173.4719210, 49.0538024, 42.187
-        ).to_pixel(wcs_rm_image)
+        core_region = create_circular_skyregion(173.4962263, 49.0629333,
+                                                17.782).to_pixel(wcs_rm_image)
+        north_region = create_circular_skyregion(173.4776803, 49.0761733,
+                                                 41.295).to_pixel(wcs_rm_image)
+        south_region = create_circular_skyregion(173.4719210, 49.0538024,
+                                                 42.187).to_pixel(wcs_rm_image)
 
         if self.rm_image_error is not None and self.pol_fraction_image is not None:
             ax1 = fig.add_subplot(1, 3, 1, projection=wcs_rm_image, box_aspect=1)
-            c1 = ax1.imshow(
-                rm_image_data, origin="lower", cmap=inferno, vmin=-150, vmax=150
-            )
+            c1 = ax1.imshow(rm_image_data, origin="lower", cmap=inferno, vmin=-150, vmax=150)
             # ax1.text(x=173.4776803, y=49.0761733, s="N")
             # ax1.text(x=173.4719210, y=49.0538024, ha="center", s="S", transform=ax1.get_transform(wcs_rm_image))
             ax1.contour(
@@ -234,9 +228,7 @@ class RMPlotter:
             south_region.plot(ax=ax1, color="darkcyan", lw=0.8)
 
             ax2 = fig.add_subplot(1, 3, 2, projection=wcs_rm_image_error, box_aspect=1)
-            c2 = ax2.imshow(
-                rm_image_error_data, origin="lower", cmap=inferno, vmin=0, vmax=1
-            )
+            c2 = ax2.imshow(rm_image_error_data, origin="lower", cmap=inferno, vmin=0, vmax=1)
             ax2.contour(
                 total_intensity_data,
                 transform=ax2.get_transform(wcs_total_intensity),
@@ -247,9 +239,7 @@ class RMPlotter:
             )
 
             ax3 = fig.add_subplot(1, 3, 3, projection=wcs_pol_fraction, box_aspect=1)
-            c3 = ax3.imshow(
-                pol_fraction_data, origin="lower", cmap=inferno, vmin=0, vmax=0.5
-            )
+            c3 = ax3.imshow(pol_fraction_data, origin="lower", cmap=inferno, vmin=0, vmax=0.5)
             ax3.contour(
                 total_intensity_data,
                 transform=ax3.get_transform(wcs_total_intensity),

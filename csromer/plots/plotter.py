@@ -98,6 +98,7 @@ def astroquery_search(
 
 
 class Plotter:
+
     def __init__(
         self,
         optical_image: fits.HDUList = None,
@@ -174,9 +175,7 @@ class Plotter:
                 scaling="Log",
                 surveys=surveys,
             )
-            data = make_lupton_rgb(
-                hdu_i.data, hdu_r.data, hdu_g.data, filename=filename
-            )
+            data = make_lupton_rgb(hdu_i.data, hdu_r.data, hdu_g.data, filename=filename)
             hdu_i.data = data
             self.optical_image = hdu_i
         else:

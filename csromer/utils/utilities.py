@@ -26,7 +26,7 @@ def nextPowerOf2(n):
 
 
 def real_to_complex(z):  # real vector of length 2n -> complex of length n
-    return z[: len(z) // 2] + 1j * z[len(z) // 2 :]
+    return z[:len(z) // 2] + 1j * z[len(z) // 2:]
 
 
 def complex_to_real(z):  # complex vector of length n -> real of length 2n

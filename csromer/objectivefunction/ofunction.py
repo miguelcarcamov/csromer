@@ -10,6 +10,7 @@ import numpy as np
 
 
 class OFunction:
+
     def __init__(self, F=None):
         initlocals = locals()
         initlocals.pop("self")

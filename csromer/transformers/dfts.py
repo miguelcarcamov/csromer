@@ -19,9 +19,8 @@ if TYPE_CHECKING:
 
 
 class FT(metaclass=ABCMeta):
-    def __init__(
-        self, dataset: Dataset = None, parameter: Parameter = None, use_weights=True
-    ):
+
+    def __init__(self, dataset: Dataset = None, parameter: Parameter = None, use_weights=True):
         self.dataset = dataset
         self.s = None
         self.use_weights = use_weights
@@ -63,6 +62,7 @@ class FT(metaclass=ABCMeta):
 
 
 class DFT1D(FT):
+
     def __init__(self, **kwargs):
         super(DFT1D, self).__init__(**kwargs)
 
@@ -74,12 +74,8 @@ class DFT1D(FT):
         b = np.zeros(self.dataset.m, dtype=np.complex64)
         for i in range(0, self.dataset.m):
             b[i] = np.sum(
-                x
-                * np.exp(
-                    2.0j
-                    * self.parameter.phi
-                    * (self.dataset.lambda2[i] - self.dataset.l2_ref)
-                )
+                x *
+                np.exp(2.0j * self.parameter.phi * (self.dataset.lambda2[i] - self.dataset.l2_ref))
             )
 
         return b
@@ -93,12 +89,8 @@ class DFT1D(FT):
 
         for i in range(0, self.dataset.m):
             b[i] = np.sum(
-                val
-                * np.exp(
-                    2.0j
-                    * self.parameter.phi
-                    * (self.dataset.lambda2[i] - self.dataset.l2_ref)
-                )
+                val *
+                np.exp(2.0j * self.parameter.phi * (self.dataset.lambda2[i] - self.dataset.l2_ref))
             )
 
         notzero_idx = np.where(self.weights != 0.0)
@@ -112,10 +104,7 @@ class DFT1D(FT):
         l2 = self.dataset.lambda2 - self.dataset.l2_ref
         for i in range(0, self.parameter.n):
             x[i] = np.sum(
-                self.weights
-                * b
-                / self.dataset.s
-                * np.exp(-2.0j * self.parameter.phi[i] * l2)
+                self.weights * b / self.dataset.s * np.exp(-2.0j * self.parameter.phi[i] * l2)
             )
 
         return x / self.k
@@ -124,17 +113,14 @@ class DFT1D(FT):
         x = np.zeros(self.parameter.n, dtype=np.complex64)
         l2 = self.dataset.lambda2 - self.dataset.l2_ref
         for i in range(0, self.parameter.n):
-            x[i] = np.sum(
-                self.dataset.w * np.exp(-2.0j * (self.parameter.phi[i] - phi_x) * l2)
-            )
+            x[i] = np.sum(self.dataset.w * np.exp(-2.0j * (self.parameter.phi[i] - phi_x) * l2))
 
         return x / self.k
 
 
 class NUFFT1D(FT):
-    def __init__(
-        self, conv_size=4, oversampling_factor=1, normalize=True, solve=True, **kwargs
-    ):
+
+    def __init__(self, conv_size=4, oversampling_factor=1, normalize=True, solve=True, **kwargs):
         super(NUFFT1D, self).__init__(**kwargs)
         self.nufft_obj = NUFFT()
         self.conv_size = conv_size
@@ -149,11 +135,11 @@ class NUFFT1D(FT):
         l2 = self.dataset.lambda2 - self.dataset.l2_ref
         exp_factor = -2.0 * l2 * self.parameter.cellsize
 
-        Nd = (self.parameter.n,)  # Faraday Depth Space Length
+        Nd = (self.parameter.n, )  # Faraday Depth Space Length
         Kd = (
             self.oversampling_factor * self.parameter.n,
         )  # Oversampled Faraday Depth Space Length
-        Jd = (self.conv_size,)
+        Jd = (self.conv_size, )
         om = np.reshape(exp_factor, (self.dataset.m, 1))  # Exponential data
         self.nufft_obj.plan(om, Nd, Kd, Jd)
 

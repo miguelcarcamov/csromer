@@ -1,20 +1,17 @@
-from .wavelet import Wavelet
 import pywt
 import numpy as np
+from .wavelet import Wavelet
 
 
 class DiscreteWavelet(Wavelet):
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        if self.wavelet_name is not None and self.wavelet_name in pywt.wavelist(
-            kind="discrete"
-        ):
+        if self.wavelet_name is not None and self.wavelet_name in pywt.wavelist(kind="discrete"):
             self.wavelet = pywt.Wavelet(self.wavelet_name)
         else:
-            raise NotImplementedError(
-                "The wavelet has not been implemented by pywavelets"
-            )
+            raise NotImplementedError("The wavelet has not been implemented by pywavelets")
 
     def calculate_ncoeffs(self, x):
         n = len(x)
@@ -33,12 +30,8 @@ class DiscreteWavelet(Wavelet):
 
         self.n = len(x)
         # Return coefficients
-        coeffs = pywt.wavedec(
-            data=x, wavelet=self.wavelet, mode=self.mode, level=self.level
-        )
-        coeffs_arr, self.coeff_slices, self.coeff_shapes = pywt.ravel_coeffs(
-            coeffs=coeffs
-        )
+        coeffs = pywt.wavedec(data=x, wavelet=self.wavelet, mode=self.mode, level=self.level)
+        coeffs_arr, self.coeff_slices, self.coeff_shapes = pywt.ravel_coeffs(coeffs=coeffs)
 
         if self.append_signal:
             coeffs_arr = np.concatenate([x, coeffs_arr])
@@ -71,16 +64,14 @@ class DiscreteWavelet(Wavelet):
     def reconstruct(self, input_coeffs):
         if self.append_signal:
             coeffs = input_coeffs.copy()
-            signal = coeffs[0 : self.n]
+            signal = coeffs[0:self.n]
             coeffs_ = pywt.unravel_coeffs(
-                arr=coeffs[self.n : len(coeffs)],
+                arr=coeffs[self.n:len(coeffs)],
                 coeff_slices=self.coeff_slices,
                 coeff_shapes=self.coeff_shapes,
                 output_format="wavedec",
             )
-            signal_from_coeffs = pywt.waverec(
-                coeffs=coeffs_, wavelet=self.wavelet, mode=self.mode
-            )
+            signal_from_coeffs = pywt.waverec(coeffs=coeffs_, wavelet=self.wavelet, mode=self.mode)
             signal += signal_from_coeffs
         else:
             coeffs = pywt.unravel_coeffs(
@@ -96,8 +87,8 @@ class DiscreteWavelet(Wavelet):
     def reconstruct_complex(self, input_coeffs):
         if self.append_signal:
             coeffs = input_coeffs.copy()
-            signal = coeffs[0 : self.n]
-            coeffs_ = coeffs[self.n : len(input_coeffs)]
+            signal = coeffs[0:self.n]
+            coeffs_ = coeffs[self.n:len(input_coeffs)]
             coeffs_re = pywt.array_to_coeffs(
                 arr=coeffs_.real,
                 coeff_slices=self.coeff_slices[0],
@@ -127,11 +118,7 @@ class DiscreteWavelet(Wavelet):
                 coeff_slices=self.coeff_slices[1],
                 output_format="wavedec",
             )
-            signal_re = pywt.waverec(
-                coeffs=coeffs_re, wavelet=self.wavelet, mode=self.mode
-            )
-            signal_im = pywt.waverec(
-                coeffs=coeffs_im, wavelet=self.wavelet, mode=self.mode
-            )
+            signal_re = pywt.waverec(coeffs=coeffs_re, wavelet=self.wavelet, mode=self.mode)
+            signal_im = pywt.waverec(coeffs=coeffs_im, wavelet=self.wavelet, mode=self.mode)
             signal = signal_re + 1j * signal_im
         return signal

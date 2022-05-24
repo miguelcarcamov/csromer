@@ -14,24 +14,33 @@ permissions:
 
 jobs:
   deploy:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}:base
       credentials:
         username: ${{ github.repository_owner }}
         password: ${{ secrets.REGISTRY_TOKEN }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v3.0.2
+        with:
+          fetch-depth: 0
+          set-safe-directory: true
+      - name: Force directory safe
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Set up Python
         uses: actions/setup-python@v3
         with:
-          python-version: '3.x'
+          python-version: '3.10'
       - name: Install dependencies
         run: |
-          python3 -m pip install --upgrade pip wheel setuptools
-          pip3 install build
+            python3 -m pip install --upgrade pip wheel setuptools
+            python3 -m pip install virtualenv
+            python3 -m pip install build
       - name: Build package
         run: python3 -m build
+      - name: Build bdist package
+        run: python3 setup.py bdist_wheel
       - name: Publish package
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
         uses: pypa/gh-action-pypi-publish@master
