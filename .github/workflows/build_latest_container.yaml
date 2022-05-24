@@ -18,6 +18,12 @@ jobs:
         with:
           fetch-depth: 0
           set-safe-directory: true
+      - name: Check git version and our path
+        run: |
+          git --version
+          ls -lah
+          ls -lah .git/
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - uses: ptxmac/yapf-action@master
         with:
           args: "--recursive --verbose"
