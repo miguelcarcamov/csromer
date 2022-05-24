@@ -22,7 +22,7 @@ This code will run in a Python >= 3.9.7 environment with all the packages instal
 
 The paper of this software is under submission but if you use it you can cite it as:
 
-```latex
+```tex
 @misc{https://doi.org/10.48550/arxiv.2205.01413,
   doi = {10.48550/ARXIV.2205.01413},
 
