@@ -22,6 +22,8 @@ jobs:
         password: ${{ secrets.REGISTRY_TOKEN }}
     steps:
       - uses: actions/checkout@v3.0.2
+        with:
+          fetch-depth: 1
       - name: Set up Python
         uses: actions/setup-python@v3
         with:
