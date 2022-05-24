@@ -49,6 +49,6 @@ jobs:
         with:
           path: dist/*
       - name: Run commands to test that everything is finished
-        run: | 
+        run: |
               pip3 freeze | grep "csromer"
               python3 -c "import csromer"

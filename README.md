@@ -1,7 +1,7 @@
 # CS-ROMER
 *Compressed Sensing ROtation MEasure Reconstruction*
 
-Compressed sensing reconstruction framework for Faraday depth spectra. 
+Compressed sensing reconstruction framework for Faraday depth spectra.
 Please feel free to open an issue if you spot a bug. This is an open source project, and therefore you can fork, make changes and submit a [pull request](https://github.com/miguelcarcamov/csromer/pulls) of any of your additions and modifications.
 
 - This paper explains what is [Faraday rotation measure synthesis](https://www.aanda.org/articles/aa/abs/2005/39/aa2990-05/aa2990-05.html)
@@ -16,25 +16,25 @@ Please feel free to open an issue if you spot a bug. This is an open source proj
 
 This code will run in a Python >= 3.9.7 environment with all the packages installed (see `requirements.txt` file).
 
-## Citing 
+## Citing
 The paper of this software is under submission but if you use it you can cite it as:
 
 ```
 @misc{https://doi.org/10.48550/arxiv.2205.01413,
   doi = {10.48550/ARXIV.2205.01413},
-  
+
   url = {https://arxiv.org/abs/2205.01413},
-  
+
   author = {Cárcamo, Miguel and Scaife, Anna M. M. and Alexander, Emma L. and Leahy, J. Patrick},
-  
+
   keywords = {Instrumentation and Methods for Astrophysics (astro-ph.IM), Astrophysics of Galaxies (astro-ph.GA), FOS: Physical sciences, FOS: Physical sciences},
-  
+
   title = {CS-ROMER: A novel compressed sensing framework for Faraday depth reconstruction},
-  
+
   publisher = {arXiv},
-  
+
   year = {2022},
-  
+
   copyright = {arXiv.org perpetual, non-exclusive license}
 }
 ```
@@ -64,7 +64,7 @@ CS-ROMER is able to simulate Faraday depth spectra directly in wavelength-square
 ```python
 import numpy as np
 from csromer.simulation import FaradayThinSource
-# Let's create an evenly spaced frequency vector from 1.008 to 2.031 GHz (JVLA setup) 
+# Let's create an evenly spaced frequency vector from 1.008 to 2.031 GHz (JVLA setup)
 nu = np.linspace(start=1.008e9, stop=2.031e9, num=1000)
 # Let's say that the peak polarized intensity will be 0.0035 mJy/beam with a spectral index = 1.0
 peak_thinsource = 0.0035
@@ -75,7 +75,7 @@ thinsource = FaradayThinSource(nu=nu, s_nu=peak_thinsource, phi_gal=-200, spectr
 ```python
 import numpy as np
 from csromer.simulation import FaradayThickSource
-# Let's create an evenly spaced frequency vector from 1.008 to 2.031 GHz (JVLA setup) 
+# Let's create an evenly spaced frequency vector from 1.008 to 2.031 GHz (JVLA setup)
 nu = np.linspace(start=1.008e9, stop=2.031e9, num=1000)
 # Let's say that the peak polarized intensity will be 0.0035 mJy/beam with a spectral index = 1.0
 peak_thicksource = 0.0035
@@ -107,7 +107,7 @@ mixedsource.remove_channels(0.2)
 ### Adding noise to your simulations
 If we want to add random Gaussian noise to our simulation we can simply call the function `apply_noise`
 ```python
-# Let's add Gaussian random noise with mean 0 and standard deviation equal 
+# Let's add Gaussian random noise with mean 0 and standard deviation equal
 # to 20% the peak of the signal.
 sigma = 0.2*mixedsource.s_nu
 mixedsource.apply_noise(sigma)
@@ -134,7 +134,7 @@ F_dirty = dft.backward(mixedsource.data)
 from csromer.transformers import NUFFT1D
 # We instantiate our non-uniform FFT
 nufft = NUFFT1D(dataset=mixedsource, parameter=parameter, solve=True)
-# At this point we can use either the parameter data set with zeros or we can 
+# At this point we can use either the parameter data set with zeros or we can
 # use the dirty Faraday depth spectra
 parameter.data = F_dirty
 parameter.complex_data_to_real() # We convert the complex data to real
@@ -145,7 +145,7 @@ lambda_l1 = np.sqrt(mixedsource.m + 2*np.sqrt(mixedsource.m)) * np.sqrt(2) * np.
 ```python
 from csromer.objectivefunction import L1, Chi2
 from csromer.objectivefunction import OFunction
-# We instantiate each part of our objective function 
+# We instantiate each part of our objective function
 chi2 = Chi2(dft_obj=nufft, wavelet=None) # chi-squared
 l1 = L1(reg=lambda_l1) # L1-norm regularization
 
@@ -256,10 +256,10 @@ def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None, 
                      workers_idxs=None, idx=None, eta=1.0, use_wavelet=True):
     i = workers_idxs[0][idx]
     j = workers_idxs[1][idx]
-    
+
     if spectral_idx is None:
         spectral_idx = 0.0
-    
+
     dataset = Dataset(nu=nu, sigma=sigma, data=data[:, i, j], spectral_idx=spectral_idx)
     parameter = Parameter()
     parameter.calculate_cellsize(dataset=dataset, oversampling=8, verbose=False)
@@ -272,16 +272,16 @@ def reconstruct_cube(F=None, data=None, sigma=None, nu=None, spectral_idx=None, 
     # We can estimate the noise from the edges of the FDF
     edges_idx = np.where(np.abs(parameter.phi) > parameter.max_faraday_depth / 1.5)
     noise = eta * 0.5 * (np.std(F_dirty[edges_idx].real) + np.std(F_dirty[edges_idx].imag))
-    
+
     # We store the FDF
     F[0, :, i, j] = F_dirty
-    
+
     # Let's say that if use_wavelet is True then we use the coif2 wavelet
     if use_wavelet:
         wav = UndecimatedWavelet(wavelet_name="coif2")
     else:
         wav = None
-    
+
     # We estimate lambda for L1 norm
     lambda_l1 = np.sqrt(2 * len(dataset.data) + np.sqrt(4 * len(dataset.data))) * noise
     chi2 = Chi2(dft_obj=nufft, wavelet=wav)
