@@ -1,5 +1,5 @@
-from .wavelet import Wavelet
 import pywt
+from .wavelet import Wavelet
 
 
 class ContinuousWavelet(Wavelet):

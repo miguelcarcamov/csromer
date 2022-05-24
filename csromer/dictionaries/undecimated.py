@@ -1,6 +1,6 @@
-from .wavelet import Wavelet
 import pywt
 import numpy as np
+from .wavelet import Wavelet
 from ..utils import nextPowerOf2
 
 

@@ -1,17 +1,16 @@
 from __future__ import annotations
-from scipy.constants import speed_of_light as c
 import sys
+from typing import Union, List
+from typing import TYPE_CHECKING
+from scipy.constants import speed_of_light as c
 import numpy as np
 import scipy.signal as sci_signal
 import astropy.units as u
 from scipy import special
-from typing import Union, List
 import scipy.stats
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..transformers.gridding import Gridding
-import copy
 
 
 def calculate_sigma(
