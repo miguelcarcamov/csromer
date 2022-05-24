@@ -20,9 +20,6 @@ jobs:
           set-safe-directory: true
       - name: Check git version and our path
         run: |
-          git --version
-          ls -lah
-          ls -lah .git/
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - uses: ptxmac/yapf-action@master
         with:
@@ -30,13 +27,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     needs: lint
-    container:
-      image: ghcr.io/${{ github.repository }}:base
-      credentials:
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.REGISTRY_TOKEN }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v3.0.2
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip wheel setuptools

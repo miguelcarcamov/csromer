@@ -15,11 +15,6 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/${{ github.repository }}:base
-      credentials:
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.REGISTRY_TOKEN }}
     steps:
       - uses: actions/checkout@v3.0.2
         with:
@@ -27,9 +22,6 @@ jobs:
           set-safe-directory: true
       - name: Check git version and our path
         run: |
-          git --version
-          ls -lah
-          ls -lah .git/
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Set up Python
         uses: actions/setup-python@v3
@@ -42,6 +34,8 @@ jobs:
             python3 -m pip install build
       - name: Build package
         run: python3 -m build
+      - name: Build bdist package
+        run: python3 setup.py bdist_wheel
       - name: Publish package
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
         uses: pypa/gh-action-pypi-publish@master
