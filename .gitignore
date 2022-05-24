@@ -109,3 +109,4 @@ venv.bak/
 *.npy
 *.fits
 *.orig
+_version.py
