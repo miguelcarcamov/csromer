@@ -19,6 +19,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - name: Update pip and install toml
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install toml
       - uses: AlexanderMelde/yapf-action@master
         with:
           args: "--recursive --verbose"
