@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: AlexanderMelde/yapf-action@master
         with:
-          args : "--recursive csromer/ --verbose"
+          args : "--recursive --verbose"
 
   build:
     runs-on: ubuntu-20.04
