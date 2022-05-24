@@ -1,3 +1,5 @@
+import pathlib
+from typing import Union, List
 from astropy.io import fits
 from astropy_healpix import HEALPix
 from astropy.coordinates import Galactic
@@ -5,10 +7,8 @@ from astropy.units import Quantity
 from astropy.wcs import WCS
 from astropy.coordinates import SkyCoord
 import astropy.units as un
-from typing import Union, List
 import numpy as np
 import h5py
-import pathlib
 
 
 class FaradaySky:

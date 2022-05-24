@@ -8,7 +8,7 @@ name: testpypi-publish
 on:
   push:
     branches:
-      - master
+      - development
     paths:
       - 'setup.py'
   pull_request:

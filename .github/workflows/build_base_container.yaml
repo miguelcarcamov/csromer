@@ -3,7 +3,7 @@ name: build-base-container
 on:
   push:
     branches:
-      - master
+      - development
     paths:
       - 'Dockerfile'
   pull_request:
