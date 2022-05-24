@@ -16,7 +16,6 @@ from .methods.sdmm import sdmm
 from ..reconstruction.parameter import Parameter
 
 
-
 class Optimizer(metaclass=ABCMeta):
     def __init__(
         self,
