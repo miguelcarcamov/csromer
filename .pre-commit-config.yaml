@@ -8,10 +8,10 @@ repos:
     -   id: end-of-file-fixer
         files: "^csromer/"
     -   id: trailing-whitespace
-        files: "^csromer/"
+        files: "csromer/*"
     -   id: requirements-txt-fixer
 -   repo: https://github.com/psf/black
     rev: 21.12b0
     hooks:
     -   id: black
-        files: "^csromer/"
+        files: "csromer/*"
