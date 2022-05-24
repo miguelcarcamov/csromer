@@ -19,10 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: psf/black@stable
+      - uses: AlexanderMelde/yapf-action@master
         with:
-          options: "--check --verbose"
-          src: "csromer/"
+          args: "--recursive csromer/ --verbose"
   build:
     runs-on: ubuntu-latest
     needs: lint
