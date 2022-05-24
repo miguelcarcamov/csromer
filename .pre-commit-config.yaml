@@ -3,15 +3,10 @@ repos:
     rev: v2.3.0
     hooks:
     -   id: check-yaml
-        files: .github/workflows/*
-    -   id: check-yaml
     -   id: end-of-file-fixer
-        files: csromer/*
     -   id: trailing-whitespace
-        files: csromer/*
     -   id: requirements-txt-fixer
 -   repo: https://github.com/psf/black
     rev: 21.12b0
     hooks:
     -   id: black
-        files: csromer/*
