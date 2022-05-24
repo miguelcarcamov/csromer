@@ -17,12 +17,7 @@ class Function1D(metaclass=ABCMeta):
 
 class Gaussian(Function1D, ABC):
 
-    def __init__(self,
-                 amplitude=None,
-                 mu=None,
-                 sigma=None,
-                 fwhm=None,
-                 **kwargs):
+    def __init__(self, amplitude=None, mu=None, sigma=None, fwhm=None, **kwargs):
         super(Gaussian, self).__init__(**kwargs)
         if amplitude is not None:
             self.amplitude = amplitude
@@ -60,8 +55,7 @@ class Gaussian(Function1D, ABC):
         self.__sigma = val / val_fwhm
 
     def run(self, normalized=True):
-        f_gauss = self.amplitude * np.exp(-0.5 *
-                                          ((self.x - self.mu) / self.sigma)**2)
+        f_gauss = self.amplitude * np.exp(-0.5 * ((self.x - self.mu) / self.sigma)**2)
         if normalized:
             f_gauss /= np.sum(f_gauss)
         return f_gauss

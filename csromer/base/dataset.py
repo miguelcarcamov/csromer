@@ -27,8 +27,7 @@ def calculate_sigma(
         sigma = np.sqrt(np.mean(image[y0:yn, x0:xn]**2))
     else:
         flux = np.sum(image)
-        sigma = np.sqrt((residual_cal_error * flux)**2 +
-                        (sigma_error * np.sqrt(nbeam))**2)
+        sigma = np.sqrt((residual_cal_error * flux)**2 + (sigma_error * np.sqrt(nbeam))**2)
 
     return sigma
 
@@ -41,9 +40,7 @@ def autocorr_gridded(x: np.ndarray):
     return result[result.size // 2:]
 
 
-def boxpierce(x: np.ndarray = None,
-              k: Union[List, int] = None,
-              conf_level: float = 0.95):
+def boxpierce(x: np.ndarray = None, k: Union[List, int] = None, conf_level: float = 0.95):
     n = len(x)
     if type(k) == list:
         res = []
@@ -63,9 +60,7 @@ def boxpierce(x: np.ndarray = None,
         return np.array(x_sum), scipy.stats.chi2.ppf(conf_level, df=k)
 
 
-def ljungbox(x: np.ndarray = None,
-             k: Union[List, int] = None,
-             conf_level: float = 0.95):
+def ljungbox(x: np.ndarray = None, k: Union[List, int] = None, conf_level: float = 0.95):
     n = len(x)
     if isinstance(k, list):
         res = []
@@ -191,8 +186,7 @@ class Dataset:
             self.__nu = c / np.sqrt(val)
             self.__nu_0 = np.median(self.__nu)
             if hasattr(self, "spectral_idx"):
-                self.__s = (self.__nu / self.__nu_0)**(-1.0 *
-                                                       self.__spectral_idx)
+                self.__s = (self.__nu / self.__nu_0)**(-1.0 * self.__spectral_idx)
             self.w = np.ones(self.__m)
             self.calculate_l2_cellsize()
 
@@ -267,8 +261,7 @@ class Dataset:
                 self.__data = val
             if hasattr(self, "model_data"):
                 if self.__model_data is None:
-                    self.__model_data = np.zeros_like(val,
-                                                      dtype=self.data.dtype)
+                    self.__model_data = np.zeros_like(val, dtype=self.data.dtype)
         else:
             self.__data = None
 
@@ -353,9 +346,7 @@ class Dataset:
         p_hat = p * galrm_shift
         self.data = p_hat
 
-    def assess_residuals(self,
-                         gridding_object: Gridding = None,
-                         confidence_interval: float = 0.95):
+    def assess_residuals(self, gridding_object: Gridding = None, confidence_interval: float = 0.95):
         if self.gridded:
             autocorr_real = autocorr_gridded(self.residual.real)
             autocorr_imag = autocorr_gridded(self.residual.imag)
@@ -370,9 +361,7 @@ class Dataset:
             autocorr_imag = autocorr_gridded(gridded_data.residual.imag)
             autocorr_real_sq = autocorr_gridded(gridded_data.residual.real**2)
             autocorr_imag_sq = autocorr_gridded(gridded_data.residual.imag**2)
-            lags = sci_signal.correlation_lags(gridded_data.m,
-                                               gridded_data.m,
-                                               mode="full")
+            lags = sci_signal.correlation_lags(gridded_data.m, gridded_data.m, mode="full")
 
         autocorr_res = autocorr_real + 1j * autocorr_imag
         autocorr_res_sq = autocorr_real_sq + 1j * autocorr_imag_sq
@@ -383,18 +372,14 @@ class Dataset:
         vcrit = np.sqrt(2) * special.erfinv(confidence_interval)
         bound = vcrit / np.sqrt(self.m)
 
-        elem_real = ((autocorr_res.real > -bound) &
-                     (autocorr_res.real < bound)).sum()
+        elem_real = ((autocorr_res.real > -bound) & (autocorr_res.real < bound)).sum()
         percentage_real_in = 100.0 * elem_real / len(lags)
-        elem_imag = ((autocorr_res.imag > -bound) &
-                     (autocorr_res.imag < bound)).sum()
+        elem_imag = ((autocorr_res.imag > -bound) & (autocorr_res.imag < bound)).sum()
         percentage_imag_in = 100.0 * elem_imag / len(lags)
 
-        elem_real_sq = ((autocorr_res_sq.real > -bound) &
-                        (autocorr_res_sq.real < bound)).sum()
+        elem_real_sq = ((autocorr_res_sq.real > -bound) & (autocorr_res_sq.real < bound)).sum()
         percentage_real_in_sq = 100.0 * elem_real_sq / len(lags)
-        elem_imag_sq = ((autocorr_res_sq.imag > -bound) &
-                        (autocorr_res_sq.imag < bound)).sum()
+        elem_imag_sq = ((autocorr_res_sq.imag > -bound) & (autocorr_res_sq.imag < bound)).sum()
         percentage_imag_in_sq = 100.0 * elem_imag_sq / len(lags)
 
         return (

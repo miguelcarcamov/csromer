@@ -16,11 +16,7 @@ MEDIUM_SIZE = 7
 BIGGER_SIZE = 8
 
 
-def create_circular_skyregion(ra,
-                              dec,
-                              radius,
-                              radius_unit="arcsec",
-                              unit="deg"):
+def create_circular_skyregion(ra, dec, radius, radius_unit="arcsec", unit="deg"):
     center = SkyCoord(ra, dec, unit=unit)
     radius = Angle(radius, radius_unit)
     region = CircleSkyRegion(center, radius)
@@ -33,10 +29,7 @@ def add_colorbar(im, aspect=20, pad_fraction=0.5, **kwargs):
     width = axes_grid1.axes_size.AxesY(im.axes, aspect=1.0 / aspect)
     pad = axes_grid1.axes_size.Fraction(pad_fraction, width)
     current_ax = plt.gca()
-    cax = divider.append_axes("right",
-                              size=width,
-                              pad=pad,
-                              axes_class=maxes.Axes)
+    cax = divider.append_axes("right", size=width, pad=pad, axes_class=maxes.Axes)
     plt.sca(current_ax)
     return im.axes.figure.colorbar(im, cax=cax, **kwargs)
 
@@ -48,8 +41,7 @@ class RMPlotter:
         rm_image: Union[fits.PrimaryHDU, fits.HDUList, str] = None,
         rm_image_error: Union[fits.PrimaryHDU, fits.HDUList, str] = None,
         pol_fraction_image: Union[fits.PrimaryHDU, fits.HDUList, str] = None,
-        total_intensity_image: Union[fits.PrimaryHDU, fits.HDUList,
-                                     str] = None,
+        total_intensity_image: Union[fits.PrimaryHDU, fits.HDUList, str] = None,
         center_coord: Union[List[float], Quantity, SkyCoord] = None,
         radius: Union[List[float], Quantity] = 0.0,
         total_intensity_nsigma: float = None,
@@ -84,8 +76,7 @@ class RMPlotter:
             if self.center_coord.isscalar:
                 raise ValueError("Coordinate cannot be an scalar")
             else:
-                self.center_coord = SkyCoord(ra=self.center_coord[0],
-                                             dec=self.center_coord[1])
+                self.center_coord = SkyCoord(ra=self.center_coord[0], dec=self.center_coord[1])
 
         if isinstance(self.radius, Quantity):
             if not self.radius.isscalar:
@@ -106,10 +97,12 @@ class RMPlotter:
             else:
                 radius_x = radius_y = self.radius * un.deg
 
-        left_corner = SkyCoord(ra=self.center_coord.ra - radius_x,
-                               dec=self.center_coord.dec - radius_y)
-        right_corner = SkyCoord(ra=self.center_coord.ra + radius_x,
-                                dec=self.center_coord.dec + radius_y)
+        left_corner = SkyCoord(
+            ra=self.center_coord.ra - radius_x, dec=self.center_coord.dec - radius_y
+        )
+        right_corner = SkyCoord(
+            ra=self.center_coord.ra + radius_x, dec=self.center_coord.dec + radius_y
+        )
         left, up = left_corner.to_pixel(wcs, origin=0)
         right, down = right_corner.to_pixel(wcs, origin=0)
         xlim = [int(right), int(left)]
@@ -126,12 +119,14 @@ class RMPlotter:
     ):
         fig = plt.figure(dpi=dpi)
         if self.use_latex:
-            plt.rcParams.update({
-                "font.family": "serif",
-                "text.usetex": True,
-                "pgf.rcfonts": False,
-                "pgf.texsystem": "pdflatex",  # default is xetex
-            })
+            plt.rcParams.update(
+                {
+                    "font.family": "serif",
+                    "text.usetex": True,
+                    "pgf.rcfonts": False,
+                    "pgf.texsystem": "pdflatex",  # default is xetex
+                }
+            )
 
         plt.rc("font", size=MEDIUM_SIZE)  # controls default text sizes
         plt.rc("axes", titlesize=SMALL_SIZE)  # fontsize of the axes title
@@ -198,7 +193,8 @@ class RMPlotter:
 
         # Get noise of total intensity image
         total_intensity_noise = self.total_intensity_nsigma * calculate_noise(
-            total_intensity_data, use_sigma_clipped_stats=True)
+            total_intensity_data, use_sigma_clipped_stats=True
+        )
         # contour levels
         # the step parameter is the factor of 2^step each contour goes up by
         # so use step=1 for contours which double each time
@@ -215,16 +211,8 @@ class RMPlotter:
                                                  42.187).to_pixel(wcs_rm_image)
 
         if self.rm_image_error is not None and self.pol_fraction_image is not None:
-            ax1 = fig.add_subplot(1,
-                                  3,
-                                  1,
-                                  projection=wcs_rm_image,
-                                  box_aspect=1)
-            c1 = ax1.imshow(rm_image_data,
-                            origin="lower",
-                            cmap=inferno,
-                            vmin=-150,
-                            vmax=150)
+            ax1 = fig.add_subplot(1, 3, 1, projection=wcs_rm_image, box_aspect=1)
+            c1 = ax1.imshow(rm_image_data, origin="lower", cmap=inferno, vmin=-150, vmax=150)
             # ax1.text(x=173.4776803, y=49.0761733, s="N")
             # ax1.text(x=173.4719210, y=49.0538024, ha="center", s="S", transform=ax1.get_transform(wcs_rm_image))
             ax1.contour(
@@ -239,16 +227,8 @@ class RMPlotter:
             north_region.plot(ax=ax1, color="royalblue", lw=0.8)
             south_region.plot(ax=ax1, color="darkcyan", lw=0.8)
 
-            ax2 = fig.add_subplot(1,
-                                  3,
-                                  2,
-                                  projection=wcs_rm_image_error,
-                                  box_aspect=1)
-            c2 = ax2.imshow(rm_image_error_data,
-                            origin="lower",
-                            cmap=inferno,
-                            vmin=0,
-                            vmax=1)
+            ax2 = fig.add_subplot(1, 3, 2, projection=wcs_rm_image_error, box_aspect=1)
+            c2 = ax2.imshow(rm_image_error_data, origin="lower", cmap=inferno, vmin=0, vmax=1)
             ax2.contour(
                 total_intensity_data,
                 transform=ax2.get_transform(wcs_total_intensity),
@@ -258,16 +238,8 @@ class RMPlotter:
                 linewidths=0.1,
             )
 
-            ax3 = fig.add_subplot(1,
-                                  3,
-                                  3,
-                                  projection=wcs_pol_fraction,
-                                  box_aspect=1)
-            c3 = ax3.imshow(pol_fraction_data,
-                            origin="lower",
-                            cmap=inferno,
-                            vmin=0,
-                            vmax=0.5)
+            ax3 = fig.add_subplot(1, 3, 3, projection=wcs_pol_fraction, box_aspect=1)
+            c3 = ax3.imshow(pol_fraction_data, origin="lower", cmap=inferno, vmin=0, vmax=0.5)
             ax3.contour(
                 total_intensity_data,
                 transform=ax3.get_transform(wcs_total_intensity),
@@ -325,11 +297,7 @@ class RMPlotter:
             ax = fig.add_subplot(projection=wcs_rm_image, box_aspect=1)
             # fig, ax = plt.subplots(nrows=1, ncols=1, subplot_kw={'projection': wcs_rm_image}, dpi=dpi)
 
-            c = ax.imshow(rm_image_data,
-                          origin="lower",
-                          cmap=viridis,
-                          vmin=0,
-                          vmax=1)
+            c = ax.imshow(rm_image_data, origin="lower", cmap=viridis, vmin=0, vmax=1)
             ax.contour(
                 total_intensity_data,
                 transform=ax.get_transform(wcs_total_intensity),
@@ -360,7 +328,4 @@ class RMPlotter:
         plt.show()
 
         if savefig:
-            fig.savefig(save_path,
-                        bbox_inches="tight",
-                        format=file_format,
-                        dpi=dpi)
+            fig.savefig(save_path, bbox_inches="tight", format=file_format, dpi=dpi)

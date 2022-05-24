@@ -17,8 +17,9 @@ class FaradaySky:
         self.nside = nside
         self.ordering = ordering
         if filename is None:
-            self.filename = (pathlib.Path(__file__).parent.resolve() /
-                             "./faraday_sky_files/faraday2020v2.hdf5")
+            self.filename = (
+                pathlib.Path(__file__).parent.resolve() / "./faraday_sky_files/faraday2020v2.hdf5"
+            )
         else:
             self.filename = filename
         self.extension = pathlib.Path(self.filename).suffix
@@ -66,11 +67,11 @@ class FaradaySky:
 
         if use_bilinear_interpolation:
             rm_value_mean = (
-                self.hp.interpolate_bilinear_skycoord(coord, self.data[0]) *
-                un.rad / un.m**2)
+                self.hp.interpolate_bilinear_skycoord(coord, self.data[0]) * un.rad / un.m**2
+            )
             rm_value_std = (
-                self.hp.interpolate_bilinear_skycoord(coord, self.data[1]) *
-                un.rad / un.m**2)
+                self.hp.interpolate_bilinear_skycoord(coord, self.data[1]) * un.rad / un.m**2
+            )
         else:
             healpix_idx = self.hp.skycoord_to_healpix(coord)
             rm_value_mean = self.data[0][healpix_idx] * un.rad / un.m**2
@@ -80,8 +81,7 @@ class FaradaySky:
 
     def galactic_rm_image(
         self,
-        fitsfile: Union[str, fits.HDUList, fits.PrimaryHDU,
-                        fits.Header] = None,
+        fitsfile: Union[str, fits.HDUList, fits.PrimaryHDU, fits.Header] = None,
         use_bilinear_interpolation: bool = False,
     ):
         if isinstance(fitsfile, str):
@@ -116,6 +116,9 @@ class FaradaySky:
 
         rm_mean_field = np.mean(rm_mean)
         rm_uncertainty_field = np.mean(rm_std)
-        print("The Galactic RM in the field is {0:.2f} \u00B1 {1:.2f}".format(
-            rm_mean_field.value, rm_uncertainty_field))
+        print(
+            "The Galactic RM in the field is {0:.2f} \u00B1 {1:.2f}".format(
+                rm_mean_field.value, rm_uncertainty_field
+            )
+        )
         return rm_mean, rm_std

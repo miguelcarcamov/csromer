@@ -10,9 +10,10 @@ EPSILON = 1e-12
 
 
 def complex_bincount(x: np.ndarray = None, complex_array: np.ndarray = None):
-    if (x is not None and complex_array is not None
-            and (complex_array.dtype == np.complex64
-                 or complex_array.dtype == np.complex128)):
+    if (
+        x is not None and complex_array is not None
+        and (complex_array.dtype == np.complex64 or complex_array.dtype == np.complex128)
+    ):
         real_part = complex_array.real
         imag_part = complex_array.imag
         bincount_real = np.bincount(x, real_part)
@@ -36,12 +37,9 @@ class Gridding:
             stop=np.max(self.dataset.lambda2),
             step=self.dataset.delta_l2_mean,
         )
-        l2_grid_pos = np.floor(self.dataset.lambda2 //
-                               self.dataset.delta_l2_mean).astype(int)
-        bincount_data = complex_bincount(l2_grid_pos,
-                                         self.dataset.w * self.dataset.data)
-        bincount_model = complex_bincount(
-            l2_grid_pos, self.dataset.w * self.dataset.model_data)
+        l2_grid_pos = np.floor(self.dataset.lambda2 // self.dataset.delta_l2_mean).astype(int)
+        bincount_data = complex_bincount(l2_grid_pos, self.dataset.w * self.dataset.data)
+        bincount_model = complex_bincount(l2_grid_pos, self.dataset.w * self.dataset.model_data)
         bincount_weights = np.bincount(l2_grid_pos, self.dataset.w)
         unique_idx = np.unique(l2_grid_pos)
 

@@ -49,8 +49,7 @@ def thinsource_simulation(lambda2, l2_ref, nu_0, spectral_idx, phi_gal, s_nu):
 # In[5]:
 
 
-def thicksource_simulation(lambda2, l2_ref, nu_0, spectral_idx, phi_fg,
-                           phi_center, s_nu):
+def thicksource_simulation(lambda2, l2_ref, nu_0, spectral_idx, phi_fg, phi_center, s_nu):
     nu = c / np.sqrt(lambda2)
     k = (nu / nu_0)**(-1.0 * spectral_idx)
     phi_fg = phi_fg / 2.0
@@ -66,10 +65,7 @@ def thicksource_simulation(lambda2, l2_ref, nu_0, spectral_idx, phi_fg,
 # In[6]:
 
 
-def remove_channels(lambda2=None,
-                    remove_frac=None,
-                    random_state=None,
-                    chunksize=None):
+def remove_channels(lambda2=None, remove_frac=None, random_state=None, chunksize=None):
 
     remove_frac = 1.0 - remove_frac
     m = len(lambda2)
@@ -125,10 +121,8 @@ def s_nu_at_freq(s_nu_0, nu, nu_0, alpha):
 
 
 def pol_dist(s_nu):
-    a = np.random.normal(loc=0.051, scale=0.004,
-                         size=s_nu.shape).astype(np.float32)
-    b = np.random.normal(loc=0.388, scale=0.007,
-                         size=s_nu.shape).astype(np.float32)
+    a = np.random.normal(loc=0.051, scale=0.004, size=s_nu.shape).astype(np.float32)
+    b = np.random.normal(loc=0.388, scale=0.007, size=s_nu.shape).astype(np.float32)
     log_pol_fraction = -a * np.log(s_nu * 1000.0) + b
     pol_fraction = np.exp(log_pol_fraction)
     return pol_fraction * s_nu
@@ -158,10 +152,8 @@ noise_U = 2.38714e-06  # Jy/beam at 1.27962918 GHz
 
 flux_min = 5.0 * noise_I  # Jy/beam at 1.27962918 GHz
 
-q_noise = np.random.normal(loc=0.0, scale=noise_Q,
-                           size=(nu_size, m, n)).astype(np.float32)
-u_noise = np.random.normal(loc=0.0, scale=noise_U,
-                           size=(nu_size, m, n)).astype(np.float32)
+q_noise = np.random.normal(loc=0.0, scale=noise_Q, size=(nu_size, m, n)).astype(np.float32)
+u_noise = np.random.normal(loc=0.0, scale=noise_U, size=(nu_size, m, n)).astype(np.float32)
 cube = q_noise + 1j * u_noise
 
 # In[12]:
@@ -199,17 +191,10 @@ l2_ref = calculate_l2ref(lambda_sq, weights)
 # In[19]:
 
 n_random_pixels = 100
-random_pixels = np.random.choice(m * n, size=n_random_pixels,
-                                 replace=False).astype(np.int32)
+random_pixels = np.random.choice(m * n, size=n_random_pixels, replace=False).astype(np.int32)
 random_pixels = np.unravel_index(random_pixels, (m, n))
-random_source = np.random.randint(low=0,
-                                  high=3,
-                                  size=n_random_pixels,
-                                  dtype=np.int32)
-random_depolarized = np.random.randint(low=0,
-                                       high=2,
-                                       size=n_random_pixels,
-                                       dtype=np.int32)
+random_source = np.random.randint(low=0, high=3, size=n_random_pixels, dtype=np.int32)
+random_depolarized = np.random.randint(low=0, high=2, size=n_random_pixels, dtype=np.int32)
 
 # In[20]:
 
@@ -220,49 +205,33 @@ idx_depolarized = np.where(random_depolarized == 1)[0]
 
 # In[21]:
 
-random_phi_center_thin = np.random.uniform(low=-200,
-                                           high=200,
-                                           size=len(idx_thinsources)).astype(
-                                               np.float32)
-random_phi_center_thick = np.random.uniform(low=-200,
-                                            high=200,
-                                            size=len(idx_thicksources)).astype(
-                                                np.float32)
-random_phi_center_mix = np.random.uniform(
-    low=-200, high=200, size=(2, len(idx_mixsources))).astype(np.float32)
-random_phi_width_thick = np.random.uniform(low=40,
-                                           high=90,
-                                           size=len(idx_thicksources)).astype(
-                                               np.float32)
-random_phi_width_mix = np.random.uniform(low=40,
-                                         high=90,
-                                         size=len(idx_mixsources)).astype(
-                                             np.float32)
-random_sigma_rm_depol = np.random.uniform(low=0,
-                                          high=30,
-                                          size=len(idx_depolarized)).astype(
-                                              np.float32)
+random_phi_center_thin = np.random.uniform(low=-200, high=200,
+                                           size=len(idx_thinsources)).astype(np.float32)
+random_phi_center_thick = np.random.uniform(low=-200, high=200,
+                                            size=len(idx_thicksources)).astype(np.float32)
+random_phi_center_mix = np.random.uniform(low=-200, high=200,
+                                          size=(2, len(idx_mixsources))).astype(np.float32)
+random_phi_width_thick = np.random.uniform(low=40, high=90,
+                                           size=len(idx_thicksources)).astype(np.float32)
+random_phi_width_mix = np.random.uniform(low=40, high=90,
+                                         size=len(idx_mixsources)).astype(np.float32)
+random_sigma_rm_depol = np.random.uniform(low=0, high=30,
+                                          size=len(idx_depolarized)).astype(np.float32)
 
 # In[22]:
 
-I_thin = np.random.uniform(low=flux_min,
-                           high=flux_max,
+I_thin = np.random.uniform(low=flux_min, high=flux_max,
                            size=len(idx_thinsources)).astype(np.float32)
-I_thick = np.random.uniform(low=flux_min,
-                            high=flux_max,
+I_thick = np.random.uniform(low=flux_min, high=flux_max,
                             size=len(idx_thicksources)).astype(np.float32)
-I_mix = np.random.uniform(low=flux_min,
-                          high=flux_max,
+I_mix = np.random.uniform(low=flux_min, high=flux_max,
                           size=(2, len(idx_mixsources))).astype(np.float32)
 
 # In[23]:
 
-alpha_thin = np.random.normal(loc=0.7, scale=0.1,
-                              size=len(idx_thinsources)).astype(np.float32)
-alpha_thick = np.random.normal(loc=0.7, scale=0.1,
-                               size=len(idx_thicksources)).astype(np.float32)
-alpha_mix = np.random.normal(loc=0.7, scale=0.1,
-                             size=(2, len(idx_mixsources))).astype(np.float32)
+alpha_thin = np.random.normal(loc=0.7, scale=0.1, size=len(idx_thinsources)).astype(np.float32)
+alpha_thick = np.random.normal(loc=0.7, scale=0.1, size=len(idx_thicksources)).astype(np.float32)
+alpha_mix = np.random.normal(loc=0.7, scale=0.1, size=(2, len(idx_mixsources))).astype(np.float32)
 
 # In[24]:
 
@@ -281,10 +250,9 @@ p_mix = pol_dist(I_mix)
 
 x_idx_thin = random_pixels[0][idx_thinsources]
 y_idx_thin = random_pixels[1][idx_thinsources]
-cube[:, y_idx_thin,
-     x_idx_thin] += thinsource_simulation(lambda_sq[:, np.newaxis], l2_ref,
-                                          nu_0, alpha_thin,
-                                          random_phi_center_thin, p_thin)
+cube[:, y_idx_thin, x_idx_thin] += thinsource_simulation(
+    lambda_sq[:, np.newaxis], l2_ref, nu_0, alpha_thin, random_phi_center_thin, p_thin
+)
 
 # In[27]:
 
@@ -329,8 +297,8 @@ cube_before_depolarization = copy.deepcopy(cube)
 
 x_idx_depolarized = random_pixels[0][idx_depolarized]
 y_idx_depolarized = random_pixels[1][idx_depolarized]
-cube[:, y_idx_depolarized, x_idx_depolarized] *= np.exp(
-    -2.0 * random_sigma_rm_depol**2 * lambda_sq[:, np.newaxis]**2)
+cube[:, y_idx_depolarized,
+     x_idx_depolarized] *= np.exp(-2.0 * random_sigma_rm_depol**2 * lambda_sq[:, np.newaxis]**2)
 
 # In[31]:
 
@@ -375,17 +343,16 @@ np.max(gkernel)
 # In[39]:
 
 cube = signal.convolve(cube, gkernel[np.newaxis, :, :], mode="same")
-cube_before_depolarization = signal.convolve(cube_before_depolarization,
-                                             gkernel[np.newaxis, :, :],
-                                             mode="same")
+cube_before_depolarization = signal.convolve(
+    cube_before_depolarization, gkernel[np.newaxis, :, :], mode="same"
+)
 
 # In[40]:
 
 remove_frac = 0.3
-final_idxs = remove_channels(lambda2=lambda_sq,
-                             remove_frac=remove_frac,
-                             random_state=None,
-                             chunksize=None)
+final_idxs = remove_channels(
+    lambda2=lambda_sq, remove_frac=remove_frac, random_state=None, chunksize=None
+)
 
 # In[41]:
 
@@ -441,12 +408,9 @@ y_idx_test = 142
 
 # In[58]:
 
-plt.plot(lambda_sq, cube_before_depolarization[:, y_idx_test, x_idx_test].real,
-         ".")
-plt.plot(lambda_sq, cube_before_depolarization[:, y_idx_test, x_idx_test].imag,
-         ".")
-plt.plot(lambda_sq,
-         np.abs(cube_before_depolarization[:, y_idx_test, x_idx_test]), ".")
+plt.plot(lambda_sq, cube_before_depolarization[:, y_idx_test, x_idx_test].real, ".")
+plt.plot(lambda_sq, cube_before_depolarization[:, y_idx_test, x_idx_test].imag, ".")
+plt.plot(lambda_sq, np.abs(cube_before_depolarization[:, y_idx_test, x_idx_test]), ".")
 
 # In[59]:
 

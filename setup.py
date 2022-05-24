@@ -12,8 +12,8 @@ long_description = (this_directory / "README.md").read_text()
 def _parse_requirements(filename: str) -> List[str]:
     """Return requirements from requirements file."""
     # Ref: https://stackoverflow.com/a/42033122/
-    return distutils.text_file.TextFile(
-        filename=str(Path(__file__).with_name(filename))).readlines()
+    return distutils.text_file.TextFile(filename=str(Path(__file__).with_name(filename))
+                                        ).readlines()
 
 
 setup(
@@ -27,7 +27,6 @@ setup(
     author="Miguel Carcamo",
     author_email="miguel.carcamo@manchester.ac.uk",
     packages=find_packages(),  # same as name
-    install_requires=_parse_requirements(
-        "requirements.txt"),  # external packages as dependencies
+    install_requires=_parse_requirements("requirements.txt"),  # external packages as dependencies
     scripts=[],
 )

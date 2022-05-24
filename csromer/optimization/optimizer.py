@@ -148,13 +148,7 @@ class ADMM(Optimizer):
 
 class SDMM(Optimizer):
 
-    def __init__(self,
-                 fx=None,
-                 gx=None,
-                 gradfx=None,
-                 gprox=None,
-                 eta=2,
-                 **kwargs):
+    def __init__(self, fx=None, gx=None, gradfx=None, gprox=None, eta=2, **kwargs):
         super(SDMM, self).__init__(**kwargs)
         initlocals = locals()
         initlocals.pop("self")

@@ -8,12 +8,10 @@ class DiscreteWavelet(Wavelet):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        if self.wavelet_name is not None and self.wavelet_name in pywt.wavelist(
-                kind="discrete"):
+        if self.wavelet_name is not None and self.wavelet_name in pywt.wavelist(kind="discrete"):
             self.wavelet = pywt.Wavelet(self.wavelet_name)
         else:
-            raise NotImplementedError(
-                "The wavelet has not been implemented by pywavelets")
+            raise NotImplementedError("The wavelet has not been implemented by pywavelets")
 
     def calculate_ncoeffs(self, x):
         n = len(x)
@@ -32,38 +30,29 @@ class DiscreteWavelet(Wavelet):
 
         self.n = len(x)
         # Return coefficients
-        coeffs = pywt.wavedec(data=x,
-                              wavelet=self.wavelet,
-                              mode=self.mode,
-                              level=self.level)
-        coeffs_arr, self.coeff_slices, self.coeff_shapes = pywt.ravel_coeffs(
-            coeffs=coeffs)
+        coeffs = pywt.wavedec(data=x, wavelet=self.wavelet, mode=self.mode, level=self.level)
+        coeffs_arr, self.coeff_slices, self.coeff_shapes = pywt.ravel_coeffs(coeffs=coeffs)
 
         if self.append_signal:
             coeffs_arr = np.concatenate([x, coeffs_arr])
         return coeffs_arr
 
     def decompose_complex(self, x):
-        if self.level is not None and self.level > self.calculate_max_level(
-                x.real):
+        if self.level is not None and self.level > self.calculate_max_level(x.real):
             raise ValueError(
                 "You are trying to decompose into more levels than the maximum level expected"
             )
 
         # Return coefficients
-        coeffs_re = pywt.wavedec(data=x.real,
-                                 wavelet=self.wavelet,
-                                 mode=self.mode,
-                                 level=self.level)
-        coeffs_im = pywt.wavedec(data=x.imag,
-                                 wavelet=self.wavelet,
-                                 mode=self.mode,
-                                 level=self.level)
+        coeffs_re = pywt.wavedec(
+            data=x.real, wavelet=self.wavelet, mode=self.mode, level=self.level
+        )
+        coeffs_im = pywt.wavedec(
+            data=x.imag, wavelet=self.wavelet, mode=self.mode, level=self.level
+        )
 
-        coeffs_arr_re, coeffs_slices_re = pywt.coeffs_to_array(
-            coeffs=coeffs_re)
-        coeffs_arr_im, coeffs_slices_im = pywt.coeffs_to_array(
-            coeffs=coeffs_im)
+        coeffs_arr_re, coeffs_slices_re = pywt.coeffs_to_array(coeffs=coeffs_re)
+        coeffs_arr_im, coeffs_slices_im = pywt.coeffs_to_array(coeffs=coeffs_im)
 
         if self.append_signal:
             coeffs_arr_re = np.concatenate([x.real, coeffs_arr_re])
@@ -82,9 +71,7 @@ class DiscreteWavelet(Wavelet):
                 coeff_shapes=self.coeff_shapes,
                 output_format="wavedec",
             )
-            signal_from_coeffs = pywt.waverec(coeffs=coeffs_,
-                                              wavelet=self.wavelet,
-                                              mode=self.mode)
+            signal_from_coeffs = pywt.waverec(coeffs=coeffs_, wavelet=self.wavelet, mode=self.mode)
             signal += signal_from_coeffs
         else:
             coeffs = pywt.unravel_coeffs(
@@ -93,9 +80,7 @@ class DiscreteWavelet(Wavelet):
                 coeff_shapes=self.coeff_shapes,
                 output_format="wavedec",
             )
-            signal = pywt.waverec(coeffs=coeffs,
-                                  wavelet=self.wavelet,
-                                  mode=self.mode)
+            signal = pywt.waverec(coeffs=coeffs, wavelet=self.wavelet, mode=self.mode)
         # Return signal
         return signal
 
@@ -114,12 +99,12 @@ class DiscreteWavelet(Wavelet):
                 coeff_slices=self.coeff_slices[1],
                 output_format="wavedec",
             )
-            signal_re_from_coeffs = pywt.waverec(coeffs=coeffs_re,
-                                                 wavelet=self.wavelet,
-                                                 mode=self.mode)
-            signal_im_from_coeffs = pywt.waverec(coeffs=coeffs_im,
-                                                 wavelet=self.wavelet,
-                                                 mode=self.mode)
+            signal_re_from_coeffs = pywt.waverec(
+                coeffs=coeffs_re, wavelet=self.wavelet, mode=self.mode
+            )
+            signal_im_from_coeffs = pywt.waverec(
+                coeffs=coeffs_im, wavelet=self.wavelet, mode=self.mode
+            )
             signal_from_coeffs = signal_re_from_coeffs + 1j * signal_im_from_coeffs
             signal += signal_from_coeffs
         else:
@@ -133,11 +118,7 @@ class DiscreteWavelet(Wavelet):
                 coeff_slices=self.coeff_slices[1],
                 output_format="wavedec",
             )
-            signal_re = pywt.waverec(coeffs=coeffs_re,
-                                     wavelet=self.wavelet,
-                                     mode=self.mode)
-            signal_im = pywt.waverec(coeffs=coeffs_im,
-                                     wavelet=self.wavelet,
-                                     mode=self.mode)
+            signal_re = pywt.waverec(coeffs=coeffs_re, wavelet=self.wavelet, mode=self.mode)
+            signal_im = pywt.waverec(coeffs=coeffs_im, wavelet=self.wavelet, mode=self.mode)
             signal = signal_re + 1j * signal_im
         return signal

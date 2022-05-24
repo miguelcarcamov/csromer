@@ -66,8 +66,7 @@ def FISTA_algorithm(
 
         if verbose and it % 10 == 0:
             cost = F(x)
-            print("Iteration: ", it,
-                  " objective function value: {0:0.5f}".format(cost))
+            print("Iteration: ", it, " objective function value: {0:0.5f}".format(cost))
         new_lambda = g_prox.getLambda() - noise
         if new_lambda > 0.0:
             g_prox.setLambda(reg=new_lambda)
