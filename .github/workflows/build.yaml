@@ -40,6 +40,9 @@ jobs:
             git --version
             ls -lah
             ls -lah .git/
+            git tag
+            git status
+            git describe
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip wheel setuptools
