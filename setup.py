@@ -15,5 +15,5 @@ def _parse_requirements(filename: str) -> List[str]:
 
 
 if __name__ == "__main__":
-    use_scm_version = {"root": ".", "relative_to": __file__, "local_scheme": "node-and-timestamp"}
+    use_scm_version = {"root": ".", "relative_to": __file__, "local_scheme": "no-local-version"}
     setup(use_scm_version=use_scm_version, install_requires=_parse_requirements("requirements.txt"))
