@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 
+
 class Wavelet(metaclass=ABCMeta):
     def __init__(
         self,
