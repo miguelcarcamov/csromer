@@ -5,16 +5,16 @@ Created on Thu Nov  7 13:13:51 2019
 
 @author: miguel
 """
-
+import sys
+import copy
+from abc import ABCMeta, abstractmethod
 from scipy.optimize import minimize
 import numpy as np
+import proxmin as pmin
 from .methods.fista import FISTA_algorithm
 from .methods.sdmm import sdmm
-import proxmin as pmin
-from abc import ABCMeta, abstractmethod
-import sys
 from ..reconstruction.parameter import Parameter
-import copy
+
 
 
 class Optimizer(metaclass=ABCMeta):
