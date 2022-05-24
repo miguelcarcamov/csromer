@@ -17,6 +17,7 @@ from ..reconstruction.parameter import Parameter
 
 
 class Optimizer(metaclass=ABCMeta):
+
     def __init__(
         self,
         guess_param: Parameter = None,
@@ -37,6 +38,7 @@ class Optimizer(metaclass=ABCMeta):
 
 
 class FixedPointMethod(Optimizer):
+
     def __init__(self, gx=None, **kwargs):
         super(FixedPointMethod, self).__init__(**kwargs)
         initlocals = locals()
@@ -63,6 +65,7 @@ class FixedPointMethod(Optimizer):
 
 
 class GradientBasedMethod(Optimizer):
+
     def __init__(self, method="CG", **kwargs):
         super(GradientBasedMethod, self).__init__(**kwargs)
         initlocals = locals()
@@ -77,7 +80,10 @@ class GradientBasedMethod(Optimizer):
             method=self.method,
             jac=self.F_obj.calculate_gradient,
             tol=self.tol,
-            options={"maxiter": self.maxiter, "disp": self.verbose},
+            options={
+                "maxiter": self.maxiter,
+                "disp": self.verbose
+            },
         )
 
         param = copy.deepcopy(self.guess_param)
@@ -86,6 +92,7 @@ class GradientBasedMethod(Optimizer):
 
 
 class FISTA(Optimizer):
+
     def __init__(self, fx=None, gx=None, noise=None, **kwargs):
         super(FISTA, self).__init__(**kwargs)
         initlocals = locals()
@@ -112,6 +119,7 @@ class FISTA(Optimizer):
 
 
 class ADMM(Optimizer):
+
     def __init__(self, fx=None, gx=None, L0=2, **kwargs):
         super(ADMM, self).__init__(**kwargs)
         initlocals = locals()
@@ -139,7 +147,14 @@ class ADMM(Optimizer):
 
 
 class SDMM(Optimizer):
-    def __init__(self, fx=None, gx=None, gradfx=None, gprox=None, eta=2, **kwargs):
+
+    def __init__(self,
+                 fx=None,
+                 gx=None,
+                 gradfx=None,
+                 gprox=None,
+                 eta=2,
+                 **kwargs):
         super(SDMM, self).__init__(**kwargs)
         initlocals = locals()
         initlocals.pop("self")

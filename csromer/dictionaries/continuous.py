@@ -3,12 +3,12 @@ from .wavelet import Wavelet
 
 
 class ContinuousWavelet(Wavelet):
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
         if self.wavelet_name is not None and self.wavelet_name in pywt.wavelist(
-            kind="continuous"
-        ):
+                kind="continuous"):
             self.wavelet = pywt.Wavelet(self.wavelet_name)
         else:
             raise ValueError("The wavelet is not continuous")

@@ -33,14 +33,19 @@ def add_number(
 ):
     source = SkyCoord(ra=ra, dec=dec, frame=frame)
     source_pix = source.to_pixel(wcs, origin=0)
-    source_text = TextPath((source_pix[0] - 45, source_pix[1]), text, prop=fp, size=30)
+    source_text = TextPath((source_pix[0] - 45, source_pix[1]),
+                           text,
+                           prop=fp,
+                           size=30)
     source_p1 = PathPatch(source_text, ec="w", lw=1, fc="w", alpha=0.75)
     source_p2 = PathPatch(source_text, ec="none", fc="k")
     ax.add_artist(source_p1)
     ax.add_artist(source_p2)
 
 
-def normalize_data(data: np.ndarray = None, _min: float = None, _max: float = None):
+def normalize_data(data: np.ndarray = None,
+                   _min: float = None,
+                   _max: float = None):
     if data is not None:
         if _min is None:
             _min = 0.0
@@ -83,21 +88,23 @@ def astroquery_search(
                         pixels=pixels,
                         sampler=sampler,
                         survey=survey,
-                    )[0][0]
-                )
+                    )[0][0])
 
             if len(surveys) == 1:
                 return images[0]
             else:
                 return images
         else:
-            raise ValueError("One of the surveys you are querying is not in SkyView")
+            raise ValueError(
+                "One of the surveys you are querying is not in SkyView")
 
     else:
-        raise ValueError("Survey List or center coordinate cannot be Nonetype objects")
+        raise ValueError(
+            "Survey List or center coordinate cannot be Nonetype objects")
 
 
 class Plotter:
+
     def __init__(
         self,
         optical_image: fits.HDUList = None,
@@ -129,7 +136,8 @@ class Plotter:
 
         if dist is None and self.z is not None:
             # self.dist = Planck18.comoving_distance(self.z)  # distance in MPc
-            scale = Planck18.arcsec_per_kpc_comoving(self.z)  # scale in arcsec per kpc
+            scale = Planck18.arcsec_per_kpc_comoving(
+                self.z)  # scale in arcsec per kpc
             self.sb_length_arcsec = scale * self.scale_length_kpc
 
     def get_optical(
@@ -148,7 +156,8 @@ class Plotter:
         elif isinstance(radio_image, fits.Header):
             header = radio_image
         else:
-            raise TypeError("Radio image is not a header, PrimaryHDU or HDUList")
+            raise TypeError(
+                "Radio image is not a header, PrimaryHDU or HDUList")
 
         m = header["NAXIS1"]
         n = header["NAXIS2"]
@@ -174,9 +183,10 @@ class Plotter:
                 scaling="Log",
                 surveys=surveys,
             )
-            data = make_lupton_rgb(
-                hdu_i.data, hdu_r.data, hdu_g.data, filename=filename
-            )
+            data = make_lupton_rgb(hdu_i.data,
+                                   hdu_r.data,
+                                   hdu_g.data,
+                                   filename=filename)
             hdu_i.data = data
             self.optical_image = hdu_i
         else:
@@ -204,7 +214,8 @@ class Plotter:
         elif isinstance(radio_image, fits.Header):
             header = radio_image
         else:
-            raise TypeError("Radio image is not a header, PrimaryHDU or HDUList")
+            raise TypeError(
+                "Radio image is not a header, PrimaryHDU or HDUList")
 
         m = header["NAXIS1"]
         n = header["NAXIS2"]
@@ -239,14 +250,12 @@ class Plotter:
     ):
         fig = plt.figure(dpi=dpi)
         if self.use_latex:
-            plt.rcParams.update(
-                {
-                    "font.family": "serif",
-                    "text.usetex": True,
-                    "pgf.rcfonts": False,
-                    "pgf.texsystem": "pdflatex",  # default is xetex
-                }
-            )
+            plt.rcParams.update({
+                "font.family": "serif",
+                "text.usetex": True,
+                "pgf.rcfonts": False,
+                "pgf.texsystem": "pdflatex",  # default is xetex
+            })
 
         plt.rc("font", size=MEDIUM_SIZE)  # controls default text sizes
         plt.rc("axes", titlesize=SMALL_SIZE)  # fontsize of the axes title
@@ -304,12 +313,12 @@ class Plotter:
         if self.xray_image is not None:
             wcs_xray = WCS(self.xray_image[0].header, naxis=2)
             xray_image_sigma = sigma_list[0] * calculate_noise(
-                self.xray_image[0].data, use_sigma_clipped_stats=True
-            )
+                self.xray_image[0].data, use_sigma_clipped_stats=True)
             purple_contours = [xray_image_sigma * i for i in contourmults]
             purple_data = self.xray_image[0].data
             purple_norm = normalize_data(purple_data, 0, 1)
-            purple_alphas = np.where(purple_data >= xray_image_sigma, purple_norm, 0.0)
+            purple_alphas = np.where(purple_data >= xray_image_sigma,
+                                     purple_norm, 0.0)
             purple_color = twilightcmap(0.4)
             ax.contour(
                 purple_data,
@@ -332,13 +341,13 @@ class Plotter:
         if self.additional_image is not None:
             wcs_additional = WCS(self.additional_image.header, naxis=2)
             add_image_sigma = sigma_list[1] * calculate_noise(
-                self.additional_image.data, use_sigma_clipped_stats=True
-            )
+                self.additional_image.data, use_sigma_clipped_stats=True)
             blue_contours = [add_image_sigma * i for i in contourmults]
             blue_data = self.additional_image.data
             blue_norm = normalize_data(blue_data, 0, 1)
             blue_color = twilightcmap(0.2)
-            blue_alphas = np.where(blue_data >= add_image_sigma, blue_norm, 0.0)
+            blue_alphas = np.where(blue_data >= add_image_sigma, blue_norm,
+                                   0.0)
             ax.contour(
                 blue_data,
                 transform=ax.get_transform(wcs_additional),
@@ -358,8 +367,7 @@ class Plotter:
         # Contours for radio continuum
         if self.radio_image is not None:
             radio_image_sigma = sigma_list[2] * calculate_noise(
-                radio_data.squeeze(), use_sigma_clipped_stats=True
-            )
+                radio_data.squeeze(), use_sigma_clipped_stats=True)
             red_contours = [radio_image_sigma * i for i in contourmults]
             red_data = radio_data.squeeze()
             red_norm = normalize_data(red_data, 0, 1)
@@ -390,7 +398,9 @@ class Plotter:
         ax.coords[0].set_format_unit(un.deg)
         ax.coords[1].set_format_unit(un.deg)
         fp = FontProperties(size="xx-large", weight="extra bold")
-        x_ray_center = SkyCoord(ra=173.714 * un.deg, dec=49.091 * un.deg, frame="fk5")
+        x_ray_center = SkyCoord(ra=173.714 * un.deg,
+                                dec=49.091 * un.deg,
+                                frame="fk5")
         # print(x_ray_center.to_string('hmsdms'))
         x_center, y_center = x_ray_center.to_pixel(wcs, origin=0)
         ax.scatter(x=x_center, y=y_center, marker="x", color="gold", s=35)
@@ -576,4 +586,7 @@ class Plotter:
         plt.show()
 
         if savefig:
-            fig.savefig(save_path, bbox_inches="tight", format=file_format, dpi=dpi)
+            fig.savefig(save_path,
+                        bbox_inches="tight",
+                        format=file_format,
+                        dpi=dpi)

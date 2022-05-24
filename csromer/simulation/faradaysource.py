@@ -8,6 +8,7 @@ from ..base.dataset import Dataset
 
 
 class FaradaySource(Dataset, metaclass=ABCMeta):
+
     def __init__(self, s_nu=None, remove_frac=None, noise=None, **kwargs):
         super().__init__(**kwargs)
 
@@ -31,38 +32,30 @@ class FaradaySource(Dataset, metaclass=ABCMeta):
 
     def __add__(self, other):
         if isinstance(other, FaradaySource) and hasattr(other, "data"):
-            if (
-                (self.nu == other.nu).all()
-                and self.data is not None
-                and other.data is not None
-                and self.s_nu is not None
-                and other.s_nu is not None
-            ):
+            if ((self.nu == other.nu).all() and self.data is not None
+                    and other.data is not None and self.s_nu is not None
+                    and other.s_nu is not None):
                 source_copy = copy.deepcopy(self)
                 source_copy.data = self.data + other.data  # Sums the polarized data
                 w = self.s_nu + other.s_nu
                 source_copy.spectral_idx = (
-                    self.s_nu * self.spectral_idx + other.s_nu * other.spectral_idx
-                ) / w
+                    self.s_nu * self.spectral_idx +
+                    other.s_nu * other.spectral_idx) / w
                 return source_copy
             else:
                 raise TypeError("Data attribute in sources cannot be NoneType")
 
     def __iadd__(self, other):
         if isinstance(other, FaradaySource) and hasattr(other, "data"):
-            if (
-                (self.nu == other.nu).all()
-                and self.data is not None
-                and other.data is not None
-                and self.s_nu is not None
-                and other.s_nu is not None
-            ):
+            if ((self.nu == other.nu).all() and self.data is not None
+                    and other.data is not None and self.s_nu is not None
+                    and other.s_nu is not None):
                 source_copy = copy(self)
                 source_copy.data = self.data + other.data  # Sums the polarized data
                 w = self.s_nu + other.s_nu
                 source_copy.spectral_idx = (
-                    self.s_nu * self.spectral_idx + other.s_nu * other.spectral_idx
-                ) / w
+                    self.s_nu * self.spectral_idx +
+                    other.s_nu * other.spectral_idx) / w
                 return source_copy
             else:
                 raise TypeError("Data attribute in sources cannot be NoneType")
@@ -75,9 +68,13 @@ class FaradaySource(Dataset, metaclass=ABCMeta):
         if sigma_rm is None:
             sigma_rm = 0.0
 
-        self.data *= np.exp(-2.0 * sigma_rm**2 * (self.lambda2 - self.l2_ref) ** 2)
+        self.data *= np.exp(-2.0 * sigma_rm**2 *
+                            (self.lambda2 - self.l2_ref)**2)
 
-    def remove_channels(self, remove_frac=None, random_state=None, chunksize=None):
+    def remove_channels(self,
+                        remove_frac=None,
+                        random_state=None,
+                        chunksize=None):
         if remove_frac is None:
             remove_frac = 1.0 - self.remove_frac
         elif remove_frac == 0.0:
@@ -144,13 +141,18 @@ class FaradaySource(Dataset, metaclass=ABCMeta):
             q_noise = np.random.normal(loc=0.0, scale=self.noise, size=self.m)
             u_noise = np.random.normal(loc=0.0, scale=self.noise, size=self.m)
         else:
-            q_noise = random_state.normal(loc=0.0, scale=self.noise, size=self.m)
-            u_noise = random_state.normal(loc=0.0, scale=self.noise, size=self.m)
+            q_noise = random_state.normal(loc=0.0,
+                                          scale=self.noise,
+                                          size=self.m)
+            u_noise = random_state.normal(loc=0.0,
+                                          scale=self.noise,
+                                          size=self.m)
         p_noise = q_noise + 1j * u_noise
         self.data += p_noise
 
 
 class FaradayThinSource(FaradaySource):
+
     def __init__(self, phi_gal=None, dchi=None, **kwargs):
         super().__init__(**kwargs)
         self.phi_gal = phi_gal
@@ -160,9 +162,10 @@ class FaradayThinSource(FaradaySource):
 
     def simulate(self):
         nu = c / np.sqrt(self.lambda2)
-        k = (nu / self.nu_0) ** (-1.0 * self.spectral_idx)
+        k = (nu / self.nu_0)**(-1.0 * self.spectral_idx)
         mu_q = np.cos(2.0 * self.phi_gal * (self.lambda2 - self.l2_ref))
-        mu_u = np.sin(2.0 * (self.phi_gal * (self.lambda2 - self.l2_ref) + self.dchi))
+        mu_u = np.sin(2.0 * (self.phi_gal *
+                             (self.lambda2 - self.l2_ref) + self.dchi))
 
         # p = np.mean(np.sqrt(mu_q ** 2 + mu_u ** 2))
 
@@ -170,7 +173,11 @@ class FaradayThinSource(FaradaySource):
 
 
 class FaradayThickSource(FaradaySource):
-    def __init__(self, phi_fg: float = None, phi_center: float = None, **kwargs):
+
+    def __init__(self,
+                 phi_fg: float = None,
+                 phi_center: float = None,
+                 **kwargs):
         super().__init__(**kwargs)
         self.phi_fg = phi_fg
         self.phi_center = phi_center
@@ -179,12 +186,13 @@ class FaradayThickSource(FaradaySource):
 
     def simulate(self):
         nu = c / np.sqrt(self.lambda2)
-        k = (nu / self.nu_0) ** (-1.0 * self.spectral_idx)
+        k = (nu / self.nu_0)**(-1.0 * self.spectral_idx)
         phi_fg = self.phi_fg / 2.0
         j = 2.0 * (self.lambda2 - self.l2_ref) * (self.phi_center + phi_fg)
         k = 2.0 * (self.lambda2 - self.l2_ref) * (self.phi_center - phi_fg)
         mu_q = np.sin(j) - np.sin(k)
-        const = self.s_nu * k / (2.0 * self.phi_fg * (self.lambda2 - self.l2_ref))
+        const = self.s_nu * k / (2.0 * self.phi_fg *
+                                 (self.lambda2 - self.l2_ref))
         mu_u = np.cos(j) - np.cos(k)
 
         self.data = const * (mu_q + mu_u / 1j)
