@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3.0.2
         with:
-          fetch-depth: 2
+          fetch-depth: 0
       - uses: ptxmac/yapf-action@master
         with:
           args: "--recursive --verbose"
