@@ -36,12 +36,9 @@ jobs:
         with:
           fetch-depth: 0
           set-safe-directory: true
-      - name: Check git version and our path
+      - name: Force directory safe
         run: |
-            git --version
-            ls -lah
-            ls -lah .git/
-            git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip wheel setuptools
