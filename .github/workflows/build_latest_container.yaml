@@ -2,9 +2,7 @@ name: build-latest-container
 
 on:
     release:
-      types: [ published ]
-    paths:
-      - 'Dockerfile.prod'
+      types: [published]
 
 env:
   REGISTRY: ghcr.io
