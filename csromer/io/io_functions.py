@@ -158,7 +158,7 @@ class Writer:
 
         if output is None:
             if cube.dtype == np.complex64 or cube.dtype == np.complex128:
-                concatenated_cube = da.concatenate((cube.real[:, None], cube.imag[:, None]), axis=1)
+                concatenated_cube = np.stack([cube.real, cube.imag], axis=0)
 
                 fits.writeto(
                     self.output,
@@ -178,7 +178,7 @@ class Writer:
                 )
         else:
             if cube.dtype == np.complex64 or cube.dtype == np.complex128:
-                concatenated_cube = da.concatenate((cube.real[:, None], cube.imag[:, None]), axis=1)
+                concatenated_cube = np.stack([cube.real, cube.imag], axis=0)
                 fits.writeto(
                     output,
                     data=concatenated_cube,
