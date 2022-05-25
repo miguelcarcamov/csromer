@@ -147,8 +147,9 @@ class Writer:
         self.output = output
 
     def writeFITSCube(self, cube, header, nphi, phi, dphi, output=None, overwrite=True):
-        header["NAXIS"] = 3
+        header["NAXIS"] = 4
         header["NAXIS3"] = (nphi, "Length of Faraday depth axis")
+        header["NAXIS4"] = (2, "Real and imaginary")
         header["CTYPE3"] = "Phi"
         header["CDELT3"] = dphi
         header["CUNIT3"] = "rad/m/m"
