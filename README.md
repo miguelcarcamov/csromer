@@ -62,6 +62,9 @@ cd csromer
 pip install -e .
 ```
 
+We highly recommend installing [pre-commit](https://pre-commit.com) to develop over this code.
+This will allow you to run hooks that reformat the project files according to our style.
+
 ### From PyPI
 
 `pip install csromer`
