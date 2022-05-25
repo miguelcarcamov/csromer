@@ -1,10 +1,13 @@
 from __future__ import annotations
-from scipy.constants import pi
-import numpy as np
-from ..utils.analytical_functions import Gaussian
-from ..utils import real_to_complex, complex_to_real, nextPowerOf2
-from scipy import signal as sci_signal
+
 from typing import TYPE_CHECKING
+
+import numpy as np
+from scipy import signal as sci_signal
+from scipy.constants import pi
+
+from ..utils import complex_to_real, nextPowerOf2, real_to_complex
+from ..utils.analytical_functions import Gaussian
 
 if TYPE_CHECKING:
     from ..base import Dataset

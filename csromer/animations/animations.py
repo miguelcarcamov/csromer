@@ -1,9 +1,10 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib import ticker
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from scipy import asarray as ar, exp
+from scipy import asarray as ar
+from scipy import exp
 
 cmaps = [
     "magma",

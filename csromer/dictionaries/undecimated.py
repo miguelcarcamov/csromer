@@ -1,7 +1,8 @@
-import pywt
 import numpy as np
-from .wavelet import Wavelet
+import pywt
+
 from ..utils import nextPowerOf2
+from .wavelet import Wavelet
 
 
 class UndecimatedWavelet(Wavelet):

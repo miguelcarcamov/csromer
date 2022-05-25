@@ -6,6 +6,7 @@ Created on Tue Nov  5 15:45:42 2019
 @author: miguel
 """
 import sys
+
 import numpy as np
 from astropy.io import fits
 

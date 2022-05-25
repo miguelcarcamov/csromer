@@ -6,8 +6,8 @@ Created on Fri Nov  8 12:33:53 2019
 @author: miguel
 """
 import numpy as np
-from astropy.wcs import WCS
 from astropy.stats import sigma_clipped_stats
+from astropy.wcs import WCS
 
 
 def nextPowerOf2(n):

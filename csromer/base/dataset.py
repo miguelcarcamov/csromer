@@ -1,13 +1,14 @@
 from __future__ import annotations
+
 import sys
-from typing import Union, List
-from typing import TYPE_CHECKING
-from scipy.constants import speed_of_light as c
+from typing import TYPE_CHECKING, List, Union
+
+import astropy.units as u
 import numpy as np
 import scipy.signal as sci_signal
-import astropy.units as u
-from scipy import special
 import scipy.stats
+from scipy import special
+from scipy.constants import speed_of_light as c
 
 if TYPE_CHECKING:
     from ..transformers.gridding import Gridding

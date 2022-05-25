@@ -1,19 +1,21 @@
-import matplotlib.pyplot as plt
-from astropy.wcs import WCS
-from astropy.io import fits
-from ..utils.utilities import calculate_noise
-from typing import Union, List
+from typing import List, Union
+
 import astropy.units as un
+import matplotlib.pyplot as plt
+import numpy as np
 from astropy.coordinates import SkyCoord
-from astroquery.skyview import SkyView
+from astropy.cosmology import Planck18
+from astropy.io import fits
 from astropy.units import Quantity
 from astropy.visualization import make_lupton_rgb
-from astropy.cosmology import Planck18
-from matplotlib.patches import Rectangle, Ellipse, PathPatch
-from matplotlib.text import TextPath
+from astropy.wcs import WCS
+from astroquery.skyview import SkyView
 from matplotlib.font_manager import FontProperties
+from matplotlib.patches import Ellipse, PathPatch, Rectangle
+from matplotlib.text import TextPath
 from matplotlib.transforms import IdentityTransform
-import numpy as np
+
+from ..utils.utilities import calculate_noise
 
 SMALL_SIZE = 6
 MEDIUM_SIZE = 7

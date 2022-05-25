@@ -6,13 +6,16 @@ Created on Tue Mar 12 18:34:19 2019
 @author: miguel
 """
 from __future__ import annotations
-import numpy as np
-from abc import ABCMeta, abstractmethod
-from pynufft import NUFFT
-from ..reconstruction import Parameter
-from scipy.constants import speed_of_light as c
-from typing import TYPE_CHECKING
+
 import copy
+from abc import ABCMeta, abstractmethod
+from typing import TYPE_CHECKING
+
+import numpy as np
+from pynufft import NUFFT
+from scipy.constants import speed_of_light as c
+
+from ..reconstruction import Parameter
 
 if TYPE_CHECKING:
     from ..base import Dataset

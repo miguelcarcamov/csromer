@@ -1,9 +1,11 @@
+import copy
+import itertools
+import sys
 from abc import ABCMeta, abstractmethod
+
 import numpy as np
 from scipy.constants import c
-import itertools
-import copy
-import sys
+
 from ..base.dataset import Dataset
 
 

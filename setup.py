@@ -1,8 +1,8 @@
-from setuptools import setup
 import distutils.text_file
-from typing import List
-# read the contents of your README file
 from pathlib import Path
+from typing import List
+
+from setuptools import setup
 
 this_directory = Path(__file__).parent
 

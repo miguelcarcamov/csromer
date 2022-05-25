@@ -1,15 +1,17 @@
-import matplotlib.pyplot as plt
-from astropy.wcs import WCS
-from astropy.io import fits
-from typing import Union, List
+from typing import List, Union
+
 import astropy.units as un
-from astropy.coordinates import Angle, SkyCoord
-from regions import CircleSkyRegion, PixCoord, CirclePixelRegion
-from astropy.units import Quantity
-from ..utils.utilities import calculate_noise
-from mpl_toolkits import axes_grid1
 import matplotlib.axes as maxes
+import matplotlib.pyplot as plt
 import numpy as np
+from astropy.coordinates import Angle, SkyCoord
+from astropy.io import fits
+from astropy.units import Quantity
+from astropy.wcs import WCS
+from mpl_toolkits import axes_grid1
+from regions import CirclePixelRegion, CircleSkyRegion, PixCoord
+
+from ..utils.utilities import calculate_noise
 
 SMALL_SIZE = 6
 MEDIUM_SIZE = 7

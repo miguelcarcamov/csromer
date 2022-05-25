@@ -5,8 +5,9 @@ Created on Thu Nov 14 12:09:14 2019
 
 @author: miguel
 """
-import numpy as np
 import sys
+
+import numpy as np
 
 
 def FISTA_algorithm(

@@ -1,4 +1,5 @@
 import pywt
+
 from .wavelet import Wavelet
 
 

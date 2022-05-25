@@ -1,14 +1,14 @@
 import pathlib
-from typing import Union, List
+from typing import List, Union
+
+import astropy.units as un
+import h5py
+import numpy as np
+from astropy.coordinates import Galactic, SkyCoord
 from astropy.io import fits
-from astropy_healpix import HEALPix
-from astropy.coordinates import Galactic
 from astropy.units import Quantity
 from astropy.wcs import WCS
-from astropy.coordinates import SkyCoord
-import astropy.units as un
-import numpy as np
-import h5py
+from astropy_healpix import HEALPix
 
 
 class FaradaySky:
