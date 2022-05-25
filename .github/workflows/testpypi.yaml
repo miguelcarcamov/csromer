@@ -6,16 +6,8 @@
 name: testpypi-publish
 
 on:
-  push:
-    branches:
-    - development
-    paths:
-    - setup.py
-  pull_request:
-    branches:
-    - master
-    paths:
-    - setup.py
+  release:
+    types: [draft]
 
 
 permissions:
