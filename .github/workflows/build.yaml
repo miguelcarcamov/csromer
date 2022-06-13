@@ -87,4 +87,10 @@ jobs:
     - name: Install csromer from artifacts
       run: pip3 install dist/*.tar.gz
     - name: Test with pytest and pycov
-      run: pytest --cov=csromer --cov-report term-missing tests/ -W "ignore" -v
+      run: pytest --cov=csromer --cov-report xml:coverage.xml --cov-report term-missing tests/ -W "ignore" -v
+    - uses: codecov/codecov-action@v2
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
+        files: ./coverage.xml
+        fail_ci_if_error: true # optional (default = false)
+        verbose: true # optional (default = false)
