@@ -88,13 +88,14 @@ class Dataset:
         nu=None,
         lambda2=None,
         data=None,
+        l2_ref=None,
         w=None,
         sigma=None,
         spectral_idx=None,
         gridded=None,
     ):
         self.k = None
-        self.l2_ref = None
+        self.l2_ref = l2_ref
         self.nu_0 = None
         self.delta_l2_min = 0.0
         self.delta_l2_max = 0.0
@@ -105,6 +106,9 @@ class Dataset:
         self.nu = nu
         self.spectral_idx = spectral_idx
         self.gridded = gridded
+
+        if self.l2_ref is None:
+            self.l2_ref = 0.0
 
         if self.gridded is None:
             self.gridded = False
@@ -227,7 +231,8 @@ class Dataset:
             aux_copy[aux_copy != 0] = 1.0 / np.sqrt(aux_copy[aux_copy != 0])
             self.__sigma = aux_copy
             self.__k = np.sum(val)
-            self.__l2_ref = self.calculate_l2ref()
+            if self.__l2_ref is None:
+                self.__l2_ref = self.calculate_l2ref()
         self.__theo_noise = self.calculate_theo_noise()
 
     @property
