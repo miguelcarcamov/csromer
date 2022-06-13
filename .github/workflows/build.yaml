@@ -84,6 +84,9 @@ jobs:
       with:
         name: csromer-artifacts
         path: dist/*
+    - uses: montudor/action-zip@v1
+      with:
+        args: unzip dist/*.zip
     - name: Install csromer from artifacts
       run: pip3 install dist/*.tar.gz
     - name: Test with pytest and pycov
