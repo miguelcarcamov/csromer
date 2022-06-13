@@ -53,8 +53,38 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:
+        name: csromer-artifacts
         path: dist/*
-    - name: Run commands to test that everything is finished
+    - name: Run commands to test that everything is OK
       run: |
         pip3 freeze | grep "csromer"
         python3 -c "import csromer"
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+    container:
+      image: ghcr.io/${{ github.repository }}:base
+      credentials:
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.REGISTRY_TOKEN }}
+    steps:
+    - uses: actions/checkout@v3.0.2
+      with:
+        fetch-depth: 0
+        set-safe-directory: true
+    - name: Force directory safe
+      run: |
+        git config --global --add safe.directory "$GITHUB_WORKSPACE"
+    - name: Install pytest and pycov
+      run: |
+        pip3 install pytest
+        pip3 install pytest-cov
+    - uses: actions/download-artifact@v3
+      id: download
+      with:
+        name: csromer-artifacts
+        path: dist/*
+    - name: Install csromer from artifacts
+      run: pip3 install dist/*.tar.gz
+    - name: Test with pytest and pycov
+      run: pytest --cov=csromer --cov-report term-missing tests/ -W "ignore" -v
