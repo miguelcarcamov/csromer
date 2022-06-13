@@ -1,5 +1,7 @@
 # CS-ROMER
 
+[![codecov](https://codecov.io/gh/miguelcarcamov/csromer/branch/development/graph/badge.svg?token=QRRJNFSF7P)](https://codecov.io/gh/miguelcarcamov/csromer)
+
 *Compressed Sensing ROtation MEasure Reconstruction*
 
 Compressed sensing reconstruction framework for Faraday depth spectra.

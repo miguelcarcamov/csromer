@@ -94,8 +94,13 @@ class Dataset:
         spectral_idx=None,
         gridded=None,
     ):
+
         self.k = None
         self.l2_ref = l2_ref
+
+        if self.l2_ref is None:
+            self.l2_ref = 0.0
+
         self.nu_0 = None
         self.delta_l2_min = 0.0
         self.delta_l2_max = 0.0
@@ -106,9 +111,6 @@ class Dataset:
         self.nu = nu
         self.spectral_idx = spectral_idx
         self.gridded = gridded
-
-        if self.l2_ref is None:
-            self.l2_ref = 0.0
 
         if self.gridded is None:
             self.gridded = False
