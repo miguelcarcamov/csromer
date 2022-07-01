@@ -189,6 +189,9 @@ class Dataset:
     def lambda2(self, val):
         self.__lambda2 = val
         if val is not None:
+            if all(np.diff(val) < 0):
+                val = val[::-1]
+                self.__lambda2 = val
             self.__m = len(val)
             self.__nu = c / np.sqrt(val)
             self.__nu_0 = np.median(self.__nu)
