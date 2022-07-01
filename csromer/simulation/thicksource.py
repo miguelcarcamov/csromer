@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.constants import c
 
 from .faradaysource import FaradaySource
 
