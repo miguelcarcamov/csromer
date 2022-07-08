@@ -1,13 +1,14 @@
 from __future__ import annotations
+
 import sys
-from typing import Union, List
-from typing import TYPE_CHECKING
-from scipy.constants import speed_of_light as c
+from typing import TYPE_CHECKING, List, Union
+
+import astropy.units as u
 import numpy as np
 import scipy.signal as sci_signal
-import astropy.units as u
-from scipy import special
 import scipy.stats
+from scipy import special
+from scipy.constants import speed_of_light as c
 
 if TYPE_CHECKING:
     from ..transformers.gridding import Gridding
@@ -87,13 +88,19 @@ class Dataset:
         nu=None,
         lambda2=None,
         data=None,
+        l2_ref=None,
         w=None,
         sigma=None,
         spectral_idx=None,
         gridded=None,
     ):
+
         self.k = None
-        self.l2_ref = None
+        self.l2_ref = l2_ref
+
+        if self.l2_ref is None:
+            self.l2_ref = 0.0
+
         self.nu_0 = None
         self.delta_l2_min = 0.0
         self.delta_l2_max = 0.0
@@ -182,6 +189,9 @@ class Dataset:
     def lambda2(self, val):
         self.__lambda2 = val
         if val is not None:
+            if all(np.diff(val) < 0):
+                val = val[::-1]
+                self.__lambda2 = val
             self.__m = len(val)
             self.__nu = c / np.sqrt(val)
             self.__nu_0 = np.median(self.__nu)
@@ -226,7 +236,8 @@ class Dataset:
             aux_copy[aux_copy != 0] = 1.0 / np.sqrt(aux_copy[aux_copy != 0])
             self.__sigma = aux_copy
             self.__k = np.sum(val)
-            self.__l2_ref = self.calculate_l2ref()
+            if self.__l2_ref is None:
+                self.__l2_ref = self.calculate_l2ref()
         self.__theo_noise = self.calculate_theo_noise()
 
     @property

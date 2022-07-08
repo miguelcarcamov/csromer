@@ -1,5 +1,7 @@
 # CS-ROMER
 
+[![codecov](https://codecov.io/gh/miguelcarcamov/csromer/branch/development/graph/badge.svg?token=QRRJNFSF7P)](https://codecov.io/gh/miguelcarcamov/csromer)
+
 *Compressed Sensing ROtation MEasure Reconstruction*
 
 Compressed sensing reconstruction framework for Faraday depth spectra.
@@ -61,6 +63,9 @@ git clone git@github.com:miguelcarcamov/csromer.git
 cd csromer
 pip install -e .
 ```
+
+We highly recommend installing [pre-commit](https://pre-commit.com) to develop over this code.
+This will allow you to run hooks that reformat the project files according to our style.
 
 ### From PyPI
 

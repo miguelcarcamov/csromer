@@ -1,5 +1,6 @@
-import pywt
 import numpy as np
+import pywt
+
 from .wavelet import Wavelet
 
 

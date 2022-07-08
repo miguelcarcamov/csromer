@@ -1,5 +1,6 @@
+from abc import ABC, ABCMeta, abstractmethod
+
 import numpy as np
-from abc import ABCMeta, abstractmethod, ABC
 
 
 class Function1D(metaclass=ABCMeta):

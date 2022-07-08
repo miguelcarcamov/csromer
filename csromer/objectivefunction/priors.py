@@ -6,9 +6,11 @@ Created on Tue Nov  5 09:38:54 2019
 @author: miguel
 """
 from abc import ABCMeta, abstractmethod
+
 import numpy as np
 import prox_tv as ptv
-from ..utils.utilities import real_to_complex, complex_to_real
+
+from ..utils.utilities import complex_to_real, real_to_complex
 
 
 def approx_abs(x, epsilon):

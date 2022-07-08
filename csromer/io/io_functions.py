@@ -6,6 +6,7 @@ Created on Tue Nov  5 15:45:42 2019
 @author: miguel
 """
 import sys
+
 import numpy as np
 from astropy.io import fits
 
@@ -147,8 +148,9 @@ class Writer:
         self.output = output
 
     def writeFITSCube(self, cube, header, nphi, phi, dphi, output=None, overwrite=True):
-        header["NAXIS"] = 3
+        header["NAXIS"] = 4
         header["NAXIS3"] = (nphi, "Length of Faraday depth axis")
+        header["NAXIS4"] = (2, "Real and imaginary")
         header["CTYPE3"] = "Phi"
         header["CDELT3"] = dphi
         header["CUNIT3"] = "rad/m/m"
@@ -156,23 +158,16 @@ class Writer:
 
         if output is None:
             if cube.dtype == np.complex64 or cube.dtype == np.complex128:
-                string_tuple = self.output.partition(".fits")
-                output_real = string_tuple[0] + "_real" + string_tuple[1]
-                output_imag = string_tuple[0] + "_imag" + string_tuple[1]
+                concatenated_cube = np.stack([cube.real, cube.imag], axis=0)
+
                 fits.writeto(
-                    output_real,
-                    data=cube.real,
+                    self.output,
+                    data=concatenated_cube,
                     header=header,
                     overwrite=overwrite,
                     output_verify="silentfix",
                 )
-                fits.writeto(
-                    output_imag,
-                    data=cube.imag,
-                    header=header,
-                    overwrite=overwrite,
-                    output_verify="silentfix",
-                )
+
             else:
                 fits.writeto(
                     self.output,
@@ -183,23 +178,15 @@ class Writer:
                 )
         else:
             if cube.dtype == np.complex64 or cube.dtype == np.complex128:
-                string_tuple = output.partition(".fits")
-                output_real = string_tuple[0] + "_real" + string_tuple[1]
-                output_imag = string_tuple[0] + "_imag" + string_tuple[1]
+                concatenated_cube = np.stack([cube.real, cube.imag], axis=0)
                 fits.writeto(
-                    output_real,
-                    data=cube.real,
+                    output,
+                    data=concatenated_cube,
                     header=header,
                     overwrite=overwrite,
                     output_verify="silentfix",
                 )
-                fits.writeto(
-                    output_imag,
-                    data=cube.imag,
-                    header=header,
-                    overwrite=overwrite,
-                    output_verify="silentfix",
-                )
+
             else:
                 fits.writeto(
                     output,

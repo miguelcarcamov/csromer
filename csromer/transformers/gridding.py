@@ -1,7 +1,9 @@
 from __future__ import annotations
-import numpy as np
+
 import copy
 from typing import TYPE_CHECKING
+
+import numpy as np
 
 if TYPE_CHECKING:
     from ..base import Dataset

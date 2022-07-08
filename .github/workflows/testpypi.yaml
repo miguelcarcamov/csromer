@@ -6,16 +6,8 @@
 name: testpypi-publish
 
 on:
-  push:
-    branches:
-      - development
-    paths:
-      - 'setup.py'
-  pull_request:
-    branches:
-      - master
-    paths:
-      - 'setup.py'
+  release:
+    types: [draft]
 
 
 permissions:
@@ -30,25 +22,25 @@ jobs:
         username: ${{ github.repository_owner }}
         password: ${{ secrets.REGISTRY_TOKEN }}
     steps:
-      - uses: actions/checkout@v3.0.2
-        with:
-          fetch-depth: 0
-          set-safe-directory: true
-      - name: Force directory safe
-        run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - name: Install dependencies
-        run: |
-          python3 -m pip install --upgrade pip wheel setuptools
-          python3 -m pip install virtualenv
-          python3 -m pip install build
-      - name: Build package
-        run: python3 -m build
-      - name: Build bdist package
-        run: python3 setup.py bdist_wheel
-      - name: Publish package
-        uses: pypa/gh-action-pypi-publish@master
-        with:
-          user: __token__
-          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
-          repository_url: https://test.pypi.org/legacy/
+    - uses: actions/checkout@v3.0.2
+      with:
+        fetch-depth: 0
+        set-safe-directory: true
+    - name: Force directory safe
+      run: |
+        git config --global --add safe.directory "$GITHUB_WORKSPACE"
+    - name: Install dependencies
+      run: |
+        python3 -m pip install --upgrade pip wheel setuptools
+        python3 -m pip install virtualenv
+        python3 -m pip install build
+    - name: Build package
+      run: python3 -m build
+    - name: Build bdist package
+      run: python3 setup.py bdist_wheel
+    - name: Publish package
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        user: __token__
+        password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        repository_url: https://test.pypi.org/legacy/

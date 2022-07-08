@@ -3,14 +3,15 @@
 
 # In[1]:
 
-import numpy as np
-from scipy.constants import c
-import matplotlib.pyplot as plt
-from astropy.io import fits
 import copy
+import itertools
+
+import matplotlib.pyplot as plt
+import numpy as np
 import scipy.signal as signal
 import scipy.stats as st
-import itertools
+from astropy.io import fits
+from scipy.constants import c
 
 # In[2]:
 

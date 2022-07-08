@@ -1,6 +1,8 @@
-import numpy as np
 from abc import ABCMeta, abstractmethod
 from typing import Union
+
+import numpy as np
+
 from ..base import Dataset
 
 
