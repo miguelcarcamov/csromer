@@ -4,6 +4,9 @@ on:
   push:
     branches:
     - development
+    paths:
+    - '**.py'
+    - '**.toml'
   pull_request:
     branches:
     - master

@@ -1,6 +1,9 @@
 name: build-latest-container
 
 on:
+  branches: [master]
+  paths:
+  - '**.py'
   release:
     types: [published]
 
