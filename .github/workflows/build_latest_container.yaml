@@ -1,10 +1,11 @@
 name: build-latest-container
 
 on:
-  push:
+  pull_request:
     branches: [master]
     paths:
     - '**.py'
+    - 'requirements.txt'
   release:
     types: [published]
 
