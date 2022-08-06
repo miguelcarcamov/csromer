@@ -6,7 +6,6 @@ Created on Thu Nov  7 13:13:51 2019
 @author: miguel
 """
 import copy
-import sys
 from abc import ABCMeta, abstractmethod
 
 import numpy as np
@@ -24,15 +23,17 @@ class Optimizer(metaclass=ABCMeta):
         self,
         guess_param: Parameter = None,
         F_obj=None,
-        maxiter=None,
+        maxiter: int = None,
         method=None,
-        tol=np.finfo(np.float32).tiny,
-        verbose=True,
+        tol: float = np.finfo(np.float32).tiny,
+        verbose: bool = True,
     ):
-        initlocals = locals()
-        initlocals.pop("self")
-        for a_attribute in initlocals.keys():
-            setattr(self, a_attribute, initlocals[a_attribute])
+        self.guess_param = guess_param
+        self.F_obj = F_obj
+        self.maxiter = maxiter
+        self.method = method
+        self.tol = tol
+        self.verbose = verbose
 
     @abstractmethod
     def run(self):
@@ -42,11 +43,8 @@ class Optimizer(metaclass=ABCMeta):
 class FixedPointMethod(Optimizer):
 
     def __init__(self, gx=None, **kwargs):
-        super(FixedPointMethod, self).__init__(**kwargs)
-        initlocals = locals()
-        initlocals.pop("self")
-        for a_attribute in initlocals.keys():
-            setattr(self, a_attribute, initlocals[a_attribute])
+        super().__init__(**kwargs)
+        self.gx = gx
 
     def run(self):
         n = self.guess_param.n
@@ -69,11 +67,8 @@ class FixedPointMethod(Optimizer):
 class GradientBasedMethod(Optimizer):
 
     def __init__(self, method="CG", **kwargs):
-        super(GradientBasedMethod, self).__init__(**kwargs)
-        initlocals = locals()
-        initlocals.pop("self")
-        for a_attribute in initlocals.keys():
-            setattr(self, a_attribute, initlocals[a_attribute])
+        super().__init__(**kwargs)
+        self.method = method
 
     def run(self):
         ret = minimize(
@@ -96,11 +91,10 @@ class GradientBasedMethod(Optimizer):
 class FISTA(Optimizer):
 
     def __init__(self, fx=None, gx=None, noise=None, **kwargs):
-        super(FISTA, self).__init__(**kwargs)
-        initlocals = locals()
-        initlocals.pop("self")
-        for a_attribute in initlocals.keys():
-            setattr(self, a_attribute, initlocals[a_attribute])
+        super().__init__(**kwargs)
+        self.fx = fx
+        self.gx = gx
+        self.noise = noise
 
     def run(self):
         ret, x = FISTA_algorithm(
@@ -123,11 +117,10 @@ class FISTA(Optimizer):
 class ADMM(Optimizer):
 
     def __init__(self, fx=None, gx=None, L0=2, **kwargs):
-        super(ADMM, self).__init__(**kwargs)
-        initlocals = locals()
-        initlocals.pop("self")
-        for a_attribute in initlocals.keys():
-            setattr(self, a_attribute, initlocals[a_attribute])
+        super().__init__(**kwargs)
+        self.fx = fx
+        self.gx = gx
+        self.L0 = L0
 
     def run(self):
         x = self.guess_param.data
@@ -151,11 +144,12 @@ class ADMM(Optimizer):
 class SDMM(Optimizer):
 
     def __init__(self, fx=None, gx=None, gradfx=None, gprox=None, eta=2, **kwargs):
-        super(SDMM, self).__init__(**kwargs)
-        initlocals = locals()
-        initlocals.pop("self")
-        for a_attribute in initlocals.keys():
-            setattr(self, a_attribute, initlocals[a_attribute])
+        super().__init__(**kwargs)
+        self.fx = fx
+        self.gx = gx
+        self.gradfx = gradfx
+        self.gprox = gprox
+        self.eta = eta
 
     def run(self):
         return
