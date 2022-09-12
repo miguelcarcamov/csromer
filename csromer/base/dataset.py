@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import sys
+from abc import ABCMeta
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, List, Union
 
 import astropy.units as u
@@ -81,7 +83,22 @@ def ljungbox(x: np.ndarray = None, k: Union[List, int] = None, conf_level: float
         return np.array(x_sum), scipy.stats.chi2.ppf(conf_level, df=k)
 
 
-class Dataset:
+@dataclass(init=False, repr=True)
+class Dataset(metaclass=ABCMeta):
+    nu: np.ndarray = None
+    lambda2: np.ndarray = None
+    data: np.ndarray = None
+    l2_ref: float = None
+    w: np.ndarray = None
+    sigma: np.ndarray = None
+    spectral_idx: float = None
+    gridded: bool = None
+    s: np.ndarray = None
+    model_data: np.ndarray = None
+    m: int = None
+    theo_noise: float = None
+    nu_0: float = None
+    k: float = None
 
     def __init__(
         self,

@@ -1,7 +1,8 @@
 import copy
 import itertools
 import sys
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
+from dataclasses import dataclass
 
 import numpy as np
 from scipy.constants import c
@@ -9,7 +10,11 @@ from scipy.constants import c
 from ..base.dataset import Dataset
 
 
-class FaradaySource(Dataset, metaclass=ABCMeta):
+@dataclass(init=False, repr=True)
+class FaradaySource(Dataset):
+    s_nu: float = None
+    remove_frac: float = None
+    noise: float = None
 
     def __init__(self, s_nu=None, remove_frac=None, noise=None, **kwargs):
         super().__init__(**kwargs)

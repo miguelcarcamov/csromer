@@ -1,12 +1,12 @@
+from dataclasses import dataclass
+
 import numpy as np
 
 from .faradaysource import FaradaySource
 
 
+@dataclass(init=True, repr=True)
 class ManualSource(FaradaySource):
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
 
     def simulate(self):
         pass

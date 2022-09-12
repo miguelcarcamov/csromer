@@ -1,10 +1,15 @@
+from dataclasses import dataclass
+
 import numpy as np
 from scipy.constants import c
 
 from .faradaysource import FaradaySource
 
 
+@dataclass(init=False, repr=True)
 class FaradayThinSource(FaradaySource):
+    phi_gal: float = None
+    dchi: float = None
 
     def __init__(self, phi_gal=None, dchi=None, **kwargs):
         super().__init__(**kwargs)
