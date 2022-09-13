@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 import numpy as np
 
 from ...transformers.dfts import FT
@@ -5,6 +7,7 @@ from ...utils.utilities import complex_to_real, real_to_complex
 from ..fi import Fi
 
 
+@dataclass(init=True, repr=True)
 class Chi2(Fi):
     dft_obj: FT = None
     F_dirty: np.ndarray = None
