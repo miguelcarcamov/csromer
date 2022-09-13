@@ -22,7 +22,7 @@ class FISTA(Optimizer):
     noise: float = None
 
     def run(self):
-        ret, x = self.__FISTA_algorithm(
+        ret, x = self.__fista_algorithm(
             self.guess_param.data,
             self.F_obj.evaluate,
             self.fx.calculate_gradient_fista,
@@ -39,7 +39,7 @@ class FISTA(Optimizer):
         return ret, param
 
     @staticmethod
-    def __FISTA_algorithm(
+    def __fista_algorithm(
         x=None,
         F=None,
         fx=None,
