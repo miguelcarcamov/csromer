@@ -1,12 +1,15 @@
+from dataclasses import dataclass
+
 import numpy as np
 
 from .ft import FT
 
 
+@dataclass(init=True, repr=True)
 class DFT1D(FT):
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __post_init__(self):
+        super().__post_init__()
 
     def configure(self):
         return

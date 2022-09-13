@@ -1,13 +1,16 @@
+from dataclasses import dataclass
+
 import numpy as np
 import pywt
 
 from .wavelet import Wavelet
 
 
+@dataclass(init=True, repr=True)
 class DiscreteWavelet(Wavelet):
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __post_init__(self):
+        super().__post_init__()
 
         if self.wavelet_name is not None and self.wavelet_name in pywt.wavelist(kind="discrete"):
             self.wavelet = pywt.Wavelet(self.wavelet_name)

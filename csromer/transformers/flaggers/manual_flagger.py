@@ -11,6 +11,9 @@ dataclass(init=True, repr=True)
 
 class ManualFlagger(Flagger):
 
+    def __post__init__(self):
+        super().__post_init__()
+
     def run(self, outlier_idxs: Union[np.ndarray, list, int]):
         if isinstance(self.data, Dataset):
             original_length = len(self.data.sigma)

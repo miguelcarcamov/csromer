@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 import numpy as np
 import pywt
 
@@ -5,10 +7,13 @@ from ..utils import nextPowerOf2
 from .wavelet import Wavelet
 
 
+@dataclass(init=True, repr=True)
 class UndecimatedWavelet(Wavelet):
+    trim_approx: bool = None
+    norm: bool = None
 
-    def __init__(self, trim_approx: bool = None, norm: bool = None, **kwargs):
-        super().__init__(**kwargs)
+    def __post_init__(self):
+        super().__post_init__()
 
         if self.wavelet_name is not None and self.wavelet_name in pywt.wavelist(kind="all"):
             self.wavelet = pywt.Wavelet(self.wavelet_name)

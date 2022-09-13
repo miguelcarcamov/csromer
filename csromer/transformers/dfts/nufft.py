@@ -1,18 +1,36 @@
+from dataclasses import dataclass, field
+
 import numpy as np
 from pynufft import NUFFT
 
 from .ft import FT
 
 
+@dataclass(init=True, repr=True)
 class NUFFT1D(FT):
+    conv_size: int = None
+    oversampling_factor: int = None
+    normalize: bool = None
+    solve: bool = None
+    nufft_obj: NUFFT = field(init=False)
+    delta_phi: float = field(init=False)
 
-    def __init__(self, conv_size=4, oversampling_factor=1, normalize=True, solve=True, **kwargs):
-        super().__init__(**kwargs)
+    def __post_init__(self):
+        super().__post_init__()
         self.nufft_obj = NUFFT()
-        self.conv_size = conv_size
-        self.oversampling_factor = oversampling_factor
-        self.normalize = normalize
-        self.solve = solve
+
+        if self.conv_size is None:
+            self.conv_size = 4
+
+        if self.oversampling_factor is None:
+            self.oversampling_factor = 1
+
+        if self.normalize is None:
+            self.normalize = True
+
+        if self.solve is None:
+            self.solve = True
+
         if self.parameter.cellsize is not None:
             self.delta_phi = self.parameter.cellsize
             self.configure()

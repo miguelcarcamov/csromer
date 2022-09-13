@@ -26,6 +26,9 @@ class HampelFlagger(Flagger):
     w: int = None
     imputation: bool = None
 
+    def __post__init__(self):
+        super().__post_init__()
+
     def run(self, nsigma: float = 0.0):
         if self.nsigma is not None:
             nsigma = self.nsigma

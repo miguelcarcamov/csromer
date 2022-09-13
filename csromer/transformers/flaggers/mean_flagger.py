@@ -21,6 +21,9 @@ def normal_flagging(x, mean_sigma=None, nsigma=0.0):
 @dataclass(init=True, repr=True)
 class MeanFlagger(Flagger):
 
+    def __post__init__(self):
+        super().__post_init__()
+
     def run(self, mean_sigma: Union[np.ndarray, float] = None, nsigma: float = 0.0):
         if self.nsigma is not None:
             nsigma = self.nsigma
