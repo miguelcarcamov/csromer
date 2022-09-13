@@ -13,7 +13,6 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import numpy as np
-from scipy.constants import speed_of_light as c
 
 from ...reconstruction import Parameter
 
