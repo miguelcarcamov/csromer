@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -13,7 +14,11 @@ if TYPE_CHECKING:
     from ..base import Dataset
 
 
+@dataclass(init=False, repr=True)
 class Parameter:
+    phi: np.ndarray = None
+    data: np.ndarray = None
+    cellsize = float = None
 
     def __init__(self, phi=None, cellsize=None, data=None):
         self.phi = phi

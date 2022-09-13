@@ -5,7 +5,7 @@ import numpy as np
 from .faradaysource import FaradaySource
 
 
-@dataclass(init=True, repr=True)
+@dataclass(init=False, repr=True)
 class ManualSource(FaradaySource):
 
     def simulate(self):

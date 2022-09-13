@@ -1,3 +1,4 @@
+from csromer.transformers.flaggers.flagger import *
+
 from .dfts import *
-from .flagger import *
 from .gridding import *
