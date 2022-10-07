@@ -15,7 +15,7 @@ class Chi2(Fi):
     def __post_init__(self):
         super().__post_init__()
 
-        if self.dft_obj is not None:
+        if self.dft_obj is not None and self.F_dirty is None:
             self.F_dirty = self.dft_obj.backward(self.dft_obj.dataset.data)
 
     def evaluate(self, x):
