@@ -18,10 +18,7 @@ class DFT1D(FT):
 
         b = np.zeros(self.dataset.m, dtype=np.complex64)
         for i in range(0, self.dataset.m):
-            b[i] = np.sum(
-                x *
-                np.exp(2.0j * self.parameter.phi * (self.dataset.lambda2[i] - self.dataset.l2_ref))
-            )
+            b[i] = np.sum(x * np.exp(2.0j * self.parameter.phi * (self.dataset.lambda2[i])))
 
         return b
 
@@ -33,10 +30,7 @@ class DFT1D(FT):
         b = np.zeros(self.dataset.m, dtype=np.complex64)
 
         for i in range(0, self.dataset.m):
-            b[i] = np.sum(
-                val *
-                np.exp(2.0j * self.parameter.phi * (self.dataset.lambda2[i] - self.dataset.l2_ref))
-            )
+            b[i] = np.sum(val * np.exp(2.0j * self.parameter.phi * (self.dataset.lambda2[i])))
 
         notzero_idx = np.where(self.weights > 0.0)
         zero_idx = np.where(self.weights == 0.0)

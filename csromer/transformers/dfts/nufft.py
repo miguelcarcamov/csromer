@@ -36,7 +36,7 @@ class NUFFT1D(FT):
             self.configure()
 
     def configure(self):
-        l2 = self.dataset.lambda2 - self.dataset.l2_ref
+        l2 = self.dataset.lambda2
         exp_factor = -2.0 * l2 * self.parameter.cellsize
 
         Nd = (self.parameter.n, )  # Faraday Depth Space Length
