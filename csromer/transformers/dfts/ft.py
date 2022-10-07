@@ -30,6 +30,9 @@ class FT(metaclass=ABCMeta):
 
     def __post_init__(self):
 
+        if self.use_weights is None:
+            self.use_weights = True
+
         if self.dataset is not None:
             if self.use_weights:
                 self.weights = self.dataset.w
