@@ -61,4 +61,4 @@ class DFT1D(FT):
         for i in range(0, self.parameter.n):
             x[i] = np.sum(self.dataset.w * np.exp(-2.0j * (self.parameter.phi[i] - phi_x) * l2))
 
-        return x / self.k
+        return x / self.dataset.k
