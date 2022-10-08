@@ -15,14 +15,16 @@ class NDFT1D(FT):
         return
 
     def forward(self, x):
-        return np.dot(x, np.exp(2.0j * self.dataset.lambda2[None, :] * self.parameter.phi[:, None]))
+        l2 = self.dataset.lambda2[np.newaxis, :]
+        return np.dot(x, np.exp(2.0j * l2 * self.parameter.phi[:, np.newaxis])).astype(np.complex64)
 
     def forward_normalized(self, x):
-
+        l2 = self.dataset.lambda2[np.newaxis, :]
         # change units of x so the transform give us W(\lambda^2)*P(\lambda^2)
         val = x * self.k
-        b = np.dot(val, np.exp(2.0j * self.dataset.lambda2[None, :] * self.parameter.phi[:, None]))
-        np.divide(b, self.weights, where=self.weights > 0.0)
+        b = np.dot(val, np.exp(2.0j * l2 * self.parameter.phi[:, np.newaxis])).astype(np.complex64)
+        b = np.divide(b, self.weights, where=self.weights > 0.)
+
         return b * self.dataset.s / self.parameter.n
 
     def backward(self, b):
@@ -30,10 +32,11 @@ class NDFT1D(FT):
         x = np.dot(
             self.weights * b / self.dataset.s,
             np.exp(-2.0j * l2 * self.parameter.phi[np.newaxis, :])
-        )
+        ).astype(np.complex64)
         return x / self.k
 
     def RMTF(self, phi_x=0.0):
         l2 = self.dataset.lambda2[:, np.newaxis] - self.dataset.l2_ref
-        x = np.dot(self.dataset.w, np.exp(-2.0j * l2 * self.parameter.phi[np.newaxis, :]))
+        x = np.dot(self.dataset.w,
+                   np.exp(-2.0j * l2 * self.parameter.phi[np.newaxis, :])).astype(np.complex64)
         return x / self.dataset.k

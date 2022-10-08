@@ -36,27 +36,28 @@ class UndecimatedWavelet(Wavelet):
         else:
             self.norm = norm
 
-        if self.level is not None:
-            self.array_size = 2**self.level
+        if self.wavelet_level is not None:
+            self.array_size = 2**self.wavelet_level
 
         self.pad_width = None
 
-    def calculate_max_level(self, x):
+    @staticmethod
+    def calculate_max_level(x):
         n = len(x)
         return pywt.swt_max_level(n)
 
     def decompose(self, x):
-        if self.level is not None:
-            if self.level > self.calculate_max_level(x):
+        if self.wavelet_level is not None:
+            if self.wavelet_level > self.calculate_max_level(x):
                 raise ValueError(
                     "You are trying to decompose into more levels than the maximum level expected"
                 )
 
-        if self.level is None:
+        if self.wavelet_level is None:
             max_level = self.calculate_max_level(x)
             array_size = 2**max_level
         else:
-            array_size = 2**self.level
+            array_size = 2**self.wavelet_level
 
         signal_size = len(x)
         self.n = signal_size
@@ -64,7 +65,8 @@ class UndecimatedWavelet(Wavelet):
 
         if signal_size and (signal_size % array_size) != 0:
             print(
-                "Your signal length is not multiple of 2**" + str(self.level) + ". Padding array..."
+                "Your signal length is not multiple of 2**" + str(self.wavelet_level) +
+                ". Padding array..."
             )
             padded_size = nextPowerOf2(signal_size)
             self.pad_width = padded_size - signal_size
@@ -77,7 +79,7 @@ class UndecimatedWavelet(Wavelet):
         coeffs = pywt.swt(
             data=x_copy,
             wavelet=self.wavelet,
-            level=self.level,
+            level=self.wavelet_level,
             trim_approx=self.trim_approx,
             norm=self.norm,
         )
@@ -88,22 +90,23 @@ class UndecimatedWavelet(Wavelet):
         return coeffs_arr
 
     def decompose_complex(self, x):
-        if self.level is not None and self.level > self.calculate_max_level(x.real):
+        if self.wavelet_level is not None and self.wavelet_level > self.calculate_max_level(x.real):
             raise ValueError(
                 "You are trying to decompose into more levels than the maximum level expected"
             )
 
-        if self.level is None:
+        if self.wavelet_level is None:
             array_size = 2**self.calculate_max_level(x.real)
         else:
-            array_size = 2**self.level
+            array_size = 2**self.wavelet_level
 
         signal_size = len(x)
         self.n = signal_size
         x_copy = x.copy()
         if signal_size and (signal_size % array_size) != 0:
             print(
-                "Your signal length is not multiple of 2**" + str(self.level) + ". Padding array..."
+                "Your signal length is not multiple of 2**" + str(self.wavelet_level) +
+                ". Padding array..."
             )
             # padded_size = int(array_size * round(float(signal_size) / array_size))
             padded_size = nextPowerOf2(signal_size)
@@ -117,14 +120,14 @@ class UndecimatedWavelet(Wavelet):
         coeffs_re = pywt.swt(
             data=x_copy.real,
             wavelet=self.wavelet,
-            level=self.level,
+            level=self.wavelet_level,
             trim_approx=self.trim_approx,
             norm=self.norm,
         )
         coeffs_im = pywt.swt(
             data=x_copy.imag,
             wavelet=self.wavelet,
-            level=self.level,
+            level=self.wavelet_level,
             trim_approx=self.trim_approx,
             norm=self.norm,
         )

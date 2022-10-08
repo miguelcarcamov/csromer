@@ -64,14 +64,11 @@ class NUFFT1D(FT):
         return b
 
     def forward_normalized(self, x):
-        val = x * self.k / self.parameter.n
+        val = x * self.k
         b = self.nufft_forward.forward(val)
-        b *= self.dataset.s
-        notzero_idx = np.where(self.dataset.w > 0.0)
-        zero_idx = np.where(self.dataset.w == 0.0)
-        b[notzero_idx] /= self.weights[notzero_idx]
-        b[zero_idx] = 0.0
-        return b
+        b = np.divide(b, self.weights, where=self.weights > 0.0)
+
+        return b * self.dataset.s / self.parameter.n
 
     def backward(self, b, solver="cg", maxiter=100000):
         if self.solve:
