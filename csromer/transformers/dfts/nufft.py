@@ -45,7 +45,7 @@ class NUFFT1D(FT):
 
         Nd = (self.parameter.n, )  # Faraday Depth Space Length
         Kd = (
-            self.oversampling_factor * self.parameter.n,
+            self.oversampling_factor * len(self.parameter.phi),
         )  # Oversampled Faraday Depth Space Length
         Jd = (self.conv_size, )  # Convolution kernel size
 
@@ -68,7 +68,7 @@ class NUFFT1D(FT):
         b = self.nufft_forward.forward(val)
         b = np.divide(b, self.weights, where=self.weights > 0.0)
 
-        return b * self.dataset.s / self.parameter.n
+        return b * self.dataset.s / len(self.parameter.phi)
 
     def backward(self, b, solver="cg", maxiter=100000):
         if self.solve:
@@ -79,7 +79,7 @@ class NUFFT1D(FT):
             x = self.nufft_backward.adjoint(self.weights * b / self.dataset.s)
 
         if self.normalize:
-            x *= self.parameter.n / self.k
+            x *= len(self.parameter.phi) / self.k
 
         return x
 

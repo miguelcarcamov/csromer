@@ -25,7 +25,7 @@ class NDFT1D(FT):
         b = np.dot(val, np.exp(2.0j * l2 * self.parameter.phi[:, np.newaxis])).astype(np.complex64)
         b = np.divide(b, self.weights, where=self.weights > 0.)
 
-        return b * self.dataset.s / self.parameter.n
+        return b * self.dataset.s / len(self.parameter.phi)
 
     def backward(self, b):
         l2 = self.dataset.lambda2[:, np.newaxis] - self.dataset.l2_ref
@@ -33,6 +33,7 @@ class NDFT1D(FT):
             self.weights * b / self.dataset.s,
             np.exp(-2.0j * l2 * self.parameter.phi[np.newaxis, :])
         ).astype(np.complex64)
+
         return x / self.k
 
     def RMTF(self, phi_x=0.0):
