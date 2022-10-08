@@ -15,11 +15,11 @@ class NDFT1D(FT):
         return
 
     def forward(self, x):
-        l2 = self.dataset.lambda2[np.newaxis, :]
+        l2 = self.dataset.lambda2[np.newaxis, :] - self.dataset.l2_ref
         return np.dot(x, np.exp(2.0j * l2 * self.parameter.phi[:, np.newaxis])).astype(np.complex64)
 
     def forward_normalized(self, x):
-        l2 = self.dataset.lambda2[np.newaxis, :]
+        l2 = self.dataset.lambda2[np.newaxis, :] - self.dataset.l2_ref
         # change units of x so the transform give us W(\lambda^2)*P(\lambda^2)
         val = x * self.k
         b = np.dot(val, np.exp(2.0j * l2 * self.parameter.phi[:, np.newaxis])).astype(np.complex64)
