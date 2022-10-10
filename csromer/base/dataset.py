@@ -369,7 +369,7 @@ class Dataset(metaclass=ABCMeta):
 
     def subtract_galacticrm(self, phi_gal):
         p = self.data
-        galrm_shift = np.exp(-2j * phi_gal * (self.lambda2 - self.l2_ref))
+        galrm_shift = np.exp(-2j * phi_gal * self.lambda2)
         p_hat = p * galrm_shift
         self.data = p_hat
 
