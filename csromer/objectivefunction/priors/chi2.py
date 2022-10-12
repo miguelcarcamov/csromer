@@ -50,7 +50,6 @@ class Chi2(Fi):
         x_complex = real_to_complex(x_) * self.norm_factor
         model_data = self.dft_obj.forward_normalized(x_complex)
         self.dft_obj.dataset.model_data = model_data
-        # res = model_data - self.dft_obj.dataset.data
         res = -self.dft_obj.dataset.residual
         val = self.dft_obj.backward(res)
         ret_val = complex_to_real(val)
