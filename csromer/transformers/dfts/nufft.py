@@ -70,7 +70,7 @@ class NUFFT1D(FT):
 
         return b * self.dataset.s / len(self.parameter.phi)
 
-    def backward(self, b, solver="cg", maxiter=100000):
+    def backward(self, b, solver="cg", maxiter=1):
         if self.solve:
             x = self.nufft_backward.solve(
                 self.weights * b / self.dataset.s, solver=solver, maxiter=maxiter
