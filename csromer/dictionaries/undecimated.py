@@ -26,15 +26,11 @@ class UndecimatedWavelet(Wavelet):
         else:
             raise NotImplementedError("The wavelet has not been implemented by pywavelets")
 
-        if trim_approx is None:
+        if self.trim_approx is None:
             self.trim_approx = True
-        else:
-            self.trim_approx = trim_approx
 
-        if norm is None:
+        if self.norm is None:
             self.norm = False
-        else:
-            self.norm = norm
 
         if self.wavelet_level is not None:
             self.array_size = 2**self.wavelet_level
