@@ -77,7 +77,7 @@ class FaradaySource(Dataset):
         if sigma_rm is None:
             sigma_rm = 0.0
 
-        self.data *= np.exp(-2.0 * sigma_rm**2 * (self.lambda2 - self.l2_ref)**2)
+        self.data *= np.exp(-2.0 * sigma_rm**2 * self.lambda2**2)
 
     def remove_channels(self, remove_frac=None, random_state=None, chunksize=None):
         if remove_frac is None:
