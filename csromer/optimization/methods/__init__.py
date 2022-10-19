@@ -1,2 +1,3 @@
 from .fista import *
-from .sdmm import *
+from .fixedpoint import *
+from .gradient import *

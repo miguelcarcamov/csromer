@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import sys
+from abc import ABCMeta
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, List, Union
 
 import astropy.units as u
@@ -81,7 +83,22 @@ def ljungbox(x: np.ndarray = None, k: Union[List, int] = None, conf_level: float
         return np.array(x_sum), scipy.stats.chi2.ppf(conf_level, df=k)
 
 
-class Dataset:
+@dataclass(init=False, repr=True)
+class Dataset(metaclass=ABCMeta):
+    nu: np.ndarray = None
+    lambda2: np.ndarray = None
+    data: np.ndarray = None
+    l2_ref: float = None
+    w: np.ndarray = None
+    sigma: np.ndarray = None
+    spectral_idx: float = None
+    gridded: bool = None
+    s: np.ndarray = None
+    model_data: np.ndarray = None
+    m: int = None
+    theo_noise: float = None
+    nu_0: float = None
+    k: float = None
 
     def __init__(
         self,
@@ -326,8 +343,7 @@ class Dataset:
 
     def calculate_l2_cellsize(self):
         if self.w is not None:
-            w_nozeros = np.where(self.w > 0.0)
-            lambda2_aux = self.lambda2[w_nozeros]
+            lambda2_aux = self.lambda2[self.w > 0.0]
             delta_l2_min = np.min(np.abs(np.diff(lambda2_aux)))
             delta_l2_mean = np.mean(np.abs(np.diff(lambda2_aux)))
             delta_l2_max = np.max(np.abs(np.diff(lambda2_aux)))
@@ -353,7 +369,7 @@ class Dataset:
 
     def subtract_galacticrm(self, phi_gal):
         p = self.data
-        galrm_shift = np.exp(-2j * phi_gal * (self.lambda2 - self.l2_ref))
+        galrm_shift = np.exp(-2j * phi_gal * self.lambda2)
         p_hat = p * galrm_shift
         self.data = p_hat
 

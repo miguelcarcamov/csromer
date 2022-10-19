@@ -1,13 +1,16 @@
+from dataclasses import dataclass
+
 import numpy as np
 import pywt
 
 from .wavelet import Wavelet
 
 
+@dataclass(init=True, repr=True)
 class DiscreteWavelet(Wavelet):
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __post_init__(self):
+        super().__post_init__()
 
         if self.wavelet_name is not None and self.wavelet_name in pywt.wavelist(kind="discrete"):
             self.wavelet = pywt.Wavelet(self.wavelet_name)
@@ -23,15 +26,17 @@ class DiscreteWavelet(Wavelet):
         return pywt.dwt_max_level(n, self.wavelet.dec_len)
 
     def decompose(self, x):
-        if self.level is not None:
-            if self.level > self.calculate_max_level(x):
+        if self.wavelet_level is not None:
+            if self.wavelet_level > self.calculate_max_level(x):
                 raise ValueError(
                     "You are trying to decompose into more levels than the maximum level expected"
                 )
 
         self.n = len(x)
         # Return coefficients
-        coeffs = pywt.wavedec(data=x, wavelet=self.wavelet, mode=self.mode, level=self.level)
+        coeffs = pywt.wavedec(
+            data=x, wavelet=self.wavelet, mode=self.mode, level=self.wavelet_level
+        )
         coeffs_arr, self.coeff_slices, self.coeff_shapes = pywt.ravel_coeffs(coeffs=coeffs)
 
         if self.append_signal:
@@ -39,17 +44,17 @@ class DiscreteWavelet(Wavelet):
         return coeffs_arr
 
     def decompose_complex(self, x):
-        if self.level is not None and self.level > self.calculate_max_level(x.real):
+        if self.wavelet_level is not None and self.wavelet_level > self.calculate_max_level(x.real):
             raise ValueError(
                 "You are trying to decompose into more levels than the maximum level expected"
             )
 
         # Return coefficients
         coeffs_re = pywt.wavedec(
-            data=x.real, wavelet=self.wavelet, mode=self.mode, level=self.level
+            data=x.real, wavelet=self.wavelet, mode=self.mode, level=self.wavelet_level
         )
         coeffs_im = pywt.wavedec(
-            data=x.imag, wavelet=self.wavelet, mode=self.mode, level=self.level
+            data=x.imag, wavelet=self.wavelet, mode=self.mode, level=self.wavelet_level
         )
 
         coeffs_arr_re, coeffs_slices_re = pywt.coeffs_to_array(coeffs=coeffs_re)
