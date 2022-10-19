@@ -5,7 +5,7 @@ on:
     branches: [master]
     paths:
     - '**.py'
-    - 'requirements.txt'
+    - requirements.txt
   release:
     types: [published]
 

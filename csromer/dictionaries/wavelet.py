@@ -1,24 +1,22 @@
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass, field
+
+import numpy as np
+from pywt import Wavelet
 
 
+@dataclass(init=True, repr=True)
 class Wavelet(metaclass=ABCMeta):
+    wavelet_name: str = None
+    wavelet_level: int = None
+    mode: str = None
+    append_signal: bool = None
+    ncoeffs: int = field(init=False, default=0)
+    n: int = field(init=False, default=0)
+    wavelet: Wavelet = field(init=False, default=None)
+    coeff_slices: np.ndarray = field(init=False, default=None)
 
-    def __init__(
-        self,
-        wavelet_name: str = None,
-        level: int = None,
-        mode: str = None,
-        append_signal: bool = None,
-    ):
-        self.wavelet_name = wavelet_name
-        self.mode = mode
-        self.level = level
-        self.append_signal = append_signal
-        self.ncoeffs = 0
-        self.n = 0
-        self.wavelet = None
-        self.coeff_slices = None
-
+    def __post_init__(self):
         if not isinstance(self.wavelet_name, str):
             raise TypeError("The wavelet name is not a string")
 

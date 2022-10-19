@@ -9,23 +9,29 @@ from __future__ import annotations
 
 import copy
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import numpy as np
-from scipy.constants import speed_of_light as c
 
 from ...reconstruction import Parameter
 
 if TYPE_CHECKING:
-    from ..base import Dataset
+    from ...base import Dataset
 
 
+@dataclass(init=True, repr=True)
 class FT(metaclass=ABCMeta):
+    dataset: Dataset = None
+    parameter: Parameter = None
+    use_weights: bool = None
+    k: float = field(init=False, default=1.0)
+    weights: np.ndarray = field(init=False, default=None)
 
-    def __init__(self, dataset: Dataset = None, parameter: Parameter = None, use_weights=True):
-        self.dataset = dataset
-        self.s = None
-        self.use_weights = use_weights
+    def __post_init__(self):
+
+        if self.use_weights is None:
+            self.use_weights = True
 
         if self.dataset is not None:
             if self.use_weights:
@@ -37,10 +43,8 @@ class FT(metaclass=ABCMeta):
             self.weights = None
             self.k = None
 
-        if parameter is not None:
-            self.parameter = copy.deepcopy(parameter)
-        else:
-            self.parameter = None
+        if self.parameter is not None:
+            self.parameter = copy.deepcopy(self.parameter)
 
     @abstractmethod
     def configure(self):

@@ -1,7 +1,8 @@
 import copy
 import itertools
 import sys
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
+from dataclasses import dataclass
 
 import numpy as np
 from scipy.constants import c
@@ -9,7 +10,11 @@ from scipy.constants import c
 from ..base.dataset import Dataset
 
 
-class FaradaySource(Dataset, metaclass=ABCMeta):
+@dataclass(init=False, repr=True)
+class FaradaySource(Dataset):
+    s_nu: float = None
+    remove_frac: float = None
+    noise: float = None
 
     def __init__(self, s_nu=None, remove_frac=None, noise=None, **kwargs):
         super().__init__(**kwargs)
@@ -72,7 +77,7 @@ class FaradaySource(Dataset, metaclass=ABCMeta):
         if sigma_rm is None:
             sigma_rm = 0.0
 
-        self.data *= np.exp(-2.0 * sigma_rm**2 * (self.lambda2 - self.l2_ref)**2)
+        self.data *= np.exp(-2.0 * sigma_rm**2 * self.lambda2**2)
 
     def remove_channels(self, remove_frac=None, random_state=None, chunksize=None):
         if remove_frac is None:

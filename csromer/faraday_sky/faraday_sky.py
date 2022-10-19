@@ -1,5 +1,6 @@
 import pathlib
-from typing import List, Union
+from dataclasses import dataclass, field
+from typing import List, Tuple, Union
 
 import astropy.units as un
 import h5py
@@ -11,17 +12,28 @@ from astropy.wcs import WCS
 from astropy_healpix import HEALPix
 
 
+@dataclass(init=True, repr=True)
 class FaradaySky:
+    filename: str = None
+    nside: int = None
+    ordering: str = None
+    extension: str = field(init=False, default=None)
+    data: Tuple[np.ndarray, np.ndarray] = field(init=False, default=None)
+    hp: HEALPix = field(init=False, default=None)
 
-    def __init__(self, filename=None, nside=512, ordering="nested"):
-        self.nside = nside
-        self.ordering = ordering
-        if filename is None:
+    def __post_init__(self):
+
+        if self.nside is None:
+            self.nside = 512
+
+        if self.ordering is None:
+            self.ordering = "nested"
+
+        if self.filename is None:
             self.filename = (
                 pathlib.Path(__file__).parent.resolve() / "./faraday_sky_files/faraday2020v2.hdf5"
             )
-        else:
-            self.filename = filename
+
         self.extension = pathlib.Path(self.filename).suffix
         if self.extension == ".hdf5":
             hf = h5py.File(self.filename, "r")
@@ -40,7 +52,7 @@ class FaradaySky:
             raise ValueError("The extension is not HDF5 or FITS")
 
         if self.nside is not None and self.ordering is not None:
-            self.hp = HEALPix(nside=nside, order=ordering, frame=Galactic())
+            self.hp = HEALPix(nside=self.nside, order=self.ordering, frame=Galactic())
 
     def galactic_rm(
         self,
