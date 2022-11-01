@@ -24,8 +24,12 @@ dynamic = ["version", "dependencies"]
 Source = "https://github.com/miguelcarcamov/csromer"
 
 [tool.setuptools]
-packages = ["csromer"]
 include-package-data = true
 
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["csromer*"]
+namespaces = false
+
 [tool.setuptools_scm]
-write_to = "csromer/_version.py"
+write_to = "src/csromer/_version.py"
