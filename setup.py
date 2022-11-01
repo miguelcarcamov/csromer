@@ -4,8 +4,6 @@ from typing import List
 
 from setuptools import setup
 
-this_directory = Path(__file__).parent
-
 
 def _parse_requirements(filename: str) -> List[str]:
     """Return requirements from requirements file."""

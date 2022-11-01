@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=62.3.2", "setuptools-scm", "wheel"]
+requires = ["setuptools>=65.5.0", "setuptools-scm", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -24,8 +24,15 @@ dynamic = ["version", "dependencies"]
 Source = "https://github.com/miguelcarcamov/csromer"
 
 [tool.setuptools]
-packages = ["csromer"]
 include-package-data = true
 
+[tool.setuptools.package-data]
+faraday_sky = ["*.fits", "*.hdf5"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["csromer*"]
+namespaces = false
+
 [tool.setuptools_scm]
-write_to = "csromer/_version.py"
+write_to = "src/csromer/_version.py"
