@@ -22,3 +22,5 @@ RUN python3 -m pip install --upgrade pip
 RUN pip3
 RUN echo "Hello from CS-ROMER base image"
 LABEL org.opencontainers.image.source="https://github.com/miguelcarcamov/csromer"
+LABEL org.opencontainers.image.description="Container image for CS-ROMER"
+LABEL org.opencontainers.image.licenses=GPL3

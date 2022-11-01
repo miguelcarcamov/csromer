@@ -6,3 +6,5 @@ RUN echo "Installing CS-ROMER"
 RUN pip3 install git+https://github.com/miguelcarcamov/csromer.git
 RUN echo "Hello from CS-ROMER production image"
 LABEL org.opencontainers.image.source="https://github.com/miguelcarcamov/csromer"
+LABEL org.opencontainers.image.description="Container latest image for CS-ROMER"
+LABEL org.opencontainers.image.licenses=GPL3
