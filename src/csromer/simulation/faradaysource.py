@@ -131,12 +131,10 @@ class FaradaySource(Dataset):
             self.data = self.data[chans_removed]
 
     def apply_noise(self, noise=None, random_state=None):
-        if noise is None:
-            noise = self.noise
-        else:
+        if noise is not None:
             self.noise = noise
 
-        if self.noise != 0.0:
+        if self.noise > 0.0:
             self.sigma = np.ones_like(self.lambda2) * self.noise
         else:
             self.sigma = np.ones_like(self.lambda2)
