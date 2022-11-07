@@ -13,29 +13,12 @@ from ..base.dataset import Dataset
 @dataclass(init=False, repr=True)
 class FaradaySource(Dataset):
     s_nu: float = None
-    remove_frac: float = None
-    noise: float = None
 
-    def __init__(self, s_nu=None, remove_frac=None, noise=None, **kwargs):
+    def __init__(self, s_nu=None, **kwargs):
         super().__init__(**kwargs)
 
         self.s_nu = s_nu
-        self.remove_frac = remove_frac
-        self.noise = noise
-
-        if noise is not None:
-            if isinstance(self.lambda2, np.ndarray):
-                if self.noise != 0.0:
-                    self.sigma = np.ones_like(self.lambda2) * self.noise
-                else:
-                    self.sigma = np.ones_like(self.lambda2)
-            else:
-                self.sigma = self.noise
-        else:
-            if isinstance(self.lambda2, np.ndarray):
-                self.sigma = np.ones_like(self.lambda2)
-            else:
-                self.sigma = 1.0
+        self.sigma = np.ones_like(self.lambda2)
 
     def __add__(self, other):
         if isinstance(other, FaradaySource) and hasattr(other, "data"):
@@ -59,7 +42,7 @@ class FaradaySource(Dataset):
                 (self.nu == other.nu).all() and self.data is not None and other.data is not None
                 and self.s_nu is not None and other.s_nu is not None
             ):
-                source_copy = copy(self)
+                source_copy = copy.copy(self)
                 source_copy.data = self.data + other.data  # Sums the polarized data
                 w = self.s_nu + other.s_nu
                 source_copy.spectral_idx = (
@@ -80,9 +63,7 @@ class FaradaySource(Dataset):
         self.data *= np.exp(-2.0 * sigma_rm**2 * self.lambda2**2)
 
     def remove_channels(self, remove_frac=None, random_state=None, chunksize=None):
-        if remove_frac is None:
-            remove_frac = 1.0 - self.remove_frac
-        elif remove_frac == 0.0:
+        if remove_frac == 0.0:
             return
         else:
             remove_frac = 1.0 - remove_frac
@@ -131,22 +112,32 @@ class FaradaySource(Dataset):
             self.data = self.data[chans_removed]
 
     def apply_noise(self, noise=None, random_state=None):
-        if noise is None:
-            noise = self.noise
-        else:
-            self.noise = noise
+        applied_noise = np.zeros((2, ), dtype=np.float32)
 
-        if self.noise != 0.0:
-            self.sigma = np.ones_like(self.lambda2) * self.noise
+        if noise is not None:
+            if isinstance(noise, float):
+                applied_noise[0] = noise
+                applied_noise[1] = noise
+            elif isinstance(noise, complex):
+                applied_noise[0] = noise.real
+                applied_noise[1] = noise.imag
+            else:
+                raise TypeError("Noise must be either a float or complex number")
+            avg_noise = (applied_noise[0] + applied_noise[1]) / 2.
+        else:
+            return
+
+        if avg_noise > 0.0:
+            self.sigma = np.ones_like(self.lambda2) * avg_noise
         else:
             self.sigma = np.ones_like(self.lambda2)
             return
 
         if random_state is None:
-            q_noise = np.random.normal(loc=0.0, scale=self.noise, size=self.m)
-            u_noise = np.random.normal(loc=0.0, scale=self.noise, size=self.m)
+            q_noise = np.random.normal(loc=0.0, scale=applied_noise[0], size=self.m)
+            u_noise = np.random.normal(loc=0.0, scale=applied_noise[1], size=self.m)
         else:
-            q_noise = random_state.normal(loc=0.0, scale=self.noise, size=self.m)
-            u_noise = random_state.normal(loc=0.0, scale=self.noise, size=self.m)
+            q_noise = random_state.normal(loc=0.0, scale=applied_noise[0], size=self.m)
+            u_noise = random_state.normal(loc=0.0, scale=applied_noise[1], size=self.m)
         p_noise = q_noise + 1j * u_noise
         self.data += p_noise
