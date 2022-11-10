@@ -23,7 +23,7 @@ def moving_average(x, w):
 @dataclass(init=True, repr=True)
 class Flagger(metaclass=ABCMeta):
 
-    dataset: Union[Dataset, np.ndarray] = None
+    dataset: Union[Dataset] = None
     nsigma: float = None
     delete_channels: bool = None
 

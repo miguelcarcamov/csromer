@@ -10,44 +10,29 @@ dataclass(init=True, repr=True)
 
 
 class ManualFlagger(Flagger):
+    outlier_idxs: Union[np.ndarray, list, int] = []
 
     def __post__init__(self):
         super().__post_init__()
 
-    def run(self, outlier_idxs: Union[np.ndarray, list, int]):
-        if isinstance(self.data, Dataset):
-            original_length = len(self.data.sigma)
-            sigma_array = self.data.sigma.copy()
-            if isinstance(outlier_idxs, int):
+    def run(self):
+        if isinstance(self.dataset, Dataset):
+            original_length = len(self.dataset.sigma)
+            sigma_array = self.dataset.sigma.copy()
+            if isinstance(self.outlier_idxs, int):
                 flagged_percentage = (1.0 / original_length) * 100.0
             else:
-                flagged_percentage = (len(outlier_idxs) / original_length) * 100.0
+                flagged_percentage = (len(self.outlier_idxs) / original_length) * 100.0
             all_idxs = np.arange(0, original_length)
-            idxs = np.setxor1d(all_idxs, outlier_idxs)
+            idxs = np.setxor1d(all_idxs, self.outlier_idxs)
             if self.delete_channels:
-                self.data.lambda2 = self.data.lambda2[idxs]
-                self.data.sigma = sigma_array[idxs]
-                if self.data.data is not None:
-                    self.data.data = self.data.data[idxs]
+                self.dataset.lambda2 = self.dataset.lambda2[idxs]
+                self.dataset.sigma = sigma_array[idxs]
+                if self.dataset.data is not None:
+                    self.dataset.data = self.dataset.data[idxs]
             else:
-                self.data.w[outlier_idxs] = 0.0
+                self.dataset.w[self.outlier_idxs] = 0.0
             print("Flagging {0:.2f}% of the data".format(flagged_percentage))
-            return idxs, outlier_idxs
-        elif isinstance(self.data, np.ndarray):
-            original_length = len(self.data)
-            all_idxs = np.arange(0, original_length)
-
-            if isinstance(outlier_idxs, int):
-                flagged_percentage = (1.0 / original_length) * 100.0
-            else:
-                flagged_percentage = (len(outlier_idxs) / original_length) * 100.0
-            idxs = np.setxor1d(all_idxs, outlier_idxs)
-
-            if self.delete_channels:
-                self.data = self.data[idxs]
-            else:
-                self.data[outlier_idxs] = 0.0
-            print("Flagging {0:.2f}% of the data".format(flagged_percentage))
-            return idxs, outlier_idxs
+            return idxs, self.outlier_idxs
         else:
-            raise TypeError("The data attribute is not a Dataset or numpy array object")
+            raise TypeError("The data attribute is not a Dataset")

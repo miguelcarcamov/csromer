@@ -33,47 +33,28 @@ class HampelFlagger(Flagger):
         if self.nsigma is not None:
             nsigma = self.nsigma
 
-        if isinstance(self.data, Dataset):
-            original_length = len(self.data.sigma)
+        if isinstance(self.dataset, Dataset):
+            original_length = len(self.dataset.sigma)
             if self.imputation:
                 new_sigma, idxs, outlier_idxs = hampel(
-                    self.data.sigma, self.w, nsigma, self.imputation
+                    self.dataset.sigma, self.dataset.w, nsigma, self.imputation
                 )
-                self.data.sigma = new_sigma
+                self.dataset.sigma = new_sigma
                 flagged_percentage = (len(outlier_idxs) / original_length) * 100.0
                 print("Imputing {0:.2f}% of the data".format(flagged_percentage))
                 return None
             else:
-                sigma_array = self.data.sigma.copy()
-                idxs, outlier_idxs = hampel(sigma_array, self.w, nsigma, self.imputation)
+                sigma_array = self.dataset.sigma.copy()
+                idxs, outlier_idxs = hampel(sigma_array, self.dataset.w, nsigma, self.imputation)
                 flagged_percentage = (len(outlier_idxs) / original_length) * 100.0
                 if self.delete_channels:
-                    self.data.lambda2 = self.data.lambda2[idxs]
-                    self.data.sigma = sigma_array[idxs]
-                    if self.data.data is not None:
-                        self.data.data = self.data.data[idxs]
+                    self.dataset.lambda2 = self.dataset.lambda2[idxs]
+                    self.dataset.sigma = sigma_array[idxs]
+                    if self.dataset.data is not None:
+                        self.dataset.data = self.dataset.data[idxs]
                 else:
-                    self.data.w[outlier_idxs] = 0.0
-                print("Flagging {0:.2f}% of the data".format(flagged_percentage))
-                return idxs, outlier_idxs
-        elif isinstance(self.data, np.ndarray):
-            original_length = len(self.data)
-            if self.imputation:
-                new_sigma, idxs, outlier_idxs = hampel(
-                    self.data.sigma, self.w, nsigma, self.imputation
-                )
-                self.data = new_sigma
-                flagged_percentage = (len(outlier_idxs) / original_length) * 100.0
-                print("Imputing {0:.2f}% of the data".format(flagged_percentage))
-                return None
-            else:
-                idxs, outlier_idxs = hampel(self.data.sigma, self.w, nsigma, self.imputation)
-                if self.delete_channels:
-                    self.data = self.data[idxs]
-                else:
-                    self.data[outlier_idxs] = 0.0
-                flagged_percentage = (len(outlier_idxs) / original_length) * 100.0
+                    self.dataset.w[outlier_idxs] = 0.0
                 print("Flagging {0:.2f}% of the data".format(flagged_percentage))
                 return idxs, outlier_idxs
         else:
-            raise TypeError("The data attribute is not a Dataset or numpy array object")
+            raise TypeError("The data attribute is not a Dataset")
