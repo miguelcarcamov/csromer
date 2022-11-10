@@ -18,27 +18,27 @@ Please feel free to open an issue if you spot a bug. This is an open source proj
 
 This code will run in a Python >= 3.9.7 environment with all the packages installed (see `requirements.txt` file).
 
+## Examples
+
+Examples and use of cases can be found [here](https://github.com/miguelcarcamov/cs-romer-notebooks)
+
 ## Citing
 
 The paper of this software is under submission but if you use it you can cite it as:
 
 ```tex
-@misc{https://doi.org/10.48550/arxiv.2205.01413,
-  doi = {10.48550/ARXIV.2205.01413},
-
-  url = {https://arxiv.org/abs/2205.01413},
-
-  author = {Cárcamo, Miguel and Scaife, Anna M. M. and Alexander, Emma L. and Leahy, J. Patrick},
-
-  keywords = {Instrumentation and Methods for Astrophysics (astro-ph.IM), Astrophysics of Galaxies (astro-ph.GA), FOS: Physical sciences, FOS: Physical sciences},
-
-  title = {CS-ROMER: A novel compressed sensing framework for Faraday depth reconstruction},
-
-  publisher = {arXiv},
-
-  year = {2022},
-
-  copyright = {arXiv.org perpetual, non-exclusive license}
+@article{10.1093/mnras/stac3031,
+    author = {Cárcamo, Miguel and Scaife, Anna M M and Alexander, Emma L and Leahy, J Patrick},
+    title = "{CS-ROMER: A novel compressed sensing framework for Faraday depth reconstruction}",
+    journal = {Monthly Notices of the Royal Astronomical Society},
+    year = {2022},
+    month = {10},
+    abstract = "{The reconstruction of Faraday depth structure from incomplete spectral polarization radio measurements using the RM Synthesis technique is an under-constrained problem requiring additional regularisation. In this paper we present cs-romer: a novel object-oriented compressed sensing framework to reconstruct Faraday depth signals from spectro-polarization radio data. Unlike previous compressed sensing applications, this framework is designed to work directly with data that are irregularly sampled in wavelength-squared space and to incorporate multiple forms of compressed sensing regularisation. We demonstrate the framework using simulated data for the VLA telescope under a variety of observing conditions, and we introduce a methodology for identifying the optimal basis function for reconstruction of these data, using an approach that can also be applied to datasets from other telescopes and over different frequency ranges. In this work we show that the delta basis function provides optimal reconstruction for VLA L-band data and we use this basis with observations of the low-mass galaxy cluster Abell 1314 in order to reconstruct the Faraday depth of its constituent cluster galaxies. We use the cs-romer framework to de-rotate the Galactic Faraday depth contribution directly from the wavelength-squared data and to handle the spectral behaviour of different radio sources in a direction-dependent manner. The results of this analysis show that individual galaxies within Abell 1314 deviate from the behaviour expected for a Faraday-thin screen such as the intra-cluster medium and instead suggest that the Faraday rotation exhibited by these galaxies is dominated by their local environments.}",
+    issn = {0035-8711},
+    doi = {10.1093/mnras/stac3031},
+    url = {https://doi.org/10.1093/mnras/stac3031},
+    note = {stac3031},
+    eprint = {https://academic.oup.com/mnras/advance-article-pdf/doi/10.1093/mnras/stac3031/46643343/stac3031.pdf},
 }
 ```
 
