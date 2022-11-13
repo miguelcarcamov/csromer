@@ -179,7 +179,7 @@ class Writer:
                 )
         else:
             if cube.dtype == np.complex64 or cube.dtype == np.complex128:
-                concatenated_cube = np.stack([cube.real, cube.imag], axis=0)
+                concatenated_cube = da.stack([cube.real, cube.imag], axis=0)
                 fits.writeto(
                     output,
                     data=concatenated_cube,
