@@ -64,25 +64,25 @@ class NUFFT1D(FT):
         return b
 
     def forward_normalized(self, x):
-        val = x * self.k
+        val = x * self.dataset.k
         b = self.nufft_forward.forward(val)
-        b = np.divide(b, self.weights, where=self.weights > 0.0)
+        b = np.divide(b, self.dataset.w, where=self.dataset.w > 0.0)
 
         return b * self.dataset.s / len(self.parameter.phi)
 
     def backward(self, b, solver="cg", maxiter=1):
+        weights = self.dataset.w / self.dataset.s
         if self.solve:
-            x = self.nufft_backward.solve(
-                self.weights * b / self.dataset.s, solver=solver, maxiter=maxiter
-            )
+            x = self.nufft_backward.solve(weights * b, solver=solver, maxiter=maxiter)
         else:
-            x = self.nufft_backward.adjoint(self.weights * b / self.dataset.s)
+            x = self.nufft_backward.adjoint(weights * b)
 
         if self.normalize:
-            x *= len(self.parameter.phi) / self.k
+            x *= len(self.parameter.phi) / self.dataset.k
 
         return x
 
     def RMTF(self):
-        x = self.nufft_backward.adjoint(self.dataset.w)
-        return x / self.dataset.k
+        weights = self.dataset.w / self.dataset.s
+        x = self.nufft_backward.adjoint(weights)
+        return x / np.sum(weights)

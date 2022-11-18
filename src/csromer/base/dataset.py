@@ -169,7 +169,7 @@ class Dataset(metaclass=ABCMeta):
 
         if self.__lambda2 is not None and self.__nu_0 is not None:
             nu = c / np.sqrt(self.__lambda2)
-            self.__s = (nu / self.__nu_0)**(-1.0 * self.__spectral_idx)
+            self.s = (nu / self.__nu_0)**(-1.0 * self.__spectral_idx)
 
     @property
     def s(self):
@@ -178,6 +178,7 @@ class Dataset(metaclass=ABCMeta):
     @s.setter
     def s(self, val):
         self.__s = val
+        self.k = np.sum(self.w / self.__s)
 
     @property
     def nu_0(self):
@@ -252,7 +253,10 @@ class Dataset(metaclass=ABCMeta):
             aux_copy = val.copy()
             aux_copy[aux_copy != 0] = 1.0 / np.sqrt(aux_copy[aux_copy != 0])
             self.__sigma = aux_copy
-            self.__k = np.sum(val)
+            if hasattr(self, "s"):
+                self.k = np.sum(val / self.__s)
+            else:
+                self.k = np.sum(val)
             if self.__l2_ref is None:
                 self.__l2_ref = self.calculate_l2ref()
         self.__theo_noise = self.calculate_theo_noise()

@@ -10,7 +10,7 @@ from __future__ import annotations
 import copy
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 import numpy as np
 
@@ -24,24 +24,8 @@ if TYPE_CHECKING:
 class FT(metaclass=ABCMeta):
     dataset: Dataset = None
     parameter: Parameter = None
-    use_weights: bool = None
-    k: float = field(init=False, default=1.0)
-    weights: np.ndarray = field(init=False, default=None)
 
     def __post_init__(self):
-
-        if self.use_weights is None:
-            self.use_weights = True
-
-        if self.dataset is not None:
-            if self.use_weights:
-                self.weights = self.dataset.w
-            else:
-                self.weights = np.ones_like(self.dataset.w)
-            self.k = np.sum(self.weights)
-        else:
-            self.weights = None
-            self.k = None
 
         if self.parameter is not None:
             self.parameter = copy.deepcopy(self.parameter)
