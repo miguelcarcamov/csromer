@@ -178,7 +178,8 @@ class Dataset(metaclass=ABCMeta):
     @s.setter
     def s(self, val):
         self.__s = val
-        self.k = np.sum(self.w / self.__s)
+        if self.__s is not None:
+            self.k = np.sum(self.w / self.__s)
 
     @property
     def nu_0(self):
@@ -196,7 +197,7 @@ class Dataset(metaclass=ABCMeta):
     def nu(self, val):
         self.__nu = val
         if val is not None:
-            self.__nu_0 = np.median(val)
+            self.__nu_0 = 0.5 * (np.min(val) + np.max(val))
             self.nu_to_l2()
 
     @property
@@ -212,7 +213,7 @@ class Dataset(metaclass=ABCMeta):
                 self.__lambda2 = val
             self.__m = len(val)
             self.__nu = c / np.sqrt(val)
-            self.__nu_0 = np.median(self.__nu)
+            self.__nu_0 = 0.5 * (np.min(self.__nu) + np.max(self.__nu))
             if hasattr(self, "spectral_idx"):
                 self.__s = (self.__nu / self.__nu_0)**(-1.0 * self.__spectral_idx)
             self.w = np.ones(self.__m)
@@ -254,7 +255,8 @@ class Dataset(metaclass=ABCMeta):
             aux_copy[aux_copy != 0] = 1.0 / np.sqrt(aux_copy[aux_copy != 0])
             self.__sigma = aux_copy
             if hasattr(self, "s"):
-                self.k = np.sum(val / self.__s)
+                if self.__s is not None:
+                    self.k = np.sum(val / self.__s)
             else:
                 self.k = np.sum(val)
             if self.__l2_ref is None:

@@ -14,7 +14,6 @@ class NUFFT1D(FT):
     solve: bool = None
     nufft_forward: NUFFT = field(init=False)
     nufft_backward: NUFFT = field(init=False)
-    delta_phi: float = field(init=False)
 
     def __post_init__(self):
         super().__post_init__()
@@ -34,7 +33,6 @@ class NUFFT1D(FT):
             self.solve = False
 
         if self.parameter.cellsize is not None:
-            self.delta_phi = self.parameter.cellsize
             self.configure()
 
     def configure(self):
@@ -85,4 +83,5 @@ class NUFFT1D(FT):
     def RMTF(self):
         weights = self.dataset.w / self.dataset.s
         x = self.nufft_backward.adjoint(weights)
-        return x / np.sum(weights)
+        x *= len(self.parameter.phi) / self.dataset.k
+        return x
