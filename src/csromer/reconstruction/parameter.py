@@ -4,11 +4,10 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import numpy as np
+from astropy.convolution import Gaussian1DKernel
 from scipy import signal as sci_signal
-from scipy.constants import pi
 
-from ..utils import complex_to_real, nextPowerOf2, real_to_complex
-from ..utils.analytical_functions import Gaussian
+from ..utils import complex_to_real, next_power_2, real_to_complex
 
 if TYPE_CHECKING:
     from ..base import Dataset
@@ -73,7 +72,7 @@ class Parameter:
             l2_max = np.max(dataset.lambda2)
 
             delta_phi_fwhm = 2.0 * np.sqrt(3.0) / (l2_max - l2_min)  # FWHM of the FPSF
-            delta_phi_theo = pi / l2_min
+            delta_phi_theo = np.pi / l2_min
 
             delta_phi = min(delta_phi_fwhm, delta_phi_theo)
 
@@ -101,7 +100,7 @@ class Parameter:
             temp = np.int32(np.floor(2 * phi_max / phi_r))
 
             if set_size_pow_2:
-                self.n = nextPowerOf2(temp)
+                self.n = next_power_2(temp)
             else:
                 self.n = int(temp - np.mod(temp, 32))
             self.cellsize = 2 * phi_max / self.n
@@ -129,14 +128,28 @@ class Parameter:
         else:
             raise ValueError("Parameter data is not real")
 
-    def convolve(self, x=None, normalized=True):
-        gauss_rmtf = Gaussian(x=self.phi, mu=0.0, fwhm=self.rmtf_fwhm)
-        gauss_rmtf_array = gauss_rmtf.run(normalized=normalized)
+    def convolve(self, x=None):
+        val_fwhm = 2.0 * np.sqrt(2.0 * np.log(2.0))
+        sigma_x = self.rmtf_fwhm / val_fwhm
+        sigma_x_pixels = int(sigma_x / self.cellsize)
+        print(
+            "Convolving with Gaussian kernel where FWHM {0:2.4f} rad/m^2, sigma {1:2.4f} rad/m^2 and pixels {2}"
+            .format(self.rmtf_fwhm, sigma_x, sigma_x_pixels)
+        )
+
+        clean_beam = Gaussian1DKernel(stddev=sigma_x_pixels, mode="linear_interp")
+        clean_beam_array = clean_beam.array
 
         if x is None:
-            x = sci_signal.convolve(self.data, gauss_rmtf_array, mode="full", method="auto")
+            q_stokes = sci_signal.convolve(
+                self.data.real, clean_beam_array, mode="same", method="fft"
+            )
+            u_stokes = sci_signal.convolve(
+                self.data.imag, clean_beam_array, mode="same", method="fft"
+            )
         else:
-            x = sci_signal.convolve(x, gauss_rmtf_array, mode="full", method="auto")
+            q_stokes = sci_signal.convolve(x.real, clean_beam_array, mode="same", method="fft")
+            u_stokes = sci_signal.convolve(x.imag, clean_beam_array, mode="same", method="fft")
 
-        return x[self.n // 2:(self.n // 2) + self.n]
-        # F_restored = F_conv[n // 2:(n // 2) + n] + F_residual
+        x = q_stokes + 1j * u_stokes
+        return x

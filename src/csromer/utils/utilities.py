@@ -10,7 +10,7 @@ from astropy.stats import sigma_clipped_stats
 from astropy.wcs import WCS
 
 
-def nextPowerOf2(n):
+def next_power_2(n):
     count = 0
     # First n in the below
     # condition is for the

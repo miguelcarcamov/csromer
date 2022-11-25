@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import numpy as np
 import pywt
 
-from ..utils import nextPowerOf2
+from ..utils import next_power_2
 from .wavelet import Wavelet
 
 
@@ -64,7 +64,7 @@ class UndecimatedWavelet(Wavelet):
                 "Your signal length is not multiple of 2**" + str(self.wavelet_level) +
                 ". Padding array..."
             )
-            padded_size = nextPowerOf2(signal_size)
+            padded_size = next_power_2(signal_size)
             self.pad_width = padded_size - signal_size
 
             if self.mode is None:
@@ -105,7 +105,7 @@ class UndecimatedWavelet(Wavelet):
                 ". Padding array..."
             )
             # padded_size = int(array_size * round(float(signal_size) / array_size))
-            padded_size = nextPowerOf2(signal_size)
+            padded_size = next_power_2(signal_size)
             self.pad_width = padded_size - signal_size
             if self.mode is None:
                 x_copy = np.pad(x_copy, (0, self.pad_width))

@@ -169,7 +169,7 @@ class Dataset(metaclass=ABCMeta):
 
         if self.__lambda2 is not None and self.__nu_0 is not None:
             nu = c / np.sqrt(self.__lambda2)
-            self.s = (nu / self.__nu_0)**(-1.0 * self.__spectral_idx)
+            self.s = (nu / self.__nu_0)**self.__spectral_idx
 
     @property
     def s(self):
@@ -343,7 +343,8 @@ class Dataset(metaclass=ABCMeta):
 
     def calculate_l2ref(self):
         if self.lambda2 is not None:
-            return np.sum(self.w * self.lambda2) / self.k
+            sum_weights = np.sum(self.w)
+            return np.sum(self.w * self.lambda2) / sum_weights
         else:
             return None
 
