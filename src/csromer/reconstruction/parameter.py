@@ -128,13 +128,17 @@ class Parameter:
         else:
             raise ValueError("Parameter data is not real")
 
-    def convolve(self, x=None):
+    def convolve(self, x=None, rmtf_fwhm=None):
+
+        if rmtf_fwhm is None:
+            rmtf_fwhm = self.rmtf_fwhm
+
         val_fwhm = 2.0 * np.sqrt(2.0 * np.log(2.0))
-        sigma_x = self.rmtf_fwhm / val_fwhm
-        sigma_x_pixels = int(sigma_x / self.cellsize)
+        sigma_x = rmtf_fwhm / val_fwhm
+        sigma_x_pixels = int(np.round(sigma_x / self.cellsize))
         print(
             "Convolving with Gaussian kernel where FWHM {0:2.4f} rad/m^2, sigma {1:2.4f} rad/m^2 and pixels {2}"
-            .format(self.rmtf_fwhm, sigma_x, sigma_x_pixels)
+            .format(rmtf_fwhm, sigma_x, sigma_x_pixels)
         )
 
         clean_beam = Gaussian1DKernel(stddev=sigma_x_pixels, mode="linear_interp")
