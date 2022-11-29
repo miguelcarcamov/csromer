@@ -37,7 +37,7 @@ class NUFFT1D(FT):
         l2_difference = self.dataset.lambda2 - self.dataset.l2_ref
         exp_factor = -2. * l2_difference * self.parameter.cellsize
 
-        Nd = (self.parameter.n, )  # Faraday Depth Space Length
+        Nd = (len(self.parameter.phi), )  # Faraday Depth Space Length
         Kd = (
             self.oversampling_factor * len(self.parameter.phi),
         )  # Oversampled Faraday Depth Space Length

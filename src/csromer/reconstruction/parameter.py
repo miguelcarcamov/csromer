@@ -63,6 +63,7 @@ class Parameter:
         self,
         dataset: Dataset = None,
         oversampling=4,
+        cellsize=None,
         set_size_pow_2=False,
         verbose=True,
     ):
@@ -95,7 +96,10 @@ class Parameter:
                     format(self.max_faraday_depth)
                 )
 
-            phi_r = delta_phi / oversampling
+            if cellsize is None:
+                phi_r = delta_phi / oversampling
+            else:
+                phi_r = cellsize
 
             temp = np.int32(np.floor(2 * phi_max / phi_r))
 
@@ -103,6 +107,7 @@ class Parameter:
                 self.n = next_power_2(temp)
             else:
                 self.n = int(temp - np.mod(temp, 32))
+
             self.cellsize = 2 * phi_max / self.n
             self.phi = self.cellsize * np.arange(-(self.n / 2), (self.n / 2), 1)
             self.data = np.zeros_like(self.phi, dtype=np.complex64)
@@ -133,15 +138,17 @@ class Parameter:
         if rmtf_fwhm is None:
             rmtf_fwhm = self.rmtf_fwhm
 
+        rmtf_fwhm_pixels = np.round(rmtf_fwhm / self.cellsize).astype(np.int32)
         val_fwhm = 2.0 * np.sqrt(2.0 * np.log(2.0))
         sigma_x = rmtf_fwhm / val_fwhm
-        sigma_x_pixels = int(np.round(sigma_x / self.cellsize))
+        sigma_x_pixels = np.round(sigma_x / self.cellsize).astype(np.int32)
+
         print(
-            "Convolving with Gaussian kernel where FWHM {0:2.4f} rad/m^2, sigma {1:2.4f} rad/m^2 and pixels {2}"
-            .format(rmtf_fwhm, sigma_x, sigma_x_pixels)
+            "Convolving with Gaussian kernel where FWHM {0:2.43f} rad/m^2 - pixels {1}, sigma {2:2.3f} rad/m^2 - pixels {3}"
+            .format(rmtf_fwhm, rmtf_fwhm_pixels, sigma_x, sigma_x_pixels)
         )
 
-        clean_beam = Gaussian1DKernel(stddev=sigma_x_pixels, mode="linear_interp")
+        clean_beam = Gaussian1DKernel(stddev=sigma_x_pixels)
         clean_beam_array = clean_beam.array
 
         if x is None:
@@ -155,5 +162,5 @@ class Parameter:
             q_stokes = sci_signal.convolve(x.real, clean_beam_array, mode="same", method="fft")
             u_stokes = sci_signal.convolve(x.imag, clean_beam_array, mode="same", method="fft")
 
-        x = q_stokes + 1j * u_stokes
-        return x
+        p_stokes = q_stokes + 1j * u_stokes
+        return p_stokes
