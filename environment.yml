@@ -7,7 +7,6 @@ dependencies:
 - numpy=1.23
 - anaconda
 - pip
-- glibc
 - blas
 - blas-devel
 - libblas
@@ -15,16 +14,16 @@ dependencies:
 - liblapack
 - liblapacke
 - pip:
-- astropy==5.1.0
-- astropy-healpix==0.7
-- astroquery==0.4.6
-- dask==2022.10.2
-- h5py==3.7.0
-- joblib==1.2.0
-- matplotlib==3.6.1
-- numpy==1.23.4
-- prox_tv==3.2.1
-- proxmin==0.6.12
-- pynufft==2022.2.3
-- PyWavelets==1.4.1
-- scipy==1.9.3
+  - astropy==5.1.0
+  - astropy-healpix==0.7
+  - astroquery==0.4.6
+  - dask==2022.10.2
+  - h5py==3.7.0
+  - joblib==1.2.0
+  - matplotlib==3.6.1
+  - numpy==1.23.4
+  - prox_tv==3.2.1
+  - proxmin==0.6.12
+  - pynufft==2022.2.3
+  - PyWavelets==1.4.1
+  - scipy==1.9.3
