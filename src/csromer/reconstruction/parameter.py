@@ -144,7 +144,7 @@ class Parameter:
         sigma_x_pixels = np.round(sigma_x / self.cellsize).astype(np.int32)
 
         print(
-            "Convolving with Gaussian kernel where FWHM {0:2.43f} rad/m^2 - pixels {1}, sigma {2:2.3f} rad/m^2 - pixels {3}"
+            "Convolving with Gaussian kernel where FWHM {0:2.3f} rad/m^2 - pixels {1}, sigma {2:2.3f} rad/m^2 - pixels {3}"
             .format(rmtf_fwhm, rmtf_fwhm_pixels, sigma_x, sigma_x_pixels)
         )
 
