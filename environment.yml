@@ -22,7 +22,7 @@ dependencies:
 - matplotlib==3.6.1
 - numpy==1.23.4
 - prox_tv==3.2.1
-- proxmin==0.6.11
+- proxmin==0.6.12
 - pynufft==2022.2.3
 - PyWavelets==1.4.1
 - scipy==1.9.3
