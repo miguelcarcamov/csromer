@@ -56,7 +56,7 @@ class NUFFT1D(FT):
         b = self.nufft_instance.forward(val)
         b = np.divide(b, self.dataset.w, where=self.dataset.w > 0.0)
 
-        return b / self.dataset.s / len(self.parameter.phi)
+        return b * self.dataset.s / len(self.parameter.phi)
 
     def backward(self, b, solver="cg", maxiter=1):
         weights = self.dataset.w / self.dataset.s

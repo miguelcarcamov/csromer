@@ -25,7 +25,7 @@ class NDFT1D(FT):
         b = np.dot(val, np.exp(2.0j * l2 * self.parameter.phi[:, np.newaxis])).astype(np.complex64)
         b = np.divide(b, self.dataset.w, where=self.dataset.w > 0.)
 
-        return b / self.dataset.s / len(self.parameter.phi)
+        return b * self.dataset.s / len(self.parameter.phi)
 
     def backward(self, b):
         l2 = self.dataset.lambda2[:, np.newaxis] - self.dataset.l2_ref

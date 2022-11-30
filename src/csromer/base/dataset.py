@@ -215,7 +215,7 @@ class Dataset(metaclass=ABCMeta):
             self.__nu = c / np.sqrt(val)
             self.__nu_0 = 0.5 * (np.min(self.__nu) + np.max(self.__nu))
             if hasattr(self, "spectral_idx"):
-                self.__s = (self.__nu / self.__nu_0)**(-1.0 * self.__spectral_idx)
+                self.__s = (self.__nu / self.__nu_0)**self.__spectral_idx
             self.w = np.ones(self.__m)
             self.calculate_l2_cellsize()
 
