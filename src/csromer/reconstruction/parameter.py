@@ -122,7 +122,7 @@ class Parameter:
         return 100.0 * (1.0 - (non_zeros / n))
 
     def complex_data_to_real(self):
-        if self.data.dtype == np.complex64:
+        if self.data.dtype == np.complex64 or self.data.dtype == np.complex128:
             self.data = complex_to_real(self.data)
         else:
             raise TypeError("Parameter data is not complex64")
