@@ -26,7 +26,7 @@ class Chi2(Fi):
         x_complex = real_to_complex(x_) * self.norm_factor
         model_data = self.dft_obj.forward_normalized(x_complex)
         self.dft_obj.dataset.model_data = model_data
-        res = -self.dft_obj.dataset.residual
+        res = self.dft_obj.dataset.residual
         chi2_vector = self.dft_obj.dataset.w * (res.real**2 + res.imag**2)
         val = 0.5 * np.sum(chi2_vector)
         return val

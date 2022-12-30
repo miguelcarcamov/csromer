@@ -15,7 +15,11 @@ class GradientBasedMethod(Optimizer):
         if self.method is None:
             self.method = "CG"
 
+        if self.guess_param is None:
+            raise ValueError("Guess parameter cannot be Nonetype")
+
     def run(self):
+
         ret = minimize(
             fun=self.F_obj.evaluate,
             x0=self.guess_param.data,
