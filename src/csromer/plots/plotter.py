@@ -284,10 +284,10 @@ class Plotter:
         if self.radio_image is not None:
             if isinstance(self.radio_image, fits.HDUList):
                 header = self.radio_image[0].header
-                radio_data = self.radio_image[0].data
+                radio_data = self.radio_image[0].data.squeeze()
             elif isinstance(self.radio_image, fits.PrimaryHDU):
                 header = self.radio_image.header
-                radio_data = self.radio_image.data
+                radio_data = self.radio_image.data.squeeze()
 
             wcs = WCS(header, naxis=2)
             ax = plt.subplot(projection=wcs)
