@@ -8,13 +8,13 @@ from .faraday_reconstructor import FaradayReconstructorWrapper
 
 @dataclass
 class PolAngleGradientReconstructorWrapper(FaradayReconstructorWrapper):
-    phi_0: float = None
+    initial_phi_0: float = None
     reconstructed_phi_0: float = field(init=False)
-    reconstructed_phi_0_error: float = field(init=False)
+    reconstructed_y_value: float = field(init=False)
 
     def __post_init__(self):
-        if self.phi_0 is None:
-            self.phi_0 = 0.0
+        if self.initial_phi_0 is None:
+            self.initial_phi_0 = 0.0
 
     @staticmethod
     def __line(p, x):
@@ -43,12 +43,13 @@ class PolAngleGradientReconstructorWrapper(FaradayReconstructorWrapper):
         pass
 
     def reconstruct(self):
+        # Dataset object calculates the polarization angle as 0.5 * arctan(U/Q)
         pol_angle = 2.0 * self.dataset.calculate_polangle().value
         pfit = 0.5 * self.__fit_chi(
-            self.dataset.lambda2, pol_angle, self.dataset.sigma, [self.phi_0, 0.0]
+            self.dataset.lambda2, pol_angle, self.dataset.sigma, [self.initial_phi_0, 0.0]
         )
         self.reconstructed_phi_0 = pfit[0]
-        self.reconstructed_phi_0_error = pfit[1]
+        self.reconstructed_y_value = pfit[1]
         return pfit
 
     def calculate_second_moment(self):
