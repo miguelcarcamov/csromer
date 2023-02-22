@@ -62,7 +62,7 @@ class Parameter:
     def calculate_cellsize(
         self,
         dataset: Dataset = None,
-        oversampling=4,
+        oversampling=None,
         cellsize=None,
         set_size_pow_2=False,
         verbose=True,
@@ -95,6 +95,9 @@ class Parameter:
                     "Maximum Faraday Depth to which one has more than 50% sensitivity: {0:.3f}".
                     format(self.max_faraday_depth)
                 )
+
+            if oversampling is None:
+                oversampling = 8.
 
             if cellsize is None:
                 phi_r = delta_phi / oversampling
