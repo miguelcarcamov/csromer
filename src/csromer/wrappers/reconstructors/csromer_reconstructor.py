@@ -21,15 +21,19 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
     coefficients: np.ndarray = field(init=False)
     fd_restored: np.ndarray = field(init=False)
     rm_restored: float = field(init=False)
+    rm_restored_error: float = field(init=False)
     restored_peak_quadratic_interpolation: float = field(init=False)
     rm_restored_quadratic_interpolation: float = field(init=False)
+    rm_restored_quadratic_interpolation_error: float = field(init=False)
     fd_model: np.ndarray = field(init=False)
     rm_model: float = field(init=False)
     fd_residual: np.ndarray = field(init=False)
     fd_dirty: np.ndarray = field(init=False)
     rm_dirty: float = field(init=False)
+    rm_dirty_error: float = field(init=False)
     dirty_peak_quadratic_interpolation: float = field(init=False)
     rm_dirty_quadratic_interpolation: float = field(init=False)
+    rm_dirty_quadratic_interpolation_error: float = field(init=False)
     second_moment: float = field(init=False)
     cellsize: float = None
     oversampling: float = None
@@ -42,14 +46,52 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
         self.config_fd_space(self.cellsize, self.oversampling)
         self.config_fourier_transforms()
 
+    @staticmethod
+    def estimate_peak_quadratic_interpolation(fd_signal, cellsize):
+        length_n = len(fd_signal)
+        index_0 = np.argmax(np.abs(fd_signal))
+
+        fd_signal_0 = np.abs(fd_signal[index_0])
+        fd_signal_m1 = np.abs(fd_signal[index_0 - 1])
+        fd_signal_p1 = np.abs(fd_signal[index_0 + 1])
+
+        pos_estimated_peak = (fd_signal_p1 - fd_signal_m1
+                              ) / (4 * fd_signal_0 - 2 * fd_signal_m1 - 2 * fd_signal_p1)
+
+        estimated_peak = (fd_signal_0 - 0.25 * (fd_signal_m1 - fd_signal_p1) * pos_estimated_peak)
+
+        location = index_0 + pos_estimated_peak
+
+        pos_phi_peak = (location - length_n / 2) * cellsize
+
+        return pos_phi_peak, estimated_peak
+
+    @staticmethod
+    def calculate_ricean_peak(peak, noise):
+        ricean_peak = np.sqrt(peak**2 - (2.3 * noise**2))
+        return ricean_peak
+
+    @staticmethod
+    def calculate_fd_signal_noise(fd_signal, phi, max_fd_depth, threshold=0.8):
+        mask_edges_phi = np.abs(phi) > max_fd_depth * threshold
+        fd_signal_noise = 0.5 * (
+            np.std(fd_signal[mask_edges_phi].real) + np.std(fd_signal[mask_edges_phi].imag)
+        )
+        return fd_signal_noise
+
+    @staticmethod
+    def calculate_sigma_phi_peak(rmtf_fwhm, fd_peak, fd_signal_noise):
+        sigma_phi_peak = rmtf_fwhm / (2. * fd_peak / fd_signal_noise)
+        return sigma_phi_peak
+
     def flag_dataset(self, flagger: Flagger = None):
 
         if flagger is None:
-            idxs, outliers_idxs = self.flagger.run()
+            indexes, outliers_indexes = self.flagger.run()
         else:
-            idxs, outliers_idxs = flagger.run()
+            indexes, outliers_indexes = flagger.run()
 
-        return idxs, outliers_idxs
+        return indexes, outliers_idxs
 
     def config_fd_space(self, cellsize: float = None, oversampling: float = None):
         if cellsize is not None and oversampling is not None:
@@ -72,20 +114,30 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
         return self.dft.RMTF()
 
     def get_rm(self, fd_data):
-        return self.parameter.phi[np.argmax(np.abs(fd_data))]
+        rm_at_peak = self.parameter.phi[np.argmax(np.abs(fd_data))]
+        return rm_at_peak
 
     def reconstruct(self):
         if self.flagger:
             self.flag_dataset()
 
         fd_dirty = self.get_dirty_faraday_depth()
+        dirty_noise = self.calculate_fd_signal_noise(
+            fd_dirty, self.parameter.phi, self.parameter.max_faraday_depth
+        )
         self.fd_dirty = fd_dirty
         self.parameter.data = fd_dirty
         self.rm_dirty = self.get_rm(fd_dirty)
+        self.rm_dirty_error = self.calculate_sigma_phi_peak(
+            self.parameter.rmtf_fwhm, np.abs(fd_dirty), dirty_noise
+        )
         (
             self.rm_dirty_quadratic_interpolation,
             self.dirty_peak_quadratic_interpolation,
         ) = self.estimate_peak_quadratic_interpolation(fd_dirty, self.parameter.cellsize)
+        self.rm_dirty_quadratic_interpolation_error = self.calculate_sigma_phi_peak(
+            self.parameter.rmtf_fwhm, self.dirty_peak_quadratic_interpolation, dirty_noise
+        )
         self.parameter.complex_data_to_real()
 
         if self.wavelet is not None:
@@ -139,11 +191,21 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
         self.fd_residual = self.dft.backward(self.dataset.data - self.dataset.model_data)
 
         self.fd_restored = X.convolve() + self.fd_residual
+        restored_noise = self.calculate_fd_signal_noise(
+            self.fd_restored, self.parameter.phi, self.parameter.max_faraday_depth
+        )
+
         self.rm_restored = self.get_rm(self.fd_restored)
+        self.rm_restored_error = self.calculate_sigma_phi_peak(
+            self.parameter.rmtf_fwhm, np.abs(self.fd_restored), restored_noise
+        )
         (
             self.rm_restored_quadratic_interpolation,
             self.restored_peak_quadratic_interpolation,
         ) = self.estimate_peak_quadratic_interpolation(self.fd_restored, self.parameter.cellsize)
+        self.rm_restored_quadratic_interpolation_error = self.calculate_sigma_phi_peak(
+            self.parameter.rmtf_fwhm, self.restored_peak_quadratic_interpolation, restored_noise
+        )
 
     def calculate_second_moment(self):
         phi_nonzero_positions = np.abs(self.fd_model) != 0
