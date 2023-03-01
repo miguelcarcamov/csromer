@@ -27,7 +27,7 @@ class FaradaySky:
             self.nside = 512
 
         if self.ordering is None:
-            self.ordering = "nested"
+            self.ordering = "ring"
 
         if self.filename is None:
             self.filename = (
@@ -48,6 +48,11 @@ class FaradaySky:
                     hdul[1].data["faraday_sky_mean"],
                     hdul[1].data["faraday_sky_std"],
                 )
+                if "ORDERING" in hdul[0].header:
+                    self.ordering = hdul[0].header["ORDERING"]
+
+                if "NSIDE" in hdul[0].header:
+                    self.nside = hdul[0].header["ORDERING"]
         else:
             raise ValueError("The extension is not HDF5 or FITS")
 
@@ -115,11 +120,11 @@ class FaradaySky:
         y = np.arange(0, n, 1)
         xx, yy = np.meshgrid(x, y)
 
-        ra, dec = w.all_pix2world(xx, yy, 0) * un.deg
+        skycoord = w.array_index_to_world(xx, yy)
 
         rm_flattened = self.galactic_rm(
-            ra=ra.ravel(),
-            dec=dec.ravel(),
+            ra=skycoord.ra.ravel(),
+            dec=skycoord.dec.ravel(),
             frame=frame,
             use_bilinear_interpolation=use_bilinear_interpolation,
         )

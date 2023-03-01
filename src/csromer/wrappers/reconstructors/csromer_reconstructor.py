@@ -125,11 +125,12 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
         dirty_noise = self.calculate_fd_signal_noise(
             fd_dirty, self.parameter.phi, self.parameter.max_faraday_depth
         )
+
         self.fd_dirty = fd_dirty
         self.parameter.data = fd_dirty
         self.rm_dirty = self.get_rm(fd_dirty)
         self.rm_dirty_error = self.calculate_sigma_phi_peak(
-            self.parameter.rmtf_fwhm, np.abs(fd_dirty), dirty_noise
+            self.parameter.rmtf_fwhm, np.max(np.abs(fd_dirty)), dirty_noise
         )
         (
             self.rm_dirty_quadratic_interpolation,
@@ -197,7 +198,7 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
 
         self.rm_restored = self.get_rm(self.fd_restored)
         self.rm_restored_error = self.calculate_sigma_phi_peak(
-            self.parameter.rmtf_fwhm, np.abs(self.fd_restored), restored_noise
+            self.parameter.rmtf_fwhm, np.max(np.abs(self.fd_restored)), restored_noise
         )
         (
             self.rm_restored_quadratic_interpolation,
