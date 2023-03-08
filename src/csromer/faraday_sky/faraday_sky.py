@@ -116,8 +116,8 @@ class FaradaySky:
         m = header["NAXIS1"]
         n = header["NAXIS2"]
         frame = header["RADESYS"].lower()
-        x = np.arange(0, m, 1)
-        y = np.arange(0, n, 1)
+        x = np.arange(0, n, 1)
+        y = np.arange(0, m, 1)
         xx, yy = np.meshgrid(x, y)
 
         skycoord = w.array_index_to_world(xx, yy)
@@ -128,8 +128,8 @@ class FaradaySky:
             frame=frame,
             use_bilinear_interpolation=use_bilinear_interpolation,
         )
-        rm_mean = rm_flattened[0].reshape(m, n)
-        rm_std = rm_flattened[1].reshape(m, n)
+        rm_mean = rm_flattened[0].reshape(n, m)
+        rm_std = rm_flattened[1].reshape(n, m)
 
         rm_mean_field = np.mean(rm_mean)
         rm_uncertainty_field = np.mean(rm_std)

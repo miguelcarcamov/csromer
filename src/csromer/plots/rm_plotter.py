@@ -214,7 +214,13 @@ class RMPlotter:
 
         if self.rm_image_error is not None and self.pol_fraction_image is not None:
             ax1 = fig.add_subplot(1, 3, 1, projection=wcs_rm_image, box_aspect=1)
-            c1 = ax1.imshow(rm_image_data, origin="lower", cmap=inferno, vmin=0, vmax=100)
+            c1 = ax1.imshow(
+                rm_image_data,
+                origin="lower",
+                cmap=inferno,
+                vmin=np.nanmin(rm_image_data),
+                vmax=np.nanmax(rm_image_data)
+            )
             # ax1.text(x=173.4776803, y=49.0761733, s="N")
             # ax1.text(x=173.4719210, y=49.0538024, ha="center", s="S", transform=ax1.get_transform(wcs_rm_image))
             ax1.contour(
