@@ -116,8 +116,8 @@ class FaradaySky:
         m = header["NAXIS1"]
         n = header["NAXIS2"]
         frame = header["RADESYS"].lower()
-        x = np.arange(0, n, 1)
-        y = np.arange(0, m, 1)
+        x = np.arange(0, m, 1)
+        y = np.arange(0, n, 1)
         xx, yy = np.meshgrid(x, y)
 
         skycoord = w.array_index_to_world(xx, yy)
