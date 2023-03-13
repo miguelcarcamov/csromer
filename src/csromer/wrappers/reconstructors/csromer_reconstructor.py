@@ -38,10 +38,19 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
     cellsize: float = None
     oversampling: float = None
     lambda_l_norm: float = None
+    calculate_l2_zero: bool = None
 
     def __post_init__(self):
         if self.oversampling is None:
             self.oversampling = 7.0
+
+        if self.calculate_l2_zero is None:
+            self.calculate_l2_zero = False
+
+        if self.calculate_l2_zero:
+            print("Calculating l2_0")
+            self.dataset.l2_ref = self.dataset.calculate_l2ref()
+
         self.parameter = Parameter()
         self.config_fd_space(self.cellsize, self.oversampling)
         self.config_fourier_transforms()
@@ -141,19 +150,20 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
         )
         self.parameter.complex_data_to_real()
 
-        if self.wavelet is not None:
-            lambda_l_norm = (
-                np.sqrt(self.dataset.m + 2 * np.sqrt(self.dataset.m)) * 2.0 * np.sqrt(2) *
-                np.mean(self.dataset.sigma)
-            )
-        else:
-            lambda_l_norm = (
-                np.sqrt(self.dataset.m + 2 * np.sqrt(self.dataset.m)) * np.sqrt(2) *
-                np.mean(self.dataset.sigma)
-            )
+        if self.lambda_l_norm is None:
+            if self.wavelet is not None:
+                self.lambda_l_norm = (
+                    np.sqrt(self.dataset.m + 2 * np.sqrt(self.dataset.m)) * 2.0 * np.sqrt(2) *
+                    np.mean(self.dataset.sigma)
+                )
+            else:
+                self.lambda_l_norm = (
+                    np.sqrt(self.dataset.m + 2 * np.sqrt(self.dataset.m)) * np.sqrt(2) *
+                    np.mean(self.dataset.sigma)
+                )
 
         chi2 = Chi2(dft_obj=self.nufft, wavelet=self.wavelet)
-        l1 = L1(reg=lambda_l_norm)
+        l1 = L1(reg=self.lambda_l_norm)
 
         F_func = [chi2, l1]
         f_func = [chi2]
