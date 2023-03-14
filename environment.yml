@@ -27,3 +27,4 @@ dependencies:
   - pynufft==2022.2.3
   - PyWavelets==1.4.1
   - scipy==1.9.3
+  - photutils==1.6.0

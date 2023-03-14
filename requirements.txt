@@ -6,6 +6,7 @@ h5py==3.8.0
 joblib==1.2.0
 matplotlib==3.6.3
 numpy==1.24.2
+photutils==1.6.0
 prox_tv==3.2.1
 proxmin==0.6.12
 pynufft==2023.1.1
