@@ -6,8 +6,7 @@ Created on Fri Nov  8 12:33:53 2019
 @author: miguel
 """
 import numpy as np
-from astropy.stats import SigmaClip
-from photutils.background import MADStdBackgroundRMS
+from astropy.stats import sigma_clipped_stats
 
 
 def next_power_2(n):
@@ -73,6 +72,8 @@ def calculate_noise(
     y0=None,
     yn=None,
     nsigma=3,
+    cenfunc='mean',
+    stdfunc='mad_std',
     use_sigma_clipped_stats=False,
 ):
     if x0 is None:
@@ -99,11 +100,11 @@ def calculate_noise(
         else:
             sigma = np.nanstd(image[y0:yn, x0:xn])
     else:
-        sigma_clip = SigmaClip(sigma=nsigma)
-        bkg_rms = MADStdBackgroundRMS(sigma_clip)
         if image.ndim > 2:
-            sigma = bkg_rms.calc_background_rms(image[:, y0:yn, x0:xn], axis=(1, 2))
+            _, _, sigma = sigma_clipped_stats(
+                image[:, y0:yn, x0:xn], sigma=nsigma, cenfunc=cenfunc, stdfunc=stdfunc, axis=(1, 2)
+            )
         else:
-            sigma = bkg_rms.calc_background_rms(image[y0:yn, x0:xn])
+            _, _, sigma = sigma_clipped_stats(image[y0:yn, x0:xn], cenfunc=cenfunc, stdfunc=stdfunc)
 
     return sigma
