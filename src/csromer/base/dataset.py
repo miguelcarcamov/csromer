@@ -169,7 +169,7 @@ class Dataset(metaclass=ABCMeta):
 
         if self.__lambda2 is not None and self.__nu_0 is not None:
             nu = c / np.sqrt(self.__lambda2)
-            self.__s = (nu / self.__nu_0)**(-1.0 * self.__spectral_idx)
+            self.s = (nu / self.__nu_0)**self.__spectral_idx
 
     @property
     def s(self):
@@ -178,6 +178,8 @@ class Dataset(metaclass=ABCMeta):
     @s.setter
     def s(self, val):
         self.__s = val
+        if self.__s is not None:
+            self.k = np.sum(self.w / self.__s)
 
     @property
     def nu_0(self):
@@ -195,7 +197,7 @@ class Dataset(metaclass=ABCMeta):
     def nu(self, val):
         self.__nu = val
         if val is not None:
-            self.__nu_0 = np.median(val)
+            self.__nu_0 = 0.5 * (np.min(val) + np.max(val))
             self.nu_to_l2()
 
     @property
@@ -211,9 +213,9 @@ class Dataset(metaclass=ABCMeta):
                 self.__lambda2 = val
             self.__m = len(val)
             self.__nu = c / np.sqrt(val)
-            self.__nu_0 = np.median(self.__nu)
+            self.__nu_0 = 0.5 * (np.min(self.__nu) + np.max(self.__nu))
             if hasattr(self, "spectral_idx"):
-                self.__s = (self.__nu / self.__nu_0)**(-1.0 * self.__spectral_idx)
+                self.__s = (self.__nu / self.__nu_0)**self.__spectral_idx
             self.w = np.ones(self.__m)
             self.calculate_l2_cellsize()
 
@@ -252,7 +254,11 @@ class Dataset(metaclass=ABCMeta):
             aux_copy = val.copy()
             aux_copy[aux_copy != 0] = 1.0 / np.sqrt(aux_copy[aux_copy != 0])
             self.__sigma = aux_copy
-            self.__k = np.sum(val)
+            if hasattr(self, "s"):
+                if self.__s is not None:
+                    self.k = np.sum(val / self.__s)
+            else:
+                self.k = np.sum(val)
             if self.__l2_ref is None:
                 self.__l2_ref = self.calculate_l2ref()
         self.__theo_noise = self.calculate_theo_noise()
@@ -337,7 +343,8 @@ class Dataset(metaclass=ABCMeta):
 
     def calculate_l2ref(self):
         if self.lambda2 is not None:
-            return np.sum(self.w * self.lambda2) / self.k
+            sum_weights = np.sum(self.w)
+            return np.sum(self.w * self.lambda2) / sum_weights
         else:
             return None
 

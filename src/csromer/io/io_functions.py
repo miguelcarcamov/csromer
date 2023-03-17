@@ -7,6 +7,7 @@ Created on Tue Nov  5 15:45:42 2019
 """
 import sys
 
+import dask.array as da
 import numpy as np
 from astropy.io import fits
 
@@ -158,7 +159,9 @@ class Writer:
 
         if output is None:
             if cube.dtype == np.complex64 or cube.dtype == np.complex128:
-                concatenated_cube = np.stack([cube.real, cube.imag], axis=0)
+                real_part = da.from_array(cube.real, chunks="auto")
+                imag_part = da.from_array(cube.imag, chunks="auto")
+                concatenated_cube = da.stack([real_part, imag_part], axis=0)
 
                 fits.writeto(
                     self.output,
@@ -178,7 +181,10 @@ class Writer:
                 )
         else:
             if cube.dtype == np.complex64 or cube.dtype == np.complex128:
-                concatenated_cube = np.stack([cube.real, cube.imag], axis=0)
+                real_part = da.from_array(cube.real, chunks="auto")
+                imag_part = da.from_array(cube.imag, chunks="auto")
+                concatenated_cube = da.stack([real_part, imag_part], axis=0)
+
                 fits.writeto(
                     output,
                     data=concatenated_cube,

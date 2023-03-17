@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 
-from pywt import Wavelet
+from ..dictionaries import Wavelet
 
 
 @dataclass(init=True, repr=True)

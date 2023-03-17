@@ -55,8 +55,20 @@ class Gaussian(Function1D, ABC):
         val_fwhm = 2.0 * np.sqrt(2.0 * np.log(2.0))
         self.__sigma = val / val_fwhm
 
+    @staticmethod
+    def normalize(x, mode="integral"):
+
+        if mode == "integral":
+            normalization = x.sum()
+        elif mode == "peak":
+            normalization = x.max()
+        else:
+            raise ValueError("invalid mode, must be 'integral' or 'peak'")
+
+        return x / normalization
+
     def run(self, normalized=True):
         f_gauss = self.amplitude * np.exp(-0.5 * ((self.x - self.mu) / self.sigma)**2)
         if normalized:
-            f_gauss /= np.sum(f_gauss)
+            f_gauss = self.normalize(f_gauss)
         return f_gauss

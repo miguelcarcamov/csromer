@@ -20,7 +20,7 @@ class FaradayThickSource(FaradaySource):
 
     def simulate(self):
         nu = c / np.sqrt(self.lambda2)
-        k = (nu / self.nu_0)**(-1.0 * self.spectral_idx)
+        k = (nu / self.nu_0)**self.spectral_idx
         const = self.s_nu * k
         self.data = const * np.exp(2j * self.lambda2 * self.phi_center
                                    ) * np.sinc(self.phi_fg * self.lambda2 / np.pi)

@@ -13,9 +13,9 @@ from regions import CirclePixelRegion, CircleSkyRegion, PixCoord
 
 from ..utils.utilities import calculate_noise
 
-SMALL_SIZE = 6
-MEDIUM_SIZE = 7
-BIGGER_SIZE = 8
+SMALL_SIZE = 14
+MEDIUM_SIZE = 15
+BIGGER_SIZE = 16
 
 
 def create_circular_skyregion(ra, dec, radius, radius_unit="arcsec", unit="deg"):
@@ -119,7 +119,7 @@ class RMPlotter:
         save_path: str = "./plot_rm.pdf",
         file_format: str = "pdf",
     ):
-        fig = plt.figure(dpi=dpi)
+        fig = plt.figure(figsize=(20, 10), dpi=dpi)
         if self.use_latex:
             plt.rcParams.update(
                 {
@@ -131,11 +131,11 @@ class RMPlotter:
             )
 
         plt.rc("font", size=MEDIUM_SIZE)  # controls default text sizes
-        plt.rc("axes", titlesize=SMALL_SIZE)  # fontsize of the axes title
+        plt.rc("axes", titlesize=MEDIUM_SIZE)  # fontsize of the axes title
         plt.rc("axes", labelsize=MEDIUM_SIZE)  # fontsize of the x and y labels
-        plt.rc("xtick", labelsize=SMALL_SIZE)  # fontsize of the tick labels
-        plt.rc("ytick", labelsize=SMALL_SIZE)  # fontsize of the tick labels
-        plt.rc("legend", fontsize=SMALL_SIZE)  # legend fontsize
+        plt.rc("xtick", labelsize=MEDIUM_SIZE)  # fontsize of the tick labels
+        plt.rc("ytick", labelsize=MEDIUM_SIZE)  # fontsize of the tick labels
+        plt.rc("legend", fontsize=MEDIUM_SIZE)  # legend fontsize
 
         # Set colormaps
         plasmacmap = plt.cm.get_cmap("plasma").copy()
@@ -214,7 +214,13 @@ class RMPlotter:
 
         if self.rm_image_error is not None and self.pol_fraction_image is not None:
             ax1 = fig.add_subplot(1, 3, 1, projection=wcs_rm_image, box_aspect=1)
-            c1 = ax1.imshow(rm_image_data, origin="lower", cmap=inferno, vmin=-150, vmax=150)
+            c1 = ax1.imshow(
+                rm_image_data,
+                origin="lower",
+                cmap=inferno,
+                vmin=np.nanmin(rm_image_data),
+                vmax=np.nanmax(rm_image_data)
+            )
             # ax1.text(x=173.4776803, y=49.0761733, s="N")
             # ax1.text(x=173.4719210, y=49.0538024, ha="center", s="S", transform=ax1.get_transform(wcs_rm_image))
             ax1.contour(
@@ -230,7 +236,7 @@ class RMPlotter:
             south_region.plot(ax=ax1, color="darkcyan", lw=0.8)
 
             ax2 = fig.add_subplot(1, 3, 2, projection=wcs_rm_image_error, box_aspect=1)
-            c2 = ax2.imshow(rm_image_error_data, origin="lower", cmap=inferno, vmin=0, vmax=1)
+            c2 = ax2.imshow(rm_image_error_data, origin="lower", cmap=inferno, vmin=0, vmax=3)
             ax2.contour(
                 total_intensity_data,
                 transform=ax2.get_transform(wcs_total_intensity),
