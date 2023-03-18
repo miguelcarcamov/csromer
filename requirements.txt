@@ -1,6 +1,7 @@
 astropy==5.2.1
 astropy-healpix==0.7
 astroquery==0.4.6
+cmasher==1.6.3
 cmcrameri==1.5
 dask==2023.2.0
 h5py==3.8.0
