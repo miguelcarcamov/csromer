@@ -9,6 +9,10 @@ from matplotlib import ticker
 from mpl_toolkits import axes_grid1
 from scipy import asarray as ar
 
+SMALL_SIZE = 14
+MEDIUM_SIZE = 15
+BIGGER_SIZE = 16
+
 
 def add_colorbar(im, aspect=20, pad_fraction=0.5, **kwargs):
     """Add a vertical color bar to an image plot."""
@@ -28,7 +32,7 @@ def create_animation(
     xlabel="",
     ylabel="",
     cblabel="",
-    title_pad=0.0,
+    title_pad=0.02,
     vmin=None,
     vmax=None,
     output_video="dynamic_images.mp4",
@@ -36,6 +40,21 @@ def create_animation(
     interval=250,
     repeat=False,
 ):
+    plt.rcParams.update(
+        {
+            "font.family": "serif",
+            "text.usetex": True,
+            "pgf.rcfonts": False,
+            "pgf.texsystem": "pdflatex",  # default is xetex
+        }
+    )
+
+    plt.rc("font", size=MEDIUM_SIZE)  # controls default text sizes
+    plt.rc("axes", titlesize=MEDIUM_SIZE)  # fontsize of the axes title
+    plt.rc("axes", labelsize=MEDIUM_SIZE)  # fontsize of the x and y labels
+    plt.rc("xtick", labelsize=MEDIUM_SIZE)  # fontsize of the tick labels
+    plt.rc("ytick", labelsize=MEDIUM_SIZE)  # fontsize of the tick labels
+    plt.rc("legend", fontsize=MEDIUM_SIZE)  # legend fontsize
     num_ims = len(cube)
     if num_ims != 0:
         if vmin is None and vmax is None:
@@ -55,6 +74,12 @@ def create_animation(
         # time_text = ax.text(.5, .5, '', fontsize=15)
         ax.coords[0].set_axislabel(xlabel)
         ax.coords[1].set_axislabel(ylabel)
+        ax.coords[0].set_ticks(number=4)
+        ax.coords[0].set_ticklabel(exclude_overlapping=True)
+        ax.coords[1].set_ticks(number=4)
+        ax.coords[1].set_ticklabel(exclude_overlapping=True)
+        ax.coords[0].set_ticks_position('b')
+        ax.coords[1].set_ticks_position('l')
 
         cbar1 = add_colorbar(im)
         cbar1.ax.set_ylabel(cblabel)
@@ -62,10 +87,11 @@ def create_animation(
         def animate(i):
             arr = cube[i]
             phi_i = cube_axis[i]
-            # vmax     = np.max(arr)
-            # vmin     = np.min(arr)
-            tx.set_text("Faraday Depth Spectrum at {0:.2f} rad/m^2".format(phi_i))
-            # time_text.set_text("Phi: {0}".format(phi_i))
+            # vmax = np.nanmax(arr)
+            # vmin = np.nanmin(arr)
+            tx.set_text(
+                r"Faraday Depth Spectrum at $\phi = {0:.2f}$ rad m$^{1}$".format(phi_i, "-2")
+            )
             im.set_data(arr)
             im.set_clim(vmin, vmax)
 
@@ -79,7 +105,6 @@ def create_animation(
             repeat_delay=1000,
         )
         ani.save(output_video, fps=fps)
-        # plt.show()
 
 
 def create_animation_from_fits(
@@ -92,12 +117,13 @@ def create_animation_from_fits(
     vmin=None,
     vmax=None,
     fps=30,
+    unit_factor=1.,
     interval=250,
     repeat=False
 ):
     with fits.open(fitsfile) as hdul:
-        data = hdul[0].data
         header = hdul[0].header
+        data = hdul[0].data * unit_factor
 
     if phi_bound is None:
         phi_bound = 500.
