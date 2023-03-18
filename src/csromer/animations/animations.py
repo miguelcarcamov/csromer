@@ -6,25 +6,6 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy import asarray as ar
 from scipy import exp
 
-cmaps = [
-    "magma",
-    "inferno",
-    "inferno_r",
-    "plasma",
-    "viridis",
-    "bone",
-    "afmhot",
-    "gist_heat",
-    "CMRmap",
-    "gnuplot",
-    "Blues_r",
-    "Purples_r",
-    "ocean",
-    "hot",
-    "seismic_r",
-    "ocean_r",
-]
-
 
 def config_axes(data, header, units="degrees"):
     u_factor = 1.0
