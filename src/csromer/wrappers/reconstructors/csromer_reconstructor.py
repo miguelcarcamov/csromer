@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 
 import numpy as np
+from astropy.stats import sigma_clipped_stats
 
 from ...dictionaries import Wavelet
 from ...objectivefunction import L1, TSV, TV, Chi2, OFunction
@@ -81,11 +82,19 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
         return ricean_peak
 
     @staticmethod
-    def calculate_fd_signal_noise(fd_signal, phi, max_fd_depth, threshold=0.8):
+    def calculate_fd_signal_noise(
+        fd_signal, phi, max_fd_depth, threshold=0., sigma=0.3, cenfunc='mean', stdfunc='mad_std'
+    ):
+
         mask_edges_phi = np.abs(phi) > max_fd_depth * threshold
-        fd_signal_noise = 0.5 * (
-            np.std(fd_signal[mask_edges_phi].real) + np.std(fd_signal[mask_edges_phi].imag)
+        _, _, background_real_rms = sigma_clipped_stats(
+            fd_signal.real, mask=mask_edges_phi, sigma=sigma, cenfunc=cenfunc, stdfunc=stdfunc
         )
+        _, _, background_imag_rms = sigma_clipped_stats(
+            fd_signal.imag, mask=mask_edges_phi, sigma=sigma, cenfunc=cenfunc, stdfunc=stdfunc
+        )
+
+        fd_signal_noise = 0.5 * (background_real_rms + background_imag_rms)
         return fd_signal_noise
 
     @staticmethod
@@ -100,7 +109,7 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
         else:
             indexes, outliers_indexes = flagger.run()
 
-        return indexes, outliers_idxs
+        return indexes, outliers_indexes
 
     def config_fd_space(self, cellsize: float = None, oversampling: float = None):
         if cellsize is not None and oversampling is not None:

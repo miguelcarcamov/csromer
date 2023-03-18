@@ -7,7 +7,6 @@ Created on Fri Nov  8 12:33:53 2019
 """
 import numpy as np
 from astropy.stats import sigma_clipped_stats
-from astropy.wcs import WCS
 
 
 def next_power_2(n):
@@ -73,6 +72,8 @@ def calculate_noise(
     y0=None,
     yn=None,
     nsigma=3,
+    cenfunc='mean',
+    stdfunc='mad_std',
     use_sigma_clipped_stats=False,
 ):
     if x0 is None:
@@ -100,10 +101,10 @@ def calculate_noise(
             sigma = np.nanstd(image[y0:yn, x0:xn])
     else:
         if image.ndim > 2:
-            mean, median, sigma = sigma_clipped_stats(
-                image[:, y0:yn, x0:xn], sigma=nsigma, axis=(1, 2)
+            _, _, sigma = sigma_clipped_stats(
+                image[:, y0:yn, x0:xn], sigma=nsigma, cenfunc=cenfunc, stdfunc=stdfunc, axis=(1, 2)
             )
         else:
-            mean, median, sigma = sigma_clipped_stats(image[y0:yn, x0:xn], sigma=nsigma)
+            _, _, sigma = sigma_clipped_stats(image[y0:yn, x0:xn], cenfunc=cenfunc, stdfunc=stdfunc)
 
     return sigma
