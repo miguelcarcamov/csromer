@@ -13,9 +13,9 @@ from regions import CirclePixelRegion, CircleSkyRegion, PixCoord
 
 from ..utils.utilities import calculate_noise
 
-SMALL_SIZE = 14
-MEDIUM_SIZE = 15
-BIGGER_SIZE = 16
+SMALL_SIZE = 26
+MEDIUM_SIZE = 28
+BIGGER_SIZE = 30
 
 
 def create_circular_skyregion(ra, dec, radius, radius_unit="arcsec", unit="deg"):
@@ -195,7 +195,7 @@ class RMPlotter:
 
         # Get noise of total intensity image
         total_intensity_noise = self.total_intensity_nsigma * calculate_noise(
-            total_intensity_data, use_sigma_clipped_stats=True
+            total_intensity_data, nsigma=5., use_sigma_clipped_stats=True
         )
         # contour levels
         # the step parameter is the factor of 2^step each contour goes up by
@@ -206,7 +206,7 @@ class RMPlotter:
         I_contours = [total_intensity_noise * i for i in contourmults]
 
         core_region = create_circular_skyregion(173.4962263, 49.0629333,
-                                                17.782).to_pixel(wcs_rm_image)
+                                                20.5).to_pixel(wcs_rm_image)
         north_region = create_circular_skyregion(173.4776803, 49.0761733,
                                                  41.295).to_pixel(wcs_rm_image)
         south_region = create_circular_skyregion(173.4719210, 49.0538024,
@@ -214,13 +214,7 @@ class RMPlotter:
 
         if self.rm_image_error is not None and self.pol_fraction_image is not None:
             ax1 = fig.add_subplot(1, 3, 1, projection=wcs_rm_image, box_aspect=1)
-            c1 = ax1.imshow(
-                rm_image_data,
-                origin="lower",
-                cmap=inferno,
-                vmin=np.nanmin(rm_image_data),
-                vmax=np.nanmax(rm_image_data)
-            )
+            c1 = ax1.imshow(rm_image_data, origin="lower", cmap=inferno, vmin=-150, vmax=150)
             # ax1.text(x=173.4776803, y=49.0761733, s="N")
             # ax1.text(x=173.4719210, y=49.0538024, ha="center", s="S", transform=ax1.get_transform(wcs_rm_image))
             ax1.contour(
@@ -228,12 +222,12 @@ class RMPlotter:
                 transform=ax1.get_transform(wcs_total_intensity),
                 levels=I_contours,
                 colors="black",
-                alpha=0.6,
-                linewidths=0.1,
+                alpha=0.8,
+                linewidths=0.5,
             )
-            core_region.plot(ax=ax1, color="gold", lw=0.8)
-            north_region.plot(ax=ax1, color="royalblue", lw=0.8)
-            south_region.plot(ax=ax1, color="darkcyan", lw=0.8)
+            core_region.plot(ax=ax1, color="gold", lw=2.)
+            north_region.plot(ax=ax1, color="royalblue", lw=2.)
+            south_region.plot(ax=ax1, color="darkcyan", lw=2.)
 
             ax2 = fig.add_subplot(1, 3, 2, projection=wcs_rm_image_error, box_aspect=1)
             c2 = ax2.imshow(rm_image_error_data, origin="lower", cmap=inferno, vmin=0, vmax=3)
@@ -242,8 +236,8 @@ class RMPlotter:
                 transform=ax2.get_transform(wcs_total_intensity),
                 levels=I_contours,
                 colors="black",
-                alpha=0.6,
-                linewidths=0.1,
+                alpha=0.8,
+                linewidths=0.5,
             )
 
             ax3 = fig.add_subplot(1, 3, 3, projection=wcs_pol_fraction, box_aspect=1)
@@ -253,8 +247,8 @@ class RMPlotter:
                 transform=ax3.get_transform(wcs_total_intensity),
                 levels=I_contours,
                 colors="black",
-                alpha=0.6,
-                linewidths=0.1,
+                alpha=0.8,
+                linewidths=0.5,
             )
 
             # ax2.axes.xaxis.set_visible(False)
