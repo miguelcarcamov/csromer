@@ -228,7 +228,7 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
         )
 
     def calculate_second_moment(self):
-        # phi_nonzero_positions = np.abs(self.fd_model) != 0.
+        # phi_nonzero_positions = np.abs(self.fd_model) > 0.
         # phi_nonzero = self.parameter.phi[phi_nonzero_positions]
         # fd_model_nonzero = self.fd_model[phi_nonzero_positions]
 
