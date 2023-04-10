@@ -83,10 +83,11 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
 
     @staticmethod
     def calculate_fd_signal_noise(
-        fd_signal, phi, max_fd_depth, threshold=0., sigma=0.3, cenfunc='mean', stdfunc='mad_std'
+        fd_signal, phi, max_fd_depth, threshold=0.3, sigma=5, cenfunc='mean', stdfunc='mad_std'
     ):
 
-        mask_edges_phi = np.abs(phi) > max_fd_depth * threshold
+        mask_edges_phi = np.abs(phi) <= max_fd_depth * threshold
+
         _, _, background_real_rms = sigma_clipped_stats(
             fd_signal.real, mask=mask_edges_phi, sigma=sigma, cenfunc=cenfunc, stdfunc=stdfunc
         )
