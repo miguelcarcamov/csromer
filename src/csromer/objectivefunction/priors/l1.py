@@ -21,7 +21,6 @@ class L1(Fi):
         return val
 
     def calculate_gradient(self, x, epsilon=np.finfo(np.float32).tiny):
-        dx = np.zeros(len(x), x.dtype)
 
         dx = x / approx_abs(x, epsilon)
 

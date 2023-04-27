@@ -5,7 +5,7 @@ from astropy.stats import sigma_clipped_stats
 
 from ...dictionaries import Wavelet
 from ...objectivefunction import L1, TSV, TV, Chi2, OFunction
-from ...optimization import FISTA
+from ...optimization.methods.fista import BacktrackingFISTA, GeneralFISTA
 from ...reconstruction import Parameter
 from ...transformers.dfts import NDFT1D, NUFFT1D
 from ...transformers.flaggers.flagger import Flagger
@@ -187,11 +187,13 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
         else:
             opt_noise = self.dataset.theo_noise
 
-        opt = FISTA(
+        opt = BacktrackingFISTA(
             guess_param=self.parameter,
             F_obj=F_obj,
             fx=chi2,
             gx=g_obj,
+            lipschitz_constant=1,
+            eta=2,
             noise=opt_noise,
             verbose=True,
         )
@@ -228,9 +230,6 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
         )
 
     def calculate_second_moment(self):
-        # phi_nonzero_positions = np.abs(self.fd_model) > 0.
-        # phi_nonzero = self.parameter.phi[phi_nonzero_positions]
-        # fd_model_nonzero = self.fd_model[phi_nonzero_positions]
 
         fd_model_abs = np.abs(self.fd_model)
         k_parameter = np.sum(fd_model_abs)
