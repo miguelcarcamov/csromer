@@ -1,10 +1,9 @@
 import numpy as np
 
 
-def calculate_Q(x, y, fx, fx_grad, gx, lipschitz_constant):
+def calculate_Q(x, y, fx, fx_grad, lipschitz_constant):
     x_minus_y = x - y
-    res = fx(y) + np.dot(x_minus_y,
-                         -fx_grad(y)) + 0.5 * lipschitz_constant * np.sum(x_minus_y**2) + gx(x)
+    res = fx(y) + np.dot(x_minus_y, fx_grad(y)) + 0.5 * lipschitz_constant * np.sum(x_minus_y**2)
     return res
 
 
@@ -18,62 +17,65 @@ def fista_backtracking_algorithm(
     eta=None,
     max_iter=None,
     n=None,
-    noise=None,
+    tol=None,
     verbose=True,
 ):
     if x is None and n is not None:
         x = np.zeros(n, dtype=np.float32)
-    t = 1
-    z = x.copy()
-    min_cost = 0.0
 
-    if max_iter is None and noise is not None:
-        if noise is not np.nan:
-            if noise != 0.0:
-                max_iter = int(np.floor(g_prox.getLambda() / noise))
-            else:
-                noise = 1e-5
-                max_iter = int(np.floor(g_prox.getLambda() / noise))
-        else:
-            raise ValueError("Noise must be a number")
+    mu = 1
+    z = x.copy()
+
+    if eta is None:
+        eta = 1.1
+
+    if max_iter is None:
+        max_iter = 100
         if verbose:
             print("Iterations set to " + str(max_iter))
 
-    if noise is None:
-        noise = 1e-5
-
-    if noise >= g_prox.getLambda():
-        if verbose:
-            print("Error, noise cannot be greater than lambda")
-        return min_cost, x
+    cost_values = np.zeros(max_iter, dtype=np.float32)
+    original_lambda = g_prox.get_lambda()
 
     for it in range(0, max_iter):
-        xold = x.copy()
-        z = z - fx_grad(z)
-        x = g_prox.calc_prox(z)
+        x_old = x.copy()
+        f_eval_old = F(x_old)
+        cost_values[it] = f_eval_old
 
-        t0 = t
-        t = 0.5 * (1.0 + np.sqrt(1.0 + 4.0 * t**2))
-        z = x + ((t0 - 1.0) / t) * (x - xold)
-        # e = np.sqrt(np.sum((x-xold)**2)) / np.sqrt(np.sum(xold**2))
-        # print(e)
-        e = np.sum(np.abs(x - xold)) / len(x)
+        while True:
+            zk = z - (fx_grad(z) / lipschitz_constant)
+            g_prox.set_lambda(reg=original_lambda / lipschitz_constant)
+            xk = g_prox.calc_prox(zk)
+            f_eval_inner_loop = fx(xk)
+            q_eval = calculate_Q(xk, z, fx, fx_grad, lipschitz_constant)
+            if f_eval_inner_loop <= q_eval:
+                break
+            lipschitz_constant *= eta
 
-        # if e <= tol:
-        #    if verbose:
-        #       print("Exit due to tolerance: ", e, " < ", tol)
-        #    print("Iterations: ", it + 1)
-        #    break
+        lipschitz_constant /= eta
+        mu_new = 0.5 * (1.0 + np.sqrt(1.0 + 4.0 * mu**2))
+        x_temp = xk
+
+        if F(x_temp) < f_eval_old:
+            #z = (1.0 + (mu - 1.0) / mu_new) * x_temp + ((1.0 - mu) / mu_new) * x
+            z = x_temp + ((mu - 1.0) / mu_new) * (x_temp - x)
+            x = x_temp
+        else:
+            #z = (mu / mu_new) * x_temp + (1 - (mu / mu_new)) * x;
+            z = x + (mu / mu_new) * (x_temp - x)
+
+        e = np.sum(np.abs(x - x_old)) / len(x)
+
+        if e <= tol:
+            if verbose:
+                print("Exit due to tolerance: ", e, " < ", tol)
+                print("Iterations: ", it + 1)
+            break
 
         if verbose and it % 10 == 0:
             cost = F(x)
             print("Iteration: ", it, " objective function value: {0:0.5f}".format(cost))
-        new_lambda = g_prox.getLambda() - noise
-        if new_lambda > 0.0:
-            g_prox.setLambda(reg=new_lambda)
-        else:
-            if verbose:
-                print("Exit due to negative regularization parameter")
-            break
+        mu = mu_new
+
     min_cost = F(x)
     return min_cost, x

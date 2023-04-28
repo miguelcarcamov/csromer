@@ -11,7 +11,6 @@ class FISTA(Optimizer):
     fx: Chi2 = None
     gx: Fi = None
     lipschitz_constant: float = None
-    noise: float = None
 
     def run(self):
         pass

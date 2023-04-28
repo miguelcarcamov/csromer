@@ -16,7 +16,7 @@ class FixedPointMethod(Optimizer):
         e = 1
         iter = 0
 
-        while e > self.tol and iter < self.maxiter:
+        while e > self.tol and iter < self.max_iter:
             xt1 = self.gx(xt)
             e = np.sum(np.abs(xt1 - xt))
             xt = xt1

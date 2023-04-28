@@ -15,7 +15,7 @@ class GeneralFISTA(FISTA):
             self.fx.calculate_gradient_fista,
             self.gx,
             self.lipschitz_constant,
-            self.maxiter,
+            self.max_iter,
             self.guess_param.n,
             self.verbose,
         )

@@ -24,14 +24,10 @@ class L2(Fi):
         return val
 
     def calculate_gradient(self, x, epsilon=np.finfo(np.float32).tiny):
-        dx = np.zeros(len(x), x.dtype)
-
         dx = x / approx_l2_norm(x, epsilon)
-
         return dx
 
     def calculate_prox(self, x, nu=0):
         l2_factor = 1. - (self.reg / l2_norm(x))
         l2_prox = np.maximum(l2_factor, 0.0)
-        print(l2_prox)
         return x * l2_prox

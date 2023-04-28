@@ -18,9 +18,9 @@ class BacktrackingFISTA(FISTA):
             self.gx,
             self.lipschitz_constant,
             self.eta,
-            self.maxiter,
+            self.max_iter,
             self.guess_param.n,
-            self.noise,
+            self.tol,
             self.verbose,
         )
 

@@ -19,10 +19,10 @@ def fista_general_algorithm(
 
     t = 1
     z = x.copy()
-    g_prox.setLambda(reg=g_prox.getLambda() / lipschitz_constant)
+    g_prox.set_lambda(reg=g_prox.get_lambda() / lipschitz_constant)
 
     if max_iter is None:
-        max_iter = 110
+        max_iter = 100
         if verbose:
             print("Iterations set to " + str(max_iter))
 
