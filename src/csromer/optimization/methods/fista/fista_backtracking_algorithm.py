@@ -8,8 +8,8 @@ def calculate_Q(x, y, fx, fx_grad, lipschitz_constant):
 
 
 def fista_backtracking_algorithm(
-    x=None,
-    F=None,
+    x_init=None,
+    F_obj=None,
     fx=None,
     fx_grad=None,
     g_prox=None,
@@ -20,11 +20,12 @@ def fista_backtracking_algorithm(
     tol=None,
     verbose=True,
 ):
-    if x is None and n is not None:
-        x = np.zeros(n, dtype=np.float32)
+    if x_init is None and n is not None:
+        x_init = np.zeros(n, dtype=np.float32)
 
     mu = 1
-    z = x.copy()
+    x = x_init.copy()
+    z = x
 
     if eta is None:
         eta = 1.1
@@ -39,8 +40,10 @@ def fista_backtracking_algorithm(
 
     for it in range(0, max_iter):
         x_old = x.copy()
-        f_eval_old = F(x_old)
+        f_eval_old = F_obj.evaluate(x_old)
         cost_values[it] = f_eval_old
+        if verbose and it % 100 == 0:
+            print("Iteration: ", it, " objective function value: {0:0.5f}".format(cost_values[it]))
 
         while True:
             zk = z - (fx_grad(z) / lipschitz_constant)
@@ -53,29 +56,25 @@ def fista_backtracking_algorithm(
             lipschitz_constant *= eta
 
         lipschitz_constant /= eta
+        F_obj.set_lambda(reg=original_lambda / lipschitz_constant, _id=1)
         mu_new = 0.5 * (1.0 + np.sqrt(1.0 + 4.0 * mu**2))
         x_temp = xk
 
-        if F(x_temp) < f_eval_old:
-            #z = (1.0 + (mu - 1.0) / mu_new) * x_temp + ((1.0 - mu) / mu_new) * x
+        if F_obj.evaluate(x_temp) < f_eval_old:
             z = x_temp + ((mu - 1.0) / mu_new) * (x_temp - x)
             x = x_temp
         else:
-            #z = (mu / mu_new) * x_temp + (1 - (mu / mu_new)) * x;
             z = x + (mu / mu_new) * (x_temp - x)
 
-        e = np.sum(np.abs(x - x_old)) / len(x)
+    # e = np.sum(np.abs(x - x_old)) / len(x)
 
-        if e <= tol:
-            if verbose:
-                print("Exit due to tolerance: ", e, " < ", tol)
-                print("Iterations: ", it + 1)
-            break
+    # if e <= tol:
+    #     if verbose:
+    #         print("Exit due to tolerance: ", e, " < ", tol)
+    #         print("Iterations: ", it + 1)
+    #      break
 
-        if verbose and it % 10 == 0:
-            cost = F(x)
-            print("Iteration: ", it, " objective function value: {0:0.5f}".format(cost))
         mu = mu_new
 
-    min_cost = F(x)
+    min_cost = F_obj.evaluate(x)
     return min_cost, x

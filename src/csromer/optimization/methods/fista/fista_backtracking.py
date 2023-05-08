@@ -12,7 +12,7 @@ class BacktrackingFISTA(FISTA):
     def run(self):
         ret, x = fista_backtracking_algorithm(
             self.guess_param.data,
-            self.F_obj.evaluate,
+            self.F_obj,
             self.fx.evaluate,
             self.fx.calculate_gradient_fista,
             self.gx,
