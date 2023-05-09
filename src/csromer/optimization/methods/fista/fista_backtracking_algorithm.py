@@ -56,7 +56,6 @@ def fista_backtracking_algorithm(
             lipschitz_constant *= eta
 
         lipschitz_constant /= eta
-        F_obj.set_lambda(reg=original_lambda / lipschitz_constant, _id=1)
         mu_new = 0.5 * (1.0 + np.sqrt(1.0 + 4.0 * mu**2))
         x_temp = xk
 
