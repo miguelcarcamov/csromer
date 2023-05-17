@@ -12,5 +12,9 @@ class FISTA(Optimizer):
     gx: Fi = None
     lipschitz_constant: float = None
 
+    def __post_init__(self):
+        if self.lipschitz_constant is None:
+            self.lipschitz_constant = 1.0
+
     def run(self):
         pass
