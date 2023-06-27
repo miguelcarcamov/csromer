@@ -14,19 +14,23 @@ class TSV(Fi):
         super().__post_init__()
 
     def evaluate(self, x):
-        tv = 0.0
         n = x.shape[0]
-        for i in range(0, n - 1):
-            tv += np.abs(x[i + 1] - x[i])**2
+        tmp = x[1:n] - x[0:n - 1]
+        tv = np.sum(tmp**2)
         return tv
 
     def calculate_gradient(self, x):
 
-        n = len(x)
-        dx = np.zeros(n, x.dtype)
-        for i in range(1, n - 1):
-            dx[i] = 2.0 * (np.sign(x[i] - x[i - 1]) - np.sign(x[i + 1] - x[i]))
-        return dx
+        n = x.shape[0]
+        derivative = np.zeros_like(x)
+        idx_plus = np.arange(1, n)
+        idx = np.arange(0, n - 1)
+
+        derivative[idx] += x[idx] - x[idx_plus]
+        derivative[idx_plus] += x[idx_plus] - x[idx]
+        derivative *= 2.0
+
+        return derivative
 
     def calculate_prox(self, x, nu=0.0):
         return ptv.tv2_1d(x, self.reg)
