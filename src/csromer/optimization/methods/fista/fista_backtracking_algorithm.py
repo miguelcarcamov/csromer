@@ -1,9 +1,9 @@
 import numpy as np
 
 
-def calculate_Q(x, y, fx, fx_grad, lipschitz_constant):
+def calculate_Q(x, y, q_core, q_core_grad, lipschitz_constant):
     x_minus_y = x - y
-    res = fx(y) + np.dot(x_minus_y, fx_grad(y)) + 0.5 * lipschitz_constant * np.sum(x_minus_y**2)
+    res = q_core + np.dot(x_minus_y, q_core_grad) + 0.5 * lipschitz_constant * np.sum(x_minus_y**2)
     return res
 
 
@@ -45,12 +45,14 @@ def fista_backtracking_algorithm(
         if verbose and it % 100 == 0:
             print("Iteration: ", it, " objective function value: {0:0.5f}".format(cost_values[it]))
 
+        q_core = fx(z)
+        grad_z = fx_grad(z)
         while True:
-            zk = z - (fx_grad(z) / lipschitz_constant)
+            zk = z - (grad_z / lipschitz_constant)
             g_prox.set_lambda(reg=original_lambda / lipschitz_constant)
             xk = g_prox.calc_prox(zk)
             f_eval_inner_loop = fx(xk)
-            q_eval = calculate_Q(xk, z, fx, fx_grad, lipschitz_constant)
+            q_eval = calculate_Q(xk, z, q_core, grad_z, lipschitz_constant)
             if f_eval_inner_loop <= q_eval:
                 break
             lipschitz_constant *= eta

@@ -42,7 +42,7 @@ class OFunction:
         return res
 
     def calc_prox(self, x, nu=0, _id=0):
-        if len(self.prox_functions) == 1:
+        if self.nfuncs == 1:
             f_i = self.F[_id]
             proximal = f_i.calculate_prox(x, nu)
         else:

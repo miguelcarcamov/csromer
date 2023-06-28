@@ -12,7 +12,7 @@ class GeneralFISTA(FISTA):
         ret, x = fista_general_algorithm(
             self.guess_param.data,
             self.F_obj.evaluate,
-            self.fx.calculate_gradient_fista,
+            self.fx.calculate_gradient,
             self.gx,
             self.lipschitz_constant,
             self.max_iter,
