@@ -40,7 +40,8 @@ class UndecimatedWavelet(Wavelet):
     @staticmethod
     def calculate_max_level(x):
         n = len(x)
-        return pywt.swt_max_level(n)
+        max_level = min(pywt.swt_max_level(n), 8)
+        return max_level
 
     def decompose(self, x):
         if self.wavelet_level is not None:
@@ -64,7 +65,7 @@ class UndecimatedWavelet(Wavelet):
                 "Your signal length is not multiple of 2**" + str(self.wavelet_level) +
                 ". Padding array..."
             )
-            padded_size = next_power_2(signal_size)
+            padded_size = 2**(np.ceil(np.log2(abs(signal_size))))
             self.pad_width = padded_size - signal_size
 
             if self.mode is None:
@@ -146,14 +147,14 @@ class UndecimatedWavelet(Wavelet):
                 arr=input_coeffs[self.n:len(input_coeffs)],
                 coeff_slices=self.coeff_slices,
                 coeff_shapes=self.coeff_shapes,
-                output_format="wavedec",
+                output_format="swt",
             )
         else:
             coeffs = pywt.unravel_coeffs(
                 arr=input_coeffs,
                 coeff_slices=self.coeff_slices,
                 coeff_shapes=self.coeff_shapes,
-                output_format="wavedec",
+                output_format="swt",
             )
 
         signal_from_coeffs = pywt.iswt(coeffs, self.wavelet, self.norm)
@@ -175,19 +176,15 @@ class UndecimatedWavelet(Wavelet):
         if self.append_signal:
             signal = input_coeffs[0:self.n].copy()
             coeffs = input_coeffs[self.n:len(input_coeffs)]
-            coeffs_re = pywt.array_to_coeffs(
-                coeffs.real, self.coeff_slices[0], output_format="wavedec"
-            )
-            coeffs_im = pywt.array_to_coeffs(
-                coeffs.imag, self.coeff_slices[1], output_format="wavedec"
-            )
+            coeffs_re = pywt.array_to_coeffs(coeffs.real, self.coeff_slices[0], output_format="swt")
+            coeffs_im = pywt.array_to_coeffs(coeffs.imag, self.coeff_slices[1], output_format="swt")
 
         else:
             coeffs_re = pywt.array_to_coeffs(
-                input_coeffs.real, self.coeff_slices[0], output_format="wavedec"
+                input_coeffs.real, self.coeff_slices[0], output_format="swt"
             )
             coeffs_im = pywt.array_to_coeffs(
-                input_coeffs.imag, self.coeff_slices[1], output_format="wavedec"
+                input_coeffs.imag, self.coeff_slices[1], output_format="swt"
             )
 
         signal_re = pywt.iswt(coeffs_re, self.wavelet, self.norm)
