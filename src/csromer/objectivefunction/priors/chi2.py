@@ -37,15 +37,6 @@ class Chi2(Fi):
         else:
             x_ = x.copy()
         x_complex = real_to_complex(x_) * self.norm_factor
-        val = x_complex - self.F_dirty
-        return complex_to_real(val)
-
-    def calculate_gradient_fista(self, x):
-        if self.wavelet is not None:
-            x_ = self.wavelet.reconstruct(x.copy())
-        else:
-            x_ = x.copy()
-        x_complex = real_to_complex(x_) * self.norm_factor
         model_data = self.dft_obj.forward_normalized(x_complex)
         self.dft_obj.dataset.model_data = model_data
         res = -self.dft_obj.dataset.residual

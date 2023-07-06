@@ -1,3 +1,4 @@
+import copy
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -176,7 +177,7 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
 
         F_func = [chi2, l1]
         f_func = [chi2]
-        g_func = [l1]
+        g_func = [copy.deepcopy(l1)]
 
         F_obj = OFunction(F_func)
         f_obj = OFunction(f_func)

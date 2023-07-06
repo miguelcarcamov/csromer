@@ -17,13 +17,10 @@ class L1(Fi):
 
     def evaluate(self, x, epsilon=np.finfo(np.float32).tiny):
         val = np.sum(approx_abs(x, epsilon))
-        # print("Evaluation on L1:", val)
         return val
 
     def calculate_gradient(self, x, epsilon=np.finfo(np.float32).tiny):
-
         dx = x / approx_abs(x, epsilon)
-
         return dx
 
     def calculate_prox(self, x, nu=0):

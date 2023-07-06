@@ -27,7 +27,7 @@ class GradientBasedMethod(Optimizer):
             jac=self.F_obj.calculate_gradient,
             tol=self.tol,
             options={
-                "maxiter": self.maxiter,
+                "maxiter": self.max_iter,
                 "disp": self.verbose
             },
         )

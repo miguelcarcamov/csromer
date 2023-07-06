@@ -11,6 +11,7 @@ from .wavelet import Wavelet
 class UndecimatedWavelet(Wavelet):
     trim_approx: bool = None
     norm: bool = None
+    pad_width: int = None
 
     def __post_init__(self):
         super().__post_init__()
@@ -35,7 +36,8 @@ class UndecimatedWavelet(Wavelet):
         if self.wavelet_level is not None:
             self.array_size = 2**self.wavelet_level
 
-        self.pad_width = None
+        if self.pad_width is None:
+            self.pad_width = 0
 
     @staticmethod
     def calculate_max_level(x):
@@ -53,6 +55,7 @@ class UndecimatedWavelet(Wavelet):
         if self.wavelet_level is None:
             max_level = self.calculate_max_level(x)
             array_size = 2**max_level
+            self.wavelet_level = max_level
         else:
             array_size = 2**self.wavelet_level
 
@@ -60,7 +63,7 @@ class UndecimatedWavelet(Wavelet):
         self.n = signal_size
         x_copy = x.copy()
 
-        if signal_size and (signal_size % array_size) != 0:
+        if signal_size > 0 and (signal_size % array_size) != 0:
             print(
                 "Your signal length is not multiple of 2**" + str(self.wavelet_level) +
                 ". Padding array..."
@@ -80,6 +83,7 @@ class UndecimatedWavelet(Wavelet):
             trim_approx=self.trim_approx,
             norm=self.norm,
         )
+
         coeffs_arr, self.coeff_slices, self.coeff_shapes = pywt.ravel_coeffs(coeffs)
 
         if self.append_signal:
@@ -105,8 +109,7 @@ class UndecimatedWavelet(Wavelet):
                 "Your signal length is not multiple of 2**" + str(self.wavelet_level) +
                 ". Padding array..."
             )
-            # padded_size = int(array_size * round(float(signal_size) / array_size))
-            padded_size = next_power_2(signal_size)
+            padded_size = 2**(np.ceil(np.log2(abs(signal_size))))
             self.pad_width = padded_size - signal_size
             if self.mode is None:
                 x_copy = np.pad(x_copy, (0, self.pad_width))

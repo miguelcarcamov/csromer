@@ -18,7 +18,7 @@ from ..reconstruction.parameter import Parameter
 class Optimizer(metaclass=ABCMeta):
     guess_param: Parameter = None
     F_obj: OFunction = None
-    maxiter: int = None
+    max_iter: int = None
     tol: float = field(init=True, default=np.finfo(np.float32).tiny)
     verbose: bool = None
 

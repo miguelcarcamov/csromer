@@ -1,40 +1,30 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Nov  4 15:43:15 2019
-
-@author: miguel
-"""
+from dataclasses import dataclass, field
+from typing import List, Union
 
 import numpy as np
 
 
+@dataclass(init=True, repr=True)
 class OFunction:
+    F: Union[List[object], np.ndarray] = None
+    n_funcs: int = 0
+    prox_functions: List = field(init=False, default_factory=list)
+    values: np.ndarray = field(init=False, default=np.ndarray)
 
-    def __init__(self, F=None):
-        initlocals = locals()
-        initlocals.pop("self")
-        for a_attribute in initlocals.keys():
-            setattr(self, a_attribute, initlocals[a_attribute])
+    def __post_init__(self):
 
-        if F is None:
+        if self.F is None:
             self.prox_functions = []
-            self.nfuncs = None
+            self.nfuncs = 0
         else:
-            self.values = np.zeros(len(F))
-            self.nfuncs = len(F)
+            self.values = np.zeros(len(self.F))
+            self.nfuncs = len(self.F)
             self.prox_functions = [f_i for f_i in self.F]
 
-    def getProxFunctions(self):
-        return self.prox_functions
-
-    def getValues(self):
-        return self.values
-
-    def getLambda(self, _id=0):
+    def get_lambda(self, _id=0):
         return self.F[_id].reg
 
-    def setLambda(self, reg=0.0, _id=0):
+    def set_lambda(self, reg=0.0, _id=0):
         self.F[_id].reg = reg
 
     def evaluate(self, x):
@@ -52,7 +42,7 @@ class OFunction:
         return res
 
     def calc_prox(self, x, nu=0, _id=0):
-        if len(self.prox_functions) == 1:
+        if self.nfuncs == 1:
             f_i = self.F[_id]
             proximal = f_i.calculate_prox(x, nu)
         else:
