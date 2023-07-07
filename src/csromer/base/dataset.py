@@ -351,9 +351,9 @@ class Dataset(metaclass=ABCMeta):
     def calculate_l2_cellsize(self):
         if self.w is not None:
             lambda2_aux = self.lambda2[self.w > 0.0]
-            delta_l2_min = np.min(np.abs(np.diff(lambda2_aux)))
-            delta_l2_mean = np.mean(np.abs(np.diff(lambda2_aux)))
-            delta_l2_max = np.max(np.abs(np.diff(lambda2_aux)))
+            delta_l2_min = np.nanmin(np.abs(np.diff(lambda2_aux)))
+            delta_l2_mean = np.nanmean(np.abs(np.diff(lambda2_aux)))
+            delta_l2_max = np.nanmax(np.abs(np.diff(lambda2_aux)))
 
             self.delta_l2_min = delta_l2_min
             self.delta_l2_max = delta_l2_max

@@ -23,6 +23,8 @@ def fista_backtracking_algorithm(
     if x_init is None and n is not None:
         x_init = np.zeros(n, dtype=np.float32)
 
+    min_iter = 100
+    iterations_delta = 50
     mu = 1
     x = x_init.copy()
     z = x
@@ -30,8 +32,11 @@ def fista_backtracking_algorithm(
     if eta is None:
         eta = 1.1
 
+    if tol is None:
+        tol = np.finfo(np.float32).tiny
+
     if max_iter is None:
-        max_iter = 100
+        max_iter = 10000
         if verbose:
             print("Iterations set to " + str(max_iter))
 
@@ -68,7 +73,8 @@ def fista_backtracking_algorithm(
             z = x + (mu / mu_new) * (x_temp - x)
 
     # e = np.sum(np.abs(x - x_old)) / len(x)
-
+        if it > min_iter and cost_values[it - iterations_delta] - cost_values[it] < tol:
+            break
     # if e <= tol:
     #     if verbose:
     #         print("Exit due to tolerance: ", e, " < ", tol)

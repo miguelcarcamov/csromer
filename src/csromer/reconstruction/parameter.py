@@ -69,16 +69,18 @@ class Parameter:
     ):
 
         if dataset is not None:
-            l2_min = np.min(dataset.lambda2[np.nonzero(dataset.lambda2)])
-            l2_max = np.max(dataset.lambda2)
+            l2_min = np.nanmin(dataset.lambda2[np.nonzero(dataset.lambda2)])
+            l2_max = np.nanmax(dataset.lambda2)
 
             delta_phi_fwhm = 2.0 * np.sqrt(3.0) / (l2_max - l2_min)  # FWHM of the FPSF
+
             delta_phi_theo = np.pi / l2_min
+
+            phi_max = np.sqrt(3.0) / dataset.delta_l2_mean
 
             delta_phi = min(delta_phi_fwhm, delta_phi_theo)
 
-            phi_max = np.sqrt(3) / dataset.delta_l2_mean
-            phi_max = max(phi_max, delta_phi_fwhm * 10.0)
+            phi_max = max(phi_max, delta_phi * 10.0)
 
             self.rmtf_fwhm = delta_phi_fwhm
             self.max_recovered_width = delta_phi_theo
@@ -86,6 +88,7 @@ class Parameter:
 
             if verbose:
                 print("FWHM of the main peak of the RMTF: {0:.3f} rad/m^2".format(self.rmtf_fwhm))
+
                 print(
                     "Maximum recovered width structure: {0:.3f} rad/m^2".format(
                         self.max_recovered_width
@@ -111,7 +114,7 @@ class Parameter:
             else:
                 self.n = int(temp - np.mod(temp, 32))
 
-            self.cellsize = 2 * phi_max / self.n
+            self.cellsize = phi_r
             self.phi = self.cellsize * np.arange(-(self.n / 2), (self.n / 2), 1)
             self.data = np.zeros_like(self.phi, dtype=np.complex64)
 
