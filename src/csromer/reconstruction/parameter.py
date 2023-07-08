@@ -4,8 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import numpy as np
-from astropy.convolution import Gaussian1DKernel
-from scipy import signal as sci_signal
+from astropy.convolution import convolve_fft
 
 from ..utils import complex_to_real, next_power_2, real_to_complex
 
@@ -154,19 +153,13 @@ class Parameter:
             .format(rmtf_fwhm, rmtf_fwhm_pixels, sigma_x, sigma_x_pixels)
         )
 
-        clean_beam = Gaussian1DKernel(stddev=sigma_x_pixels)
-        clean_beam_array = clean_beam.array
-
+        clean_beam = np.exp(-2.77258872224 * np.power(self.phi / self.rmtf_fwhm, 2.0))
         if x is None:
-            q_stokes = sci_signal.convolve(
-                self.data.real, clean_beam_array, mode="same", method="fft"
-            )
-            u_stokes = sci_signal.convolve(
-                self.data.imag, clean_beam_array, mode="same", method="fft"
-            )
+            q_stokes = convolve_fft(self.data.real, clean_beam)
+            u_stokes = convolve_fft(self.data.imag, clean_beam)
         else:
-            q_stokes = sci_signal.convolve(x.real, clean_beam_array, mode="same", method="fft")
-            u_stokes = sci_signal.convolve(x.imag, clean_beam_array, mode="same", method="fft")
+            q_stokes = convolve_fft(x.real, clean_beam)
+            u_stokes = convolve_fft(x.imag, clean_beam)
 
         p_stokes = q_stokes + 1j * u_stokes
         return p_stokes

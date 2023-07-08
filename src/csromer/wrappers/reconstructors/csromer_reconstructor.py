@@ -100,7 +100,7 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
 
     @staticmethod
     def calculate_sigma_phi_peak(rmtf_fwhm, fd_peak, fd_signal_noise):
-        sigma_phi_peak = rmtf_fwhm / (2. * fd_peak / fd_signal_noise)
+        sigma_phi_peak = rmtf_fwhm * fd_signal_noise / (2. * fd_peak)
         return sigma_phi_peak
 
     def flag_dataset(self, flagger: Flagger = None):
