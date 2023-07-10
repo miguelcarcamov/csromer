@@ -60,7 +60,7 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
     @staticmethod
     def estimate_peak_quadratic_interpolation(fd_signal, cellsize):
         length_n = len(fd_signal)
-        index_0 = np.argmax(np.abs(fd_signal))
+        index_0 = np.nanargmax(np.abs(fd_signal[1:-1])) + 1
 
         fd_signal_0 = np.abs(fd_signal[index_0])
         fd_signal_m1 = np.abs(fd_signal[index_0 - 1])

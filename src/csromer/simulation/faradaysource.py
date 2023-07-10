@@ -123,7 +123,7 @@ class FaradaySource(Dataset):
                 applied_noise[1] = noise.imag
             else:
                 raise TypeError("Noise must be either a float or complex number")
-            avg_noise = (applied_noise[0] + applied_noise[1]) / 2.
+            avg_noise = 0.5 * (applied_noise[0] + applied_noise[1])
         else:
             return
 
