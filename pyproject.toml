@@ -46,3 +46,12 @@ where = ["src"]
 [tool.setuptools_scm]
 local_scheme = "no-local-version"
 write_to = "src/csromer/_version.py"
+
+[tool.pytest.ini_options]
+# So "import csromer" works when running pytest from repo root (with or without pip install -e .)
+pythonpath = ["src"]
+# Collect from both unit and integration (default would too, but this makes it explicit)
+testpaths = ["tests"]
+markers = [
+    "integration: full pipeline tests (simulate -> reconstruct). Require PyWavelets.",
+]

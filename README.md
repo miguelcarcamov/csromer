@@ -76,14 +76,16 @@ This will allow you to run hooks that reformat the project files according to ou
 
 ### Running tests
 
-Activate the project environment first so all dependencies (including PyWavelets) are available; otherwise integration tests will be skipped:
+Install dependencies into the environment first (e.g. `pip install -r requirements-conda.txt`), then run the full suite. **Use `python -m pytest`** so the same interpreter that has csromer and PyWavelets is used; otherwise integration tests may be skipped if the wrong Python runs pytest. **If PyWavelets is not installed**, only a subset of unit tests run; integration tests and `tests/unit/optimization/` are skipped.
 
 ```shell
 micromamba activate csromer-env
-pytest tests/ -v
+pip install -r requirements-conda.txt   # if not already done
+python -m pytest tests/ -v
 ```
 
-(With conda: `conda activate csromer-env` then `pytest tests/ -v`.)
+- Run only integration tests (requires PyWavelets): `python -m pytest tests/ -m integration -v`
+- With conda: `conda activate csromer-env` then `python -m pytest tests/ -v`
 
 ### From PyPI
 
@@ -98,6 +100,17 @@ pytest tests/ -v
 `docker pull ghcr.io/miguelcarcamov/csromer:latest`
 
 ## Troubleshooting
+
+### Integration tests don't run (PyWavelets installed)
+
+If you see only unit tests (e.g. 26 passed, 18 skipped) even with PyWavelets installed, the Python that runs pytest may not be the one where PyWavelets is installed. From the repo root, use the environment's Python explicitly:
+
+```shell
+micromamba activate csromer-env
+python -m pytest tests/ -v
+```
+
+Check that the same interpreter has PyWavelets: `python -c "import pywt; print(pywt.__file__)"`. To run only integration tests: `python -m pytest tests/integration/ -v`.
 
 ### NumPy / Astropy binary incompatibility
 

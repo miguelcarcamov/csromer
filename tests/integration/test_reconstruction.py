@@ -1,12 +1,15 @@
 """
 Integration tests: run full reconstruction pipeline (simulate -> reconstruct -> check outputs).
 Uses small data and few iterations so tests stay fast.
-Requires optional dependency: pywt (PyWavelets).
+Requires PyWavelets (pywt). Install with: pip install PyWavelets
 """
 import numpy as np
 import pytest
 
-pytest.importorskip("pywt", reason="integration tests require PyWavelets")
+pytest.importorskip("pywt", reason="integration tests require PyWavelets (pip install PyWavelets)")
+
+
+pytestmark = pytest.mark.integration
 
 from csromer.simulation import FaradayThinSource
 from csromer.wrappers.reconstructors import CGReconstructorWrapper, CSROMERReconstructorWrapper
