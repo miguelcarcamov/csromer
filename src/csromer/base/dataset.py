@@ -12,8 +12,15 @@ import scipy.stats
 from scipy import special
 from scipy.constants import speed_of_light as c
 
+from ..utils.array_utils import asnumpy, is_dask_array, length_of, maybe_compute
+
 if TYPE_CHECKING:
     from ..transformers.gridding import Gridding
+
+try:
+    import dask.array as da
+except ImportError:
+    da = None
 
 
 def calculate_sigma(
@@ -83,22 +90,37 @@ def ljungbox(x: np.ndarray = None, k: Union[List, int] = None, conf_level: float
         return np.array(x_sum), scipy.stats.chi2.ppf(conf_level, df=k)
 
 
+def _harmonic_mean_w_p(w_q, w_u):
+    """Compute polarization weight W_P = 2 / (1/W_Q + 1/W_U) element-wise. Handles dask and numpy."""
+    if da is not None and (is_dask_array(w_q) or is_dask_array(w_u)):
+        inv_sum = 1.0 / w_q + 1.0 / w_u
+        return da.where(da.greater(inv_sum, 0), 2.0 / inv_sum, 0.0)
+    wq = np.asarray(w_q)
+    wu = np.asarray(w_u)
+    inv_sum = 1.0 / np.where(wq > 0, wq, np.nan) + 1.0 / np.where(wu > 0, wu, np.nan)
+    out = np.where(np.isfinite(inv_sum) & (inv_sum > 0), 2.0 / inv_sum, 0.0)
+    return out.astype(np.float64)
+
+
 @dataclass(init=False, repr=True)
 class Dataset(metaclass=ABCMeta):
-    nu: np.ndarray = None
-    lambda2: np.ndarray = None
-    data: np.ndarray = None
+    nu: Union[np.ndarray, "da.Array"] = None
+    lambda2: Union[np.ndarray, "da.Array"] = None
+    data: Union[np.ndarray, "da.Array"] = None
     l2_ref: float = None
-    w: np.ndarray = None
-    sigma: np.ndarray = None
+    w: Union[np.ndarray, "da.Array"] = None
+    w_q: Union[np.ndarray, "da.Array"] = None
+    w_u: Union[np.ndarray, "da.Array"] = None
+    w_p: Union[np.ndarray, "da.Array"] = None
+    sigma: Union[np.ndarray, "da.Array"] = None
     spectral_idx: float = None
     gridded: bool = None
-    s: np.ndarray = None
-    model_data: np.ndarray = None
+    s: Union[np.ndarray, "da.Array"] = None
+    model_data: Union[np.ndarray, "da.Array"] = None
     m: int = None
     theo_noise: float = None
     nu_0: float = None
-    k: float = None
+    k: Union[float, "da.Array"] = None
 
     def __init__(
         self,
@@ -107,6 +129,8 @@ class Dataset(metaclass=ABCMeta):
         data=None,
         l2_ref=None,
         w=None,
+        w_q=None,
+        w_u=None,
         sigma=None,
         spectral_idx=None,
         gridded=None,
@@ -123,7 +147,10 @@ class Dataset(metaclass=ABCMeta):
         self.delta_l2_max = 0.0
         self.delta_l2_mean = 0.0
         self.theo_noise = None
-        self.w = None
+        self.__w = None
+        self.__w_q = None
+        self.__w_u = None
+        self.__w_p = None
         self.lambda2 = lambda2
         self.nu = nu
         self.spectral_idx = spectral_idx
@@ -136,14 +163,17 @@ class Dataset(metaclass=ABCMeta):
             self.s = None
 
         if lambda2 is not None:
-            self.m = len(self.lambda2)
+            self.m = length_of(self.lambda2)
         elif nu is not None:
-            self.m = len(self.nu)
+            self.m = length_of(self.nu)
         else:
             self.m = None
 
-        if sigma is None and w is None and self.m is not None:
+        if sigma is None and w is None and w_q is None and w_u is None and self.m is not None:
             self.sigma = np.ones(self.m)
+        elif w_q is not None and w_u is not None:
+            self.w_q = w_q
+            self.w_u = w_u
         elif w is not None:
             self.w = w
         else:
@@ -152,7 +182,10 @@ class Dataset(metaclass=ABCMeta):
         self.data = data
         self.residual = None
         if self.data is not None:
-            self.model_data = np.zeros_like(self.data, dtype=self.data.dtype)
+            if is_dask_array(self.data):
+                self.model_data = da.zeros_like(self.data, dtype=self.data.dtype)
+            else:
+                self.model_data = np.zeros_like(self.data, dtype=self.data.dtype)
         else:
             self.model_data = None
 
@@ -169,7 +202,7 @@ class Dataset(metaclass=ABCMeta):
 
         if self.__lambda2 is not None and self.__nu_0 is not None:
             nu = c / np.sqrt(self.__lambda2)
-            self.s = (nu / self.__nu_0)**self.__spectral_idx
+            self.__s = (nu / self.__nu_0) ** self.__spectral_idx
 
     @property
     def s(self):
@@ -179,7 +212,8 @@ class Dataset(metaclass=ABCMeta):
     def s(self, val):
         self.__s = val
         if self.__s is not None:
-            self.k = np.sum(self.w / self.__s)
+            k_val = np.sum(self.w / self.__s)
+            self.k = maybe_compute(k_val) if k_val is not None else k_val
 
     @property
     def nu_0(self):
@@ -197,7 +231,8 @@ class Dataset(metaclass=ABCMeta):
     def nu(self, val):
         self.__nu = val
         if val is not None:
-            self.__nu_0 = 0.5 * (np.min(val) + np.max(val))
+            mn, mx = maybe_compute(np.min(val)), maybe_compute(np.max(val))
+            self.__nu_0 = 0.5 * (float(mn) + float(mx))
             self.nu_to_l2()
 
     @property
@@ -208,15 +243,22 @@ class Dataset(metaclass=ABCMeta):
     def lambda2(self, val):
         self.__lambda2 = val
         if val is not None:
-            if all(np.diff(val) < 0):
+            val_np = asnumpy(val) if is_dask_array(val) else np.asarray(val)
+            if np.all(np.diff(val_np) < 0):
                 val = val[::-1]
                 self.__lambda2 = val
-            self.__m = len(val)
+            self.__m = length_of(val)
             self.__nu = c / np.sqrt(val)
-            self.__nu_0 = 0.5 * (np.min(self.__nu) + np.max(self.__nu))
-            if hasattr(self, "spectral_idx"):
-                self.__s = (self.__nu / self.__nu_0)**self.__spectral_idx
-            self.w = np.ones(self.__m)
+            nu_min, nu_max = maybe_compute(np.min(self.__nu)), maybe_compute(np.max(self.__nu))
+            self.__nu_0 = 0.5 * (float(nu_min) + float(nu_max))
+            if hasattr(self, "spectral_idx") and self.__spectral_idx is not None:
+                self.__s = (self.__nu / self.__nu_0) ** self.__spectral_idx
+            if da is not None and is_dask_array(val):
+                ch = getattr(val, "chunks", None)
+                chunks = ch[0] if isinstance(ch, tuple) else "auto"
+                self.w = da.ones(self.__m, dtype=np.float64, chunks=chunks)
+            else:
+                self.w = np.ones(self.__m)
             self.calculate_l2_cellsize()
 
     @property
@@ -245,23 +287,84 @@ class Dataset(metaclass=ABCMeta):
 
     @property
     def w(self):
+        """Main weight used in chi2 and transforms. When w_q and w_u are set, this is w_p (harmonic mean)."""
         return self.__w
 
     @w.setter
     def w(self, val):
         self.__w = val
-        if val is not None and isinstance(val, np.ndarray):
-            aux_copy = val.copy()
+        self.__w_q = None
+        self.__w_u = None
+        self.__w_p = None
+        if val is not None:
+            val_np = asnumpy(val)
+            aux_copy = val_np.copy()
             aux_copy[aux_copy != 0] = 1.0 / np.sqrt(aux_copy[aux_copy != 0])
             self.__sigma = aux_copy
-            if hasattr(self, "s"):
-                if self.__s is not None:
-                    self.k = np.sum(val / self.__s)
+            if hasattr(self, "s") and self.__s is not None:
+                k_val = np.sum(val / self.__s)
+                self.k = maybe_compute(k_val) if hasattr(k_val, "compute") else k_val
             else:
-                self.k = np.sum(val)
+                k_val = np.sum(val)
+                self.k = maybe_compute(k_val) if hasattr(k_val, "compute") else k_val
             if self.__l2_ref is None:
                 self.__l2_ref = self.calculate_l2ref()
         self.__theo_noise = self.calculate_theo_noise()
+
+    @property
+    def w_q(self):
+        """Weights for Stokes Q. When set with w_u, w_p is computed as harmonic mean and used as w."""
+        return self.__w_q
+
+    @w_q.setter
+    def w_q(self, val):
+        self.__w_q = val
+        if self.__w_u is not None and val is not None:
+            self.__w_p = _harmonic_mean_w_p(val, self.__w_u)
+            self.__w = self.__w_p
+            val_np = asnumpy(self.__w)
+            aux_copy = val_np.copy()
+            aux_copy[aux_copy != 0] = 1.0 / np.sqrt(aux_copy[aux_copy != 0])
+            self.__sigma = aux_copy
+            if hasattr(self, "s") and self.__s is not None:
+                k_val = np.sum(self.__w / self.__s)
+                self.k = maybe_compute(k_val) if hasattr(k_val, "compute") else k_val
+            else:
+                k_val = np.sum(self.__w)
+                self.k = maybe_compute(k_val) if hasattr(k_val, "compute") else k_val
+            if self.__l2_ref is None:
+                self.__l2_ref = self.calculate_l2ref()
+            self.__theo_noise = self.calculate_theo_noise()
+
+    @property
+    def w_u(self):
+        """Weights for Stokes U. When set with w_q, w_p is computed as harmonic mean and used as w."""
+        return self.__w_u
+
+    @w_u.setter
+    def w_u(self, val):
+        self.__w_u = val
+        if self.__w_q is not None and val is not None:
+            self.__w_p = _harmonic_mean_w_p(self.__w_q, val)
+            self.__w = self.__w_p
+            val_np = asnumpy(self.__w)
+            aux_copy = val_np.copy()
+            aux_copy[aux_copy != 0] = 1.0 / np.sqrt(aux_copy[aux_copy != 0])
+            self.__sigma = aux_copy
+            if hasattr(self, "s") and self.__s is not None:
+                k_val = np.sum(self.__w / self.__s)
+                self.k = maybe_compute(k_val) if hasattr(k_val, "compute") else k_val
+            else:
+                k_val = np.sum(self.__w)
+                self.k = maybe_compute(k_val) if hasattr(k_val, "compute") else k_val
+            if self.__l2_ref is None:
+                self.__l2_ref = self.calculate_l2ref()
+            self.__theo_noise = self.calculate_theo_noise()
+
+    @property
+    def w_p(self):
+        """Polarization weight (harmonic mean of w_q and w_u when both are set). Read-only when derived from w_q, w_u."""
+        return self.__w_p
 
     @property
     def l2_ref(self):
@@ -288,14 +391,19 @@ class Dataset(metaclass=ABCMeta):
     @data.setter
     def data(self, val):
         if val is not None:
-            if len(val) == self.m:
+            n = length_of(val)
+            if n == self.m:
                 self.__data = val
             else:
-                self.__m = len(val)
+                self.__m = n
                 self.__data = val
             if hasattr(self, "model_data"):
                 if self.__model_data is None:
-                    self.__model_data = np.zeros_like(val, dtype=self.data.dtype)
+                    dt = getattr(val, "dtype", np.complex64)
+                    if is_dask_array(val):
+                        self.__model_data = da.zeros_like(val, dtype=dt)
+                    else:
+                        self.__model_data = np.zeros_like(val, dtype=dt)
         else:
             self.__data = None
 
@@ -306,12 +414,12 @@ class Dataset(metaclass=ABCMeta):
     @model_data.setter
     def model_data(self, val):
         if val is not None:
-            if len(val) == self.m:
+            if length_of(val) == self.m:
                 self.__model_data = val
                 if self.data is not None:
                     self.calculate_residuals()
             else:
-                sys.exit("Data must have same size as lambda2")
+                raise ValueError("Data must have same size as lambda2")
         else:
             self.__model_data = None
 
@@ -343,17 +451,23 @@ class Dataset(metaclass=ABCMeta):
 
     def calculate_l2ref(self):
         if self.lambda2 is not None:
-            sum_weights = np.sum(self.w)
-            return np.sum(self.w * self.lambda2) / sum_weights
+            sum_weights = maybe_compute(np.sum(self.w))
+            weighted_l2 = maybe_compute(np.sum(self.w * self.lambda2))
+            return float(weighted_l2) / float(sum_weights) if sum_weights else None
         else:
             return None
 
     def calculate_l2_cellsize(self):
         if self.w is not None:
-            lambda2_aux = self.lambda2[self.w > 0.0]
-            delta_l2_min = np.min(np.abs(np.diff(lambda2_aux)))
-            delta_l2_mean = np.mean(np.abs(np.diff(lambda2_aux)))
-            delta_l2_max = np.max(np.abs(np.diff(lambda2_aux)))
+            w_np = asnumpy(self.w)
+            l2_np = asnumpy(self.lambda2)
+            lambda2_aux = l2_np[w_np > 0.0]
+            if len(lambda2_aux) < 2:
+                return
+            diff_aux = np.abs(np.diff(lambda2_aux))
+            delta_l2_min = float(np.min(diff_aux))
+            delta_l2_mean = float(np.mean(diff_aux))
+            delta_l2_max = float(np.max(diff_aux))
 
             self.delta_l2_min = delta_l2_min
             self.delta_l2_max = delta_l2_max
@@ -363,13 +477,13 @@ class Dataset(metaclass=ABCMeta):
         if self.w is None:
             return None
         else:
-            if isinstance(self.w, np.ndarray):
-                if (self.w == 1.0).all():
-                    return None
-                else:
-                    return 1.0 / np.sqrt(np.sum(self.w))
-            else:
+            w_sum = np.sum(self.w)
+            w_sum = maybe_compute(w_sum)
+            if w_sum is None:
                 return None
+            if float(w_sum) == float(self.m):  # all ones
+                return None
+            return 1.0 / np.sqrt(float(w_sum))
 
     def calculate_residuals(self):
         self.residual = self.data - self.model_data

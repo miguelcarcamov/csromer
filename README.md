@@ -44,26 +44,46 @@ The paper of this software is under submission but if you use it you can cite it
 
 ## Installation
 
-The software can be installed as a python package locally or using Pypi
+The software can be installed as a Python package locally or from PyPI.
 
-### Locally after cloning the project
+### Recommended (conda / micromamba)
+
+To avoid NumPy/Astropy ABI issues, create the environment from `environment.yml` (numpy and astropy from conda-forge), then install the package in editable mode:
 
 ```shell
 git clone https://github.com/miguelcarcamov/csromer.git
 cd csromer
-pip install .
-```
-
-### Locally as developer
-
-```shell
-git clone git@github.com:miguelcarcamov/csromer.git
-cd csromer
+micromamba env create -f environment.yml
+micromamba activate csromer-env
 pip install -e .
 ```
 
-We highly recommend installing [pre-commit](https://pre-commit.com) to develop over this code.
+Pip dependencies are read from `requirements-conda.txt` (numpy and astropy omitted so conda’s versions are kept).
+
+### Locally with pip only
+
+```shell
+git clone https://github.com/miguelcarcamov/csromer.git
+cd csromer
+pip install -r requirements.txt
+pip install -e .
+```
+
+For a non-editable install: `pip install -r requirements.txt` then `pip install .`.
+
+We recommend installing [pre-commit](https://pre-commit.com) for development.
 This will allow you to run hooks that reformat the project files according to our style.
+
+### Running tests
+
+Activate the project environment first so all dependencies (including PyWavelets) are available; otherwise integration tests will be skipped:
+
+```shell
+micromamba activate csromer-env
+pytest tests/ -v
+```
+
+(With conda: `conda activate csromer-env` then `pytest tests/ -v`.)
 
 ### From PyPI
 
@@ -76,6 +96,32 @@ This will allow you to run hooks that reformat the project files according to ou
 ### From latest docker container
 
 `docker pull ghcr.io/miguelcarcamov/csromer:latest`
+
+## Troubleshooting
+
+### NumPy / Astropy binary incompatibility
+
+If you see:
+
+```text
+RuntimeWarning: numpy.ndarray size changed, may indicate binary incompatibility. Expected 80 from C header, got 96 from PyObject
+```
+
+this means Astropy’s C extensions were built against a different NumPy ABI than the NumPy you have at runtime (e.g. a PyPI Astropy wheel built for an older NumPy, with a newer NumPy installed).
+
+**Fix:** use the conda/micromamba environment so NumPy and Astropy come from the same source and are ABI-compatible:
+
+```shell
+micromamba env create -f environment.yml
+micromamba activate csromer-env
+pip install -e .
+```
+
+In `environment.yml`, `numpy` and `astropy` are installed from `conda-forge`; the remaining dependencies are installed with pip. The project’s dependencies are read from `requirements-conda.txt` (which omits numpy and astropy) so that `pip install -e .` does not overwrite conda’s versions with PyPI wheels. So after creating the env from `environment.yml`, running `pip install -e .` keeps conda’s numpy and astropy and you avoid the warning.
+
+For a **pip-only** install, run `pip install -r requirements.txt` then `pip install -e .`; you may see the warning if PyPI wheels are ABI-incompatible.
+
+If the warning still appears with a conda env, remove and recreate the environment so numpy and astropy are both freshly installed from conda-forge (e.g. `micromamba env remove -n csromer-env` then `micromamba env create -f environment.yml`).
 
 ## Simulate Faraday sources directly in frequency space
 

@@ -29,7 +29,7 @@ class Flagger(metaclass=ABCMeta):
 
     def __post_init__(self):
         if self.nsigma is None:
-            self.sigma = 0.0
+            self.nsigma = 0.0
 
         if self.delete_channels is None:
             self.delete_channels = False

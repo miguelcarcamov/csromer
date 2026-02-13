@@ -321,8 +321,7 @@ def dask_forward_ft(dataset, phi_array, l2_ref=None, normalize=True):
     
     exp_factor = da.exp(2.0j * phi_2d * l2_diff_2d) if hasattr(lambda2, 'compute') else np.exp(2.0j * phi_2d * l2_diff_2d)
     
-    # Normalize to get proper Jy/RMSF units
-    # Following NDFT.forward_normalized approach:
+    # Normalize to get proper Jy/RMSF units:
     # 1. Weight the data: weighted_data = data * (w / s)
     # 2. Transform: F(φ) = Σ[weighted_data * exp(2j*φ*(λ²-λ²_ref))]
     # 3. Normalize: F(φ) = (s_mean / n_phi) * transform

@@ -8,6 +8,7 @@ from ..fi import Fi
 
 @dataclass(init=True, repr=True)
 class TSV(Fi):
+    is_differentiable: bool = False
     nu: np.ndarray = field(init=False, default=np.array([]))
 
     def __post_init__(self):

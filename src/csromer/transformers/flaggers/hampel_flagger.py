@@ -1,60 +1,77 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
+from typing import Optional
 
 import numpy as np
 
 from ...base import Dataset
+from ...utils.array_utils import asnumpy, math_module, maybe_compute
 from .flagger import Flagger, median_absolute_deviation, moving_average
 
 
-def hampel(array, w, nsigma, imputation=False):
+def hampel_scalars(sigma: np.ndarray, window: int) -> tuple[float, float]:
+    """
+    Compute rolling median and rolling sigma (MAD scale) from sigma array.
+    Used for Hampel filter; only this part needs numpy (for convolve/median).
+    Returns (rolling_median, rolling_sigma).
+    """
     k = 1.4826
-    array_copy = array.copy()
-    rolling_mean = moving_average(array_copy, w)
-    rolling_median = np.median(rolling_mean)
-    rolling_sigma = k * median_absolute_deviation(rolling_mean)
-    preserved_idxs = np.where(np.abs(array_copy - rolling_median) <= (nsigma * rolling_sigma))[0]
-    outlier_idxs = np.where(np.abs(array_copy - rolling_median) > (nsigma * rolling_sigma))[0]
-    if imputation:
-        array_copy[outlier_idxs] = rolling_median
-        return array_copy, preserved_idxs, outlier_idxs
-    else:
-        return preserved_idxs, outlier_idxs
+    rolling_mean = moving_average(np.array(sigma, copy=True), window)
+    rolling_median = float(np.median(rolling_mean))
+    rolling_sigma = float(k * median_absolute_deviation(rolling_mean))
+    return rolling_median, rolling_sigma
 
 
 @dataclass(init=True, repr=True)
 class HampelFlagger(Flagger):
-    w: int = None
-    imputation: bool = None
+    window: Optional[int] = None
+    imputation: bool = False
 
-    def __post__init__(self):
+    def __post_init__(self):
         super().__post_init__()
+        if self.window is None:
+            self.window = 5
 
     def run(self, nsigma: float = 0.0):
         if self.nsigma is not None:
             nsigma = self.nsigma
 
-        if isinstance(self.dataset, Dataset):
-            original_length = len(self.dataset.sigma)
-            if self.imputation:
-                new_sigma, idxs, outlier_idxs = hampel(
-                    self.dataset.sigma, self.dataset.w, nsigma, self.imputation
-                )
-                self.dataset.sigma = new_sigma
-                flagged_percentage = (len(outlier_idxs) / original_length) * 100.0
-                print("Imputing {0:.2f}% of the data".format(flagged_percentage))
-                return None
-            else:
-                sigma_array = self.dataset.sigma.copy()
-                idxs, outlier_idxs = hampel(sigma_array, self.dataset.w, nsigma, self.imputation)
-                flagged_percentage = (len(outlier_idxs) / original_length) * 100.0
-                if self.delete_channels:
-                    self.dataset.lambda2 = self.dataset.lambda2[idxs]
-                    self.dataset.sigma = sigma_array[idxs]
-                    if self.dataset.data is not None:
-                        self.dataset.data = self.dataset.data[idxs]
-                else:
-                    self.dataset.w[outlier_idxs] = 0.0
-                print("Flagging {0:.2f}% of the data".format(flagged_percentage))
-                return idxs, outlier_idxs
-        else:
+        if not isinstance(self.dataset, Dataset):
             raise TypeError("The data attribute is not a Dataset")
+
+        sigma = self.dataset.sigma
+        window = int(self.window)
+        # Only compute sigma for scalar stats (rolling median / MAD)
+        sigma_np = asnumpy(sigma)
+        original_length = len(sigma_np)
+        rolling_median, rolling_sigma = hampel_scalars(sigma_np, window)
+
+        xp = math_module(sigma)
+        # Mask: True = keep, False = outlier (dask-friendly)
+        mask = xp.abs(sigma - rolling_median) <= (nsigma * rolling_sigma)
+
+        if self.imputation:
+            self.dataset.sigma = xp.where(mask, sigma, rolling_median)
+            outlier_count = original_length - int(maybe_compute(xp.sum(mask)))
+            flagged_percentage = (outlier_count / original_length) * 100.0
+            print("Imputing {0:.2f}% of the data".format(flagged_percentage))
+            return None
+        else:
+            # Indices only needed for delete_channels or return value
+            mask_np = asnumpy(mask)
+            kept_idxs = np.where(mask_np)[0]
+            outlier_idxs = np.where(~mask_np)[0]
+            flagged_percentage = (len(outlier_idxs) / original_length) * 100.0
+
+            if self.delete_channels:
+                self.dataset.lambda2 = self.dataset.lambda2[kept_idxs]
+                self.dataset.sigma = self.dataset.sigma[kept_idxs]
+                if self.dataset.data is not None:
+                    self.dataset.data = self.dataset.data[kept_idxs]
+                self.dataset.w = self.dataset.w[kept_idxs]
+            else:
+                self.dataset.w = xp.where(mask, self.dataset.w, xp.zeros_like(self.dataset.w))
+
+            print("Flagging {0:.2f}% of the data".format(flagged_percentage))
+            return kept_idxs, outlier_idxs

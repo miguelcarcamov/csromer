@@ -7,7 +7,7 @@ on:
     paths:
     - '**.py'
     - '**.toml'
-    - requirements.txt
+    - 'requirements*.txt'
   pull_request:
     branches:
     - master
@@ -48,8 +48,6 @@ jobs:
         python3 -m pip install build
     - name: Build package
       run: python3 -m build
-    - name: Build bdist package
-      run: python3 setup.py bdist_wheel
     - name: Install csromer
       run: pip3 install dist/*.tar.gz
     - name: Upload artifacts

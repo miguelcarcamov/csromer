@@ -40,8 +40,6 @@ jobs:
         python3 -m pip install build
     - name: Build package
       run: python3 -m build
-    - name: Build bdist package
-      run: python3 setup.py bdist_wheel
     - name: Publish package
       if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
       uses: pypa/gh-action-pypi-publish@master

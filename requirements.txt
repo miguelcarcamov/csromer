@@ -1,3 +1,5 @@
+# For NumPy/Astropy ABI compatibility (avoid "numpy.ndarray size changed" warning),
+# prefer creating the env from environment.yml so numpy and astropy come from conda-forge.
 astropy==5.2.1
 astropy-healpix==0.7
 astroquery==0.4.6

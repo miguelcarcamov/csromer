@@ -91,6 +91,10 @@ ENV/
 env.bak/
 venv.bak/
 
+# Micromamba / Mamba
+.micromamba/
+micromamba/
+
 # Spyder project settings
 .spyderproject
 .spyproject

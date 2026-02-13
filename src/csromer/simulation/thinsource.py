@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import numpy as np
 from scipy.constants import c
 
+from ..utils.array_utils import math_module
 from .faradaysource import FaradaySource
 
 
@@ -19,11 +20,9 @@ class FaradayThinSource(FaradaySource):
             self.dchi = 0.0
 
     def simulate(self):
-        nu = c / np.sqrt(self.lambda2)
-        k = (nu / self.nu_0)**self.spectral_idx
-        mu_q = np.cos(2.0 * self.phi_gal * self.lambda2)
-        mu_u = np.sin(2.0 * self.phi_gal * self.lambda2 + self.dchi)
-
-        # p = np.mean(np.sqrt(mu_q ** 2 + mu_u ** 2))
-
+        xp = math_module(self.lambda2)
+        nu = c / xp.sqrt(self.lambda2)
+        k = (nu / self.nu_0) ** self.spectral_idx
+        mu_q = xp.cos(2.0 * self.phi_gal * self.lambda2)
+        mu_u = xp.sin(2.0 * self.phi_gal * self.lambda2 + self.dchi)
         self.data = self.s_nu * k * (mu_q + 1j * mu_u)

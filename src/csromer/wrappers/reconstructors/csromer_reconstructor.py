@@ -4,7 +4,7 @@ import numpy as np
 from astropy.stats import sigma_clipped_stats
 
 from ...dictionaries import Wavelet
-from ...objectivefunction import L1, TSV, TV, Chi2, OFunction
+from ...objectivefunction import L1, TSV, TV, ChiSquared, OFunction
 from ...optimization import FISTA
 from ...reconstruction import Parameter
 from ...transformers.dfts import NDFT1D, NUFFT1D
@@ -99,7 +99,11 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
 
     @staticmethod
     def calculate_sigma_phi_peak(rmtf_fwhm, fd_peak, fd_signal_noise):
-        sigma_phi_peak = rmtf_fwhm / (2. * fd_peak / fd_signal_noise)
+        # sigma_phi_peak = rmtf_fwhm * fd_signal_noise / (2 * fd_peak); avoid divide by zero
+        denom = 2.0 * fd_peak
+        if denom == 0 or fd_signal_noise == 0:
+            return np.nan
+        sigma_phi_peak = rmtf_fwhm * fd_signal_noise / denom
         return sigma_phi_peak
 
     def flag_dataset(self, flagger: Flagger = None):
@@ -126,7 +130,7 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
         self.nufft = NUFFT1D(dataset=self.dataset, parameter=self.parameter, solve=True)
 
     def get_dirty_faraday_depth(self):
-        return self.dft.backward(self.dataset.data)
+        return self.dft.dirty_spectrum(self.dataset.data)
 
     def get_rmtf(self):
         return self.dft.RMTF()
@@ -157,7 +161,10 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
         self.rm_dirty_quadratic_interpolation_error = self.calculate_sigma_phi_peak(
             self.parameter.rmtf_fwhm, self.dirty_peak_quadratic_interpolation, dirty_noise
         )
-        self.parameter.complex_data_to_real()
+        # When using wavelets, optimize in coefficient space; otherwise complex Faraday throughout
+        if self.wavelet is not None:
+            self.parameter.data = self.wavelet.decompose_complex(fd_dirty)
+        # Faraday depth kept as complex; no real stacking
 
         if self.lambda_l_norm is None:
             if self.wavelet is not None:
@@ -171,16 +178,11 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
                     np.mean(self.dataset.sigma)
                 )
 
-        chi2 = Chi2(dft_obj=self.nufft, wavelet=self.wavelet)
+        chi_squared = ChiSquared(measurement_operator=self.nufft, wavelet=self.wavelet)
         l1 = L1(reg=self.lambda_l_norm)
 
-        F_func = [chi2, l1]
-        f_func = [chi2]
-        g_func = [l1]
-
-        F_obj = OFunction(F_func)
-        f_obj = OFunction(f_func)
-        g_obj = OFunction(g_func)
+        F_func = [chi_squared, l1]
+        F_obj = OFunction(F_func, persist_gradient=True)
 
         if self.wavelet is not None:
             opt_noise = 2.0 * self.dataset.theo_noise
@@ -190,19 +192,15 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
         opt = FISTA(
             guess_param=self.parameter,
             F_obj=F_obj,
-            fx=chi2,
-            gx=g_obj,
             noise=opt_noise,
             verbose=True,
         )
 
         obj, X = opt.run()
 
+        self.coefficients = X.data
         if self.wavelet is not None:
-            self.coefficients = X.data
-            X.data = self.wavelet.reconstruct(X.data)
-
-        X.real_data_to_complex()
+            X.data = self.wavelet.reconstruct_complex(X.data)
 
         self.fd_model = X.data
         self.rm_model = self.get_rm(self.fd_model)
@@ -234,8 +232,8 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
 
         fd_model_abs = np.abs(fd_model_nonzero)
         k_parameter = np.sum(fd_model_abs)
+        if k_parameter == 0 or phi_nonzero.size == 0:
+            return 0.0
         first_moment = np.sum(phi_nonzero * fd_model_abs) / k_parameter
-
         second_moment = (np.sum(fd_model_abs * (phi_nonzero - first_moment)**2) / k_parameter)
-
         return second_moment
