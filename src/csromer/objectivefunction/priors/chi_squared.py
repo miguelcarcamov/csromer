@@ -49,12 +49,5 @@ class ChiSquared(Fi):
         self._grad_value = result
         return result
 
-    def calculate_gradient_fista(self, x):
-        op = self.measurement_operator
-        model_data = op.forward(x)
-        op.dataset.model_data = model_data
-        weighted_res = op.dataset.w * (op.dataset.data - op.dataset.model_data)
-        return op.backward(weighted_res)
-
     def calculate_prox(self, x, nu=0):
         raise NotImplementedError("ChiSquared is differentiable; proximal is not defined.")

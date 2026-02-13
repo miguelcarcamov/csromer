@@ -1,69 +1,89 @@
 """
-NUFFT measurement operator (pynufft-based). Converts dask inputs to numpy at the
-boundary for pynufft, then wraps the result back as a dask array so the rest of
-the graph stays lazy (dask-in, dask-out). Not block-wise: each forward/adjoint
-call is one chunk.
+NUFFT measurement operator: Kaiser-kernel forward (FFT + interpolate), adjoint of forward (no iterative solver).
+Forward uses FFT + Kaiser interpolation; adjoint is IFFT(A^H (phase* b)) so gradient is consistent.
+No optimization algorithm in the adjoint—just the linear adjoint of the Kaiser forward.
+
+Efficiency: interpolation matrix A is built once in configure() and stored as sparse (CSR) for
+the numpy path (O(n_ch * support) memory). Dense A is built on demand only when dask inputs are
+used, since scipy.sparse does not support dask matvec.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Union
 
 import numpy as np
+from scipy.special import i0
+from scipy.sparse import csr_matrix
 
-from ...utils.array_utils import asnumpy, is_dask_array, maybe_compute
-from .base import MeasurementOperator
+from ...utils.array_utils import is_dask_array, math_module, maybe_compute
+from .direct_fourier import DirectFourier1D
 
 try:
     import dask.array as da
 except ImportError:
     da = None
 
-try:
-    from pynufft import NUFFT
-    _NUFFT_CLASS = NUFFT
-except ImportError:
-    _NUFFT_CLASS = None
 
-# Fix scipy.sparse.linalg.cg deprecation: pynufft calls cg() without atol. Patch
-# before importing pynufft so pynufft gets the compliant wrapper.
-def _patch_scipy_cg_atol():
-    try:
-        import scipy.sparse.linalg as _spla
-        _cg_orig = _spla.cg
-        def _cg_with_atol(*args, **kwargs):
-            if "atol" not in kwargs:
-                kwargs["atol"] = 0.0
-            return _cg_orig(*args, **kwargs)
-        _spla.cg = _cg_with_atol
-    except Exception:
-        pass
+def _kaiser_1d(u: float, half_width: int, beta: float) -> float:
+    """Kaiser kernel value at offset u; zero for |u| > half_width."""
+    if abs(u) > half_width:
+        return 0.0
+    arg = beta * np.sqrt(1.0 - (u / half_width) ** 2)
+    return i0(arg) / i0(beta)
 
 
-_patch_scipy_cg_atol()
+def _build_kaiser_interp_matrix(
+    n_ch: int,
+    n_phi: int,
+    k_cont: np.ndarray,
+    half_width: int,
+    beta: float,
+) -> np.ndarray:
+    """Build (n_ch, n_phi) matrix A so that A @ X interpolates X at continuous indices k_cont.
+    Returns float32 to save memory; only ~(2*half_width+1) nonzeros per row."""
+    A = np.zeros((n_ch, n_phi), dtype=np.float32)
+    for c in range(n_ch):
+        k_c = k_cont[c]
+        j_center = int(np.floor(k_c))
+        for j_offset in range(-half_width, half_width + 1):
+            j = j_center + j_offset
+            j_mod = j % n_phi
+            if j_mod < 0:
+                j_mod += n_phi
+            u = k_c - j
+            A[c, j_mod] += _kaiser_1d(u, half_width, beta)
+    return A
 
 
-def _require_pynufft():
-    if _NUFFT_CLASS is None:
-        raise ImportError("NUFFT1D requires pynufft. Install with: pip install pynufft")
+def _kaiser_forward_arrays(parameter, dataset, conv_size: int, kaiser_beta: float):
+    """Compute k_cont, A, phase for forward/adjoint. Returns (k_cont, A, phase, N, d_phi)."""
+    N = len(parameter.phi)
+    d_phi = float(parameter.cellsize)
+    l2_diff = dataset.lambda2 - dataset.l2_ref
+    l2_diff_np = np.asarray(maybe_compute(l2_diff))
+    n_ch = l2_diff_np.size
+    k_cont = -N * d_phi * l2_diff_np / np.pi
+    A = _build_kaiser_interp_matrix(n_ch, N, k_cont, conv_size, kaiser_beta)
+    phase = np.exp(1j * np.pi * k_cont).astype(np.complex64)
+    return k_cont, A, phase, N, d_phi
 
 
 @dataclass(init=True, repr=True)
-class NUFFT1D(MeasurementOperator):
+class NUFFT1D(DirectFourier1D):
     """
-    Non-uniform FFT via pynufft. forward/adjoint convert to numpy at the boundary.
+    Non-uniform FFT: Kaiser-kernel forward (FFT + interpolate), adjoint of that (A^H then IFFT).
+    No iterative solver—adjoint is the linear adjoint of the Kaiser forward.
     """
 
     conv_size: int = None
     oversampling_factor: int = None
     normalize: bool = None
     solve: bool = None
-    nufft_instance: Any = field(init=False)
+    kaiser_beta: float = 6.0
 
     def __post_init__(self):
         super().__post_init__()
-        _require_pynufft()
-        self.nufft_instance = _NUFFT_CLASS()
         if self.conv_size is None:
             self.conv_size = 4
         if self.oversampling_factor is None:
@@ -76,42 +96,93 @@ class NUFFT1D(MeasurementOperator):
             self.configure()
 
     def configure(self) -> None:
-        l2 = asnumpy(self.dataset.lambda2)
-        l2_difference = l2 - self.dataset.l2_ref
-        exp_factor = -2.0 * l2_difference * self.parameter.cellsize
-        Nd = (len(self.parameter.phi),)
-        Kd = (self.oversampling_factor * len(self.parameter.phi),)
-        Jd = (self.conv_size,)
-        om_exp = np.reshape(exp_factor, (self.dataset.m, 1))
-        self.nufft_instance.plan(om_exp, Nd, Kd, Jd)
+        """Build and cache sparse interpolation matrix and phase (once). Dense A is built on demand for dask."""
+        self._nufft_A_sparse = None
+        self._nufft_A_H_sparse = None
+        self._nufft_phase = None
+        self._nufft_A_dense = None
+        self._nufft_A_H_dense = None
+        if self.parameter is None or self.dataset is None or self.parameter.cellsize is None:
+            return
+        _, A, phase, _, _ = _kaiser_forward_arrays(
+            self.parameter, self.dataset, self.conv_size, self.kaiser_beta
+        )
+        self._nufft_A_sparse = csr_matrix(A)
+        self._nufft_A_H_sparse = csr_matrix(A.T)
+        self._nufft_phase = phase.astype(np.complex64)
 
     def _forward_impl(self, x: Union[np.ndarray, Any]) -> Union[np.ndarray, Any]:
-        input_dask = da is not None and is_dask_array(x)
-        x_np = asnumpy(x)
-        out = self.nufft_instance.forward(x_np)
-        if input_dask:
-            return da.from_array(out, chunks=out.shape)
+        phase = self._nufft_phase
+        if phase is None:
+            _, A, phase, _, _ = _kaiser_forward_arrays(
+                self.parameter, self.dataset, self.conv_size, self.kaiser_beta
+            )
+            A_c = np.asarray(A, dtype=np.complex64)
+        else:
+            A_c = None
+        xp = math_module(x)
+        if da is not None and is_dask_array(x):
+            if self._nufft_A_dense is None and self._nufft_A_sparse is not None:
+                self._nufft_A_dense = self._nufft_A_sparse.toarray().astype(np.complex64)
+            A_use = self._nufft_A_dense if self._nufft_A_dense is not None else A_c
+            if A_use is None:
+                _, A, phase, _, _ = _kaiser_forward_arrays(
+                    self.parameter, self.dataset, self.conv_size, self.kaiser_beta
+                )
+                A_use = np.asarray(A, dtype=np.complex64)
+            X = da.fft.fft(x)
+            interp = da.dot(A_use, X)
+            out = phase * interp
+        else:
+            if self._nufft_A_sparse is not None:
+                X = xp.fft.fft(x)
+                interp = self._nufft_A_sparse.dot(np.asarray(X))
+                out = phase * interp
+            else:
+                X = xp.fft.fft(x)
+                interp = A_c @ np.asarray(X)
+                out = phase * interp
+        return out.astype(np.complex64)
+
+    def _adjoint_impl(self, b: Union[np.ndarray, Any], **kwargs) -> Union[np.ndarray, Any]:
+        phase = self._nufft_phase
+        if phase is None:
+            _, A, phase, _, _ = _kaiser_forward_arrays(
+                self.parameter, self.dataset, self.conv_size, self.kaiser_beta
+            )
+            A_H = np.asarray(A.T, dtype=np.complex64)
+        else:
+            A_H = None
+        xp = math_module(b)
+        phase_conj = xp.conj(phase)
+        phased = (phase_conj * b).astype(np.complex64)
+        if da is not None and is_dask_array(b):
+            if self._nufft_A_H_dense is None and self._nufft_A_H_sparse is not None:
+                self._nufft_A_H_dense = self._nufft_A_H_sparse.toarray().astype(np.complex64)
+            A_H_use = self._nufft_A_H_dense if self._nufft_A_H_dense is not None else A_H
+            if A_H_use is None:
+                _, A, phase, _, _ = _kaiser_forward_arrays(
+                    self.parameter, self.dataset, self.conv_size, self.kaiser_beta
+                )
+                A_H_use = np.asarray(A.T, dtype=np.complex64)
+            back = da.dot(A_H_use, phased)
+            out = da.fft.ifft(back)
+        else:
+            phased_np = np.asarray(phased)
+            if self._nufft_A_H_sparse is not None:
+                back = self._nufft_A_H_sparse.dot(phased_np)
+                out = xp.fft.ifft(back)
+            else:
+                back = A_H @ phased_np
+                out = xp.fft.ifft(back)
+        out = out.astype(np.complex64)
+        if self.normalize:
+            out = out * len(self.parameter.phi)
         return out
 
-    def _adjoint_impl(self, b: Union[np.ndarray, Any], solver: str = "cg", maxiter: int = 1, **kwargs) -> Union[np.ndarray, Any]:
-        # Raw adjoint: A^H(b), no weights, no K. Caller passes weighted residuals for gradients.
-        input_dask = da is not None and is_dask_array(b)
-        b_np = asnumpy(b)
-        if self.solve:
-            x = self.nufft_instance.solve(b_np, solver=solver, maxiter=maxiter)
-        else:
-            x = self.nufft_instance.adjoint(b_np)
+    def RMTF(self, phi_x: float = 0.0):
+        """RMTF: use direct adjoint of ones (same as base) then normalize."""
+        rmtf = super().RMTF(phi_x)
         if self.normalize:
-            x *= len(self.parameter.phi)
-        if input_dask:
-            return da.from_array(x, chunks=x.shape)
-        return x
-
-    def RMTF(self, phi_x: float = 0.0) -> Union[np.ndarray, Any]:
-        w = asnumpy(self.dataset.w)
-        s = asnumpy(self.dataset.s) if self.dataset.s is not None else np.ones_like(w)
-        k = float(maybe_compute(self.dataset.k)) if self.dataset.k is not None else 1.0
-        weights = w / s
-        x = self.nufft_instance.adjoint(weights)
-        x *= len(self.parameter.phi) / k
-        return x
+            rmtf = rmtf * len(self.parameter.phi)
+        return rmtf

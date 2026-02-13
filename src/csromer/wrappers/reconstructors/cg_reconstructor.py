@@ -62,7 +62,7 @@ class CGReconstructorWrapper(CSROMERReconstructorWrapper):
         opt = PolakRibiere(
             guess_param=self.parameter,
             F_obj=F_obj,
-            grad_fun=chi_squared.calculate_gradient_fista,
+            grad_fun=chi_squared.calculate_gradient,
             maxiter=self.cg_maxiter,
             tol=self.cg_tol,
             verbose=self.cg_verbose,
