@@ -7,7 +7,7 @@ name: testpypi-publish
 
 on:
   release:
-    types: [draft]
+    types: [published]
 
 
 permissions:
