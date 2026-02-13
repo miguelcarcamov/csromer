@@ -27,34 +27,103 @@ if TYPE_CHECKING:
 class MeasurementOperator(metaclass=ABCMeta):
     """
     Base class for 1D measurement operators (Faraday depth <-> lambda²).
-    When wavelet_transform is set, forward(x) expects coefficients; adjoint(b) returns coefficients.
+    
+    Implements the forward model: P(lambda²) = A @ phi, where A is the measurement
+    operator mapping from Faraday depth space to lambda² space. Supports wavelet
+    transforms for sparse representation.
+    
+    The Faraday depth Fourier transform convention is:
+    P(lambda²) = ∫ F(phi) * exp(+2j * phi * lambda²) dphi
+    
+    This uses a "positive" sign convention (exp(+2j*phi*lambda²)) consistent with
+    radio astronomy standards. The sign_convention attribute documents this.
+    
+    When wavelet_transform is set:
+    - forward(x) expects wavelet coefficients, reconstructs to Faraday depth, then applies A
+    - adjoint(b) applies A^H, then decomposes to coefficients
+    
+    Attributes:
+        dataset: Dataset with lambda² coverage and weights
+        parameter: Parameter with phi grid configuration
+        wavelet_transform: Optional wavelet transform for sparse representation
+        sign_convention: FFT sign convention ("positive" for exp(+2j*phi*lambda²), default "positive")
     """
     dataset: "Dataset" = None
     parameter: "Parameter" = None
     wavelet_transform: Optional["Wavelet"] = None
+    sign_convention: str = "positive"
 
     def __post_init__(self):
+        """
+        Post-initialization: deep copy parameter to avoid shared state.
+        """
         if self.parameter is not None:
             self.parameter = copy.deepcopy(self.parameter)
 
     @abstractmethod
     def _forward_impl(self, x: Union[np.ndarray, Any]) -> Union[np.ndarray, Any]:
-        """Map from complex Faraday depth (model) to data (lambda²). Subclass implementation."""
+        """
+        Forward operator implementation: phi -> P(lambda²).
+        
+        Protected method: subclasses must implement. Maps from complex Faraday depth
+        (model) space to data (lambda²) space. Should handle both numpy and dask arrays.
+        
+        Args:
+            x: Complex Faraday depth spectrum (n_phi,) or wavelet coefficients
+            
+        Returns:
+            Complex polarization P(lambda²) (n_channels,)
+        """
         pass
 
     @abstractmethod
     def _adjoint_impl(self, b: Union[np.ndarray, Any], **kwargs) -> Union[np.ndarray, Any]:
-        """Map from data (lambda²) to complex Faraday depth. Subclass implementation."""
+        """
+        Adjoint operator implementation: P(lambda²) -> phi.
+        
+        Protected method: subclasses must implement. Maps from data (lambda²) space
+        to complex Faraday depth space. Should handle both numpy and dask arrays.
+        
+        Args:
+            b: Complex polarization P(lambda²) (n_channels,)
+            **kwargs: Additional arguments (e.g. for iterative solvers)
+            
+        Returns:
+            Complex Faraday depth spectrum (n_phi,) or wavelet coefficients
+        """
         pass
 
     def forward(self, x: Union[np.ndarray, Any]) -> Union[np.ndarray, Any]:
-        """Raw forward: F (Faraday depth) -> P(lambda²), no weights, no K."""
+        """
+        Forward operator: phi -> P(lambda²).
+        
+        Public method. If wavelet_transform is set, reconstructs coefficients to
+        Faraday depth first, then applies measurement operator.
+        
+        Args:
+            x: Complex Faraday depth spectrum (n_phi,) or wavelet coefficients
+            
+        Returns:
+            Complex polarization P(lambda²) (n_channels,)
+        """
         if self.wavelet_transform is not None:
             x = self.wavelet_transform.reconstruct_complex(np.array(x, copy=False))
         return self._forward_impl(x)
 
     def adjoint(self, b: Union[np.ndarray, Any], **kwargs) -> Union[np.ndarray, Any]:
-        """Map from P(lambda²) to Faraday depth (or coefficients if wavelet_transform set)."""
+        """
+        Adjoint operator: P(lambda²) -> phi.
+        
+        Public method. Applies measurement operator adjoint. If wavelet_transform is set,
+        decomposes result to coefficients.
+        
+        Args:
+            b: Complex polarization P(lambda²) (n_channels,)
+            **kwargs: Additional arguments (passed to _adjoint_impl)
+            
+        Returns:
+            Complex Faraday depth spectrum (n_phi,) or wavelet coefficients
+        """
         res = self._adjoint_impl(b, **kwargs)
         if self.wavelet_transform is not None:
             # Complex Faraday depth -> complex coefficients (pywt)
@@ -62,33 +131,108 @@ class MeasurementOperator(metaclass=ABCMeta):
         return res
 
     def backward(self, b: Union[np.ndarray, Any], **kwargs) -> Union[np.ndarray, Any]:
-        """Raw adjoint: backward(b) = A^H b. Used in gradients with weighted residuals."""
+        """
+        Backward operator: alias for adjoint.
+        
+        Public method. Used in gradients with weighted residuals.
+        Equivalent to adjoint(b).
+        
+        Args:
+            b: Complex polarization P(lambda²) (n_channels,)
+            **kwargs: Additional arguments (passed to adjoint)
+            
+        Returns:
+            Complex Faraday depth spectrum (n_phi,) or wavelet coefficients
+        """
         return self.adjoint(b, **kwargs)
 
     def dirty_spectrum(self, data: Union[np.ndarray, Any] = None) -> Union[np.ndarray, Any]:
-        """Dirty Faraday depth spectrum: A^H(weighted data) / K. Use for initial dirty map only."""
+        """
+        Compute dirty Faraday depth spectrum: A^H(weighted data) / K.
+        
+        Public method. Used for initial dirty map. Applies weights, spectral index
+        correction, and normalization.
+        
+        Args:
+            data: Input data (default: dataset.data)
+            
+        Returns:
+            Dirty Faraday depth spectrum (n_phi,)
+        """
         if data is None and self.dataset is not None:
             data = self.dataset.data
         return self._dirty_spectrum_impl(data)
 
     def _dirty_spectrum_impl(self, data: Union[np.ndarray, Any]) -> Union[np.ndarray, Any]:
-        """Dirty map: A^H(weighted data) / K. Uses dataset w, s, k when available.
-        Only K is forced to float; w, s, data stay lazy (dask) so the graph does not grow."""
+        """
+        Dirty spectrum implementation: A^H(weighted data).
+        
+        Protected method. The adjoint operator expects weighted data: w*p/sum(w) 
+        (or (w/s)*p/sum(w/s) if spectral index correction is applied).
+        The measurement operator adjoint only works as forward/adjoint for an x input,
+        so we must apply weights and normalization before passing to adjoint.
+        
+        Since dividing by sum(w) or sum(w/s) is equivalent to dividing by k (where
+        k = sum(w) or k = sum(w/s)), we normalize before the adjoint and do not
+        need to divide by k after the transform.
+        
+        Args:
+            data: Input data array (polarization p)
+            
+        Returns:
+            Dirty Faraday depth spectrum (n_phi,)
+        """
         if self.dataset is None:
             return self.adjoint(data)
         w = self.dataset.w
         s = getattr(self.dataset, "s", None)
         xp = math_module(w)
-        s = s if s is not None else xp.ones_like(w)
-        k = getattr(self.dataset, "k", None)
-        k = float(maybe_compute(k)) if k is not None else 1.0
-        weighted = (w / s) * data
-        return self.adjoint(weighted) / k
+        
+        # Compute weighted data: (w/s) * p (or w*p if no spectral index)
+        # Then normalize by sum(w/s) or sum(w) to get w*p/sum(w) or (w/s)*p/sum(w/s)
+        # This is what the adjoint operator expects
+        if s is not None:
+            weighted = (w / s) * data
+            sum_w_over_s = maybe_compute(xp.sum(w / s))
+            if sum_w_over_s is not None:
+                sum_w_over_s = float(sum_w_over_s)
+                if abs(sum_w_over_s) > 1e-10:  # Avoid division by very small numbers
+                    weighted = weighted / sum_w_over_s
+        else:
+            weighted = w * data
+            sum_w = maybe_compute(xp.sum(w))
+            if sum_w is not None:
+                sum_w = float(sum_w)
+                if abs(sum_w) > 1e-10:  # Avoid division by very small numbers
+                    weighted = weighted / sum_w
+        
+        # Adjoint operator receives properly weighted and normalized data
+        # No need to divide by k after, since normalization by sum(w) or sum(w/s) is equivalent
+        return self.adjoint(weighted)
 
     def configure(self) -> None:
-        """Optional: configure operator (e.g. NUFFT plan). Override if needed."""
+        """
+        Configure operator (e.g. NUFFT plan, precompute matrices).
+        
+        Public method. Override in subclasses to perform one-time setup.
+        Called automatically after initialization if parameter and dataset are set.
+        """
         pass
 
     def RMTF(self, phi_x: float = 0.0) -> Union[np.ndarray, Any]:
-        """Optional: rotation measure transfer function. Override in subclass if supported."""
+        """
+        Rotation Measure Transfer Function (RMTF).
+        
+        Public method. Override in subclasses if RMTF computation is supported.
+        The RMTF describes the response to a point source at phi_x.
+        
+        Args:
+            phi_x: Faraday depth of point source (rad/m², default: 0.0)
+            
+        Returns:
+            RMTF array (n_phi,)
+            
+        Raises:
+            NotImplementedError: If RMTF is not implemented for this operator
+        """
         raise NotImplementedError("RMTF not implemented for this operator")

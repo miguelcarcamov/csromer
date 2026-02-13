@@ -1,3 +1,9 @@
+"""
+Parameter: Faraday depth space configuration and data.
+
+Manages phi grid, cellsize, RMTF properties, and data conversion between
+complex and real representations for optimization.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -21,6 +27,22 @@ except ImportError:
 
 @dataclass(init=False, repr=True)
 class Parameter:
+    """
+    Faraday depth space parameter configuration.
+    
+    Manages the phi grid (Faraday depth axis), cellsize, RMTF properties,
+    and data storage. Supports conversion between complex and real representations
+    for optimizers that require real-only arrays.
+    
+    Attributes:
+        phi: Faraday depth grid (rad/m²)
+        data: Complex Faraday depth spectrum (or real stacked [real, imag])
+        cellsize: Grid spacing (rad/m²)
+        rmtf_fwhm: RMTF FWHM (rad/m²)
+        max_recovered_width: Maximum recoverable structure width (rad/m²)
+        max_faraday_depth: Maximum Faraday depth with >50% sensitivity (rad/m²)
+        n: Number of grid points
+    """
     phi: Union[np.ndarray, "da.Array"] = None
     data: Union[np.ndarray, "da.Array"] = None
     cellsize: float = None
@@ -30,6 +52,14 @@ class Parameter:
     n: int = None
 
     def __init__(self, phi=None, cellsize=None, data=None):
+        """
+        Initialize Parameter.
+        
+        Args:
+            phi: Faraday depth grid (rad/m²). If None, will be computed by calculate_cellsize.
+            cellsize: Grid spacing (rad/m²). If None, will be computed by calculate_cellsize.
+            data: Initial data array (complex or real stacked)
+        """
         self.phi = phi
         self.data = data
         self.cellsize = cellsize
@@ -46,11 +76,18 @@ class Parameter:
             self.n = 0
 
     @property
-    def data(self):
+    def data(self) -> Union[np.ndarray, "da.Array", None]:
+        """Faraday depth spectrum data (complex or real stacked)."""
         return self.__data
 
     @data.setter
     def data(self, val):
+        """
+        Set data array and update n.
+        
+        Args:
+            val: Data array (complex or real stacked)
+        """
         if val is not None:
             self.__data = val
             self.__n = length_of(val)
@@ -58,22 +95,36 @@ class Parameter:
             self.__data = None
 
     @property
-    def n(self):
+    def n(self) -> int:
+        """Number of grid points."""
         return self.__n
 
     @n.setter
     def n(self, val):
+        """Set number of grid points."""
         self.__n = val
 
     def calculate_cellsize(
         self,
-        dataset: Dataset = None,
+        dataset: "Dataset" = None,
         oversampling=None,
         cellsize=None,
         set_size_pow_2=False,
         verbose=True,
     ):
-
+        """
+        Calculate optimal cellsize and phi grid from dataset.
+        
+        Computes RMTF properties (FWHM, max recovered width, max Faraday depth)
+        and sets phi grid with appropriate cellsize and size.
+        
+        Args:
+            dataset: Dataset with lambda² coverage
+            oversampling: Oversampling factor (default: 8.0)
+            cellsize: Fixed cellsize to use (overrides computed value)
+            set_size_pow_2: If True, round n to next power of 2
+            verbose: Print RMTF properties (default: True)
+        """
         if dataset is not None:
             l2 = asnumpy(dataset.lambda2)
             w = asnumpy(dataset.w) if dataset.w is not None else np.ones(len(l2))
@@ -125,7 +176,13 @@ class Parameter:
             self.phi = self.cellsize * np.arange(-(self.n / 2), (self.n / 2), 1)
             self.data = np.zeros_like(self.phi, dtype=np.complex64)
 
-    def calculate_sparsity(self):
+    def calculate_sparsity(self) -> float:
+        """
+        Calculate sparsity percentage of data.
+        
+        Returns:
+            Sparsity percentage (0-100): 100 * (1 - nonzeros / total_elements)
+        """
         data_np = asnumpy(self.data)
         if data_np.dtype == np.complex64 or data_np.dtype == np.complex128:
             n = 2 * len(data_np)
@@ -136,7 +193,14 @@ class Parameter:
         return 100.0 * (1.0 - (non_zeros / n))
 
     def complex_data_to_real(self):
-        """Convert Faraday depth from complex (n_phi,) to real stacked [real, imag] (2n). For external use (e.g. real-only optimizers)."""
+        """
+        Convert Faraday depth from complex (n_phi,) to real stacked [real, imag] (2n).
+        
+        For use with real-only optimizers. Converts complex array to [real, imag] stacked.
+        
+        Raises:
+            TypeError: If data is not complex
+        """
         d = self.data
         dt = d.dtype if hasattr(d, "dtype") else getattr(asnumpy(d), "dtype", None)
         if dt == np.complex64 or dt == np.complex128:
@@ -145,7 +209,14 @@ class Parameter:
             raise TypeError("Parameter data is not complex64")
 
     def real_data_to_complex(self):
-        """Convert Faraday depth from real stacked [real, imag] (2n) to complex (n_phi,). For external use after real-only optimization."""
+        """
+        Convert Faraday depth from real stacked [real, imag] (2n) to complex (n_phi,).
+        
+        For use after real-only optimization. Converts [real, imag] stacked array back to complex.
+        
+        Raises:
+            ValueError: If data is not real
+        """
         d = self.data
         dt = d.dtype if hasattr(d, "dtype") else getattr(asnumpy(d), "dtype", None)
         if dt == np.float32 or dt == np.float64:
@@ -153,7 +224,17 @@ class Parameter:
         else:
             raise ValueError("Parameter data is not real")
 
-    def convolve(self, x=None, rmtf_fwhm=None):
+    def convolve(self, x=None, rmtf_fwhm=None) -> np.ndarray:
+        """
+        Convolve Faraday depth spectrum with Gaussian kernel (restore/clean beam).
+        
+        Args:
+            x: Input array (default: self.data)
+            rmtf_fwhm: RMTF FWHM for kernel (default: self.rmtf_fwhm)
+            
+        Returns:
+            Convolved spectrum (complex)
+        """
         if rmtf_fwhm is None:
             rmtf_fwhm = self.rmtf_fwhm
 

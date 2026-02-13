@@ -32,19 +32,36 @@ POWELL_RESTART_ETA = 0.2
 
 
 class GradientNormError(Exception):
-    """Raised when gradient norm is zero (degenerate step)."""
+    """
+    Raised when gradient norm is zero (degenerate step).
+    
+    Exception class for CG optimization errors.
+    """
+    pass
 
 
 @dataclass(init=True, repr=True)
 class ConjugateGradient(GradientOptimizer):
     """
     Non-linear Conjugate Gradient for smooth unconstrained minimization.
-    Search direction: d_{k+1} = -g_{k+1} + beta_k * d_k.
-    Uses Powell restart and optional negative-beta restart.
+    
+    Base class for CG variants. Search direction: d_{k+1} = -g_{k+1} + beta_k * d_k.
+    Uses Powell restart and optional negative-beta restart. Supports dask arrays.
     """
 
     def run(self) -> Tuple[float, Parameter]:
-        """Run optimization. Returns (final_cost, optimized_parameter)."""
+        """
+        Run CG optimization.
+        
+        Public method. Performs conjugate gradient iterations with line search
+        and restart logic.
+        
+        Returns:
+            Tuple of (final_cost, optimized_parameter)
+            
+        Raises:
+            ValueError: If guess_param or F_obj is None
+        """
         if self.guess_param is None or self.F_obj is None:
             raise ValueError("guess_param and F_obj cannot be None")
 
@@ -93,7 +110,23 @@ class ConjugateGradient(GradientOptimizer):
     def _line_search(
         self, x, d, f_x: float, grad_x, c1: float = None, rho: float = None, max_ls: int = 30
     ) -> float:
-        """Armijo backtracking: alpha s.t. f(x + alpha*d) <= f(x) + c1*alpha*<grad,d>."""
+        """
+        Armijo backtracking line search.
+        
+        Protected method. Finds alpha such that f(x + alpha*d) <= f(x) + c1*alpha*<grad,d>.
+        
+        Args:
+            x: Current point
+            d: Search direction
+            f_x: Current function value
+            grad_x: Current gradient
+            c1: Armijo parameter (default: self.c1)
+            rho: Backtracking factor (default: self.rho)
+            max_ls: Maximum line search iterations
+            
+        Returns:
+            Step size alpha
+        """
         c1 = c1 if c1 is not None else self.c1
         rho = rho if rho is not None else self.rho
         xp = math_module(x)
@@ -118,8 +151,20 @@ class ConjugateGradient(GradientOptimizer):
     ) -> Tuple[float, float, float]:
         """
         Compute beta_k and scalars for restart check.
-        Returns (beta, g_dot_g_prev, norm2_g).
-        Raises GradientNormError if ||grad_prev||^2 == 0.
+        
+        Public method. Computes conjugate gradient parameter beta and auxiliary
+        scalars for restart logic.
+        
+        Args:
+            grad: Current gradient
+            grad_prev: Previous gradient
+            dir_prev: Previous search direction
+            
+        Returns:
+            Tuple of (beta, g_dot_g_prev, norm2_g)
+            
+        Raises:
+            GradientNormError: If ||grad_prev||^2 == 0
         """
         norm2_grad_prev = _norm2(grad_prev)
         if norm2_grad_prev == 0.0:
@@ -144,7 +189,20 @@ class ConjugateGradient(GradientOptimizer):
     def _should_restart(
         self, conjugate_parameter: float, g_dot_g_prev: float, norm2_g: float
     ) -> bool:
-        """Restart with steepest descent when beta <= 0 or Powell condition holds."""
+        """
+        Check if restart is needed (Powell condition or negative beta).
+        
+        Protected method. Restarts with steepest descent when beta <= 0 or
+        Powell condition holds.
+        
+        Args:
+            conjugate_parameter: Beta value
+            g_dot_g_prev: <g_k+1, g_k>
+            norm2_g: ||g_k+1||^2
+            
+        Returns:
+            True if restart needed
+        """
         if conjugate_parameter <= 0.0:
             return True
         return norm2_g > 0 and g_dot_g_prev < POWELL_RESTART_ETA * norm2_g
@@ -157,8 +215,19 @@ class ConjugateGradient(GradientOptimizer):
         prev_search_direction,
     ) -> Tuple[Parameter, float, any, Optional[any], bool]:
         """
-        One CG iteration: line search, update, gradient, beta, new direction.
-        Returns (updated_param, new_f, current_gradient, new_search_direction, converged).
+        Perform one CG iteration.
+        
+        Protected method. Performs line search, updates parameter, computes gradient,
+        beta, and new search direction.
+        
+        Args:
+            iteration: Iteration number
+            current_param: Current parameter
+            prev_gradient: Previous gradient
+            prev_search_direction: Previous search direction
+            
+        Returns:
+            Tuple of (updated_param, new_f, current_gradient, new_search_direction, converged)
         """
         if self.verbose:
             print(f"Iteration {iteration + 1}")
@@ -219,14 +288,36 @@ class ConjugateGradient(GradientOptimizer):
 
     @abstractmethod
     def method_name(self) -> str:
-        """Name of the CG variant."""
+        """
+        Name of the CG variant.
+        
+        Abstract method: subclasses must implement.
+        
+        Returns:
+            Method name (string)
+        """
         raise NotImplementedError
 
     @abstractmethod
     def _conjugate_gradient_parameter(
         self, grad, grad_prev, *, dir_prev=None, norm2_grad_prev: float = None, norm2_grad: float = None
     ) -> Union[float, any]:
-        """Compute beta_k for this variant. May return scalar or array (will be computed)."""
+        """
+        Compute beta_k for this variant.
+        
+        Protected abstract method: subclasses must implement. May return scalar
+        or array (will be computed to float).
+        
+        Args:
+            grad: Current gradient
+            grad_prev: Previous gradient
+            dir_prev: Previous search direction
+            norm2_grad_prev: ||grad_prev||^2 (precomputed)
+            norm2_grad: ||grad||^2 (precomputed)
+            
+        Returns:
+            Beta value (scalar or array)
+        """
         raise NotImplementedError
 
 
@@ -235,14 +326,29 @@ class ConjugateGradient(GradientOptimizer):
 
 @dataclass(init=True, repr=True)
 class FletcherReeves(ConjugateGradient):
-    """Fletcher-Reeves: beta = ||g_{k+1}||^2 / ||g_k||^2."""
+    """
+    Fletcher-Reeves CG variant.
+    
+    Beta formula: beta = ||g_{k+1}||^2 / ||g_k||^2.
+    """
 
     def method_name(self) -> str:
+        """
+        Return method name.
+        
+        Returns:
+            "Fletcher-Reeves"
+        """
         return "Fletcher-Reeves"
 
     def _conjugate_gradient_parameter(
         self, grad, grad_prev, *, dir_prev=None, norm2_grad_prev=None, norm2_grad=None
     ):
+        """
+        Compute Fletcher-Reeves beta.
+        
+        Protected method.
+        """
         if norm2_grad is None:
             norm2_grad = _norm2(grad)
         return norm2_grad / max(norm2_grad_prev, 1e-20)
@@ -250,14 +356,29 @@ class FletcherReeves(ConjugateGradient):
 
 @dataclass(init=True, repr=True)
 class PolakRibiere(ConjugateGradient):
-    """Polak-Ribière-Polyak: beta = g_{k+1}^T (g_{k+1} - g_k) / ||g_k||^2."""
+    """
+    Polak-Ribière-Polyak CG variant.
+    
+    Beta formula: beta = g_{k+1}^T (g_{k+1} - g_k) / ||g_k||^2.
+    """
 
     def method_name(self) -> str:
+        """
+        Return method name.
+        
+        Returns:
+            "Polak-Ribiere-Polyak"
+        """
         return "Polak-Ribiere-Polyak"
 
     def _conjugate_gradient_parameter(
         self, grad, grad_prev, *, dir_prev=None, norm2_grad_prev=None, norm2_grad=None
     ):
+        """
+        Compute Polak-Ribière beta.
+        
+        Protected method.
+        """
         xp = math_module(grad)
         grad_diff = grad - grad_prev
         numer = _inner(grad, grad_diff)
@@ -266,14 +387,29 @@ class PolakRibiere(ConjugateGradient):
 
 @dataclass(init=True, repr=True)
 class HestenesStiefel(ConjugateGradient):
-    """Hestenes-Stiefel: beta = g_{k+1}^T (g_{k+1} - g_k) / (d_k^T (g_{k+1} - g_k))."""
+    """
+    Hestenes-Stiefel CG variant.
+    
+    Beta formula: beta = g_{k+1}^T (g_{k+1} - g_k) / (d_k^T (g_{k+1} - g_k)).
+    """
 
     def method_name(self) -> str:
+        """
+        Return method name.
+        
+        Returns:
+            "Hestenes-Stiefel"
+        """
         return "Hestenes-Stiefel"
 
     def _conjugate_gradient_parameter(
         self, grad, grad_prev, *, dir_prev=None, norm2_grad_prev=None, norm2_grad=None
     ):
+        """
+        Compute Hestenes-Stiefel beta.
+        
+        Protected method.
+        """
         grad_diff = grad - grad_prev
         numer = _inner(grad, grad_diff)
         denom = _inner(dir_prev, grad_diff)
@@ -284,14 +420,29 @@ class HestenesStiefel(ConjugateGradient):
 
 @dataclass(init=True, repr=True)
 class DaiYuan(ConjugateGradient):
-    """Dai-Yuan: beta = ||g_{k+1}||^2 / (d_k^T (g_{k+1} - g_k))."""
+    """
+    Dai-Yuan CG variant.
+    
+    Beta formula: beta = ||g_{k+1}||^2 / (d_k^T (g_{k+1} - g_k)).
+    """
 
     def method_name(self) -> str:
+        """
+        Return method name.
+        
+        Returns:
+            "Dai-Yuan"
+        """
         return "Dai-Yuan"
 
     def _conjugate_gradient_parameter(
         self, grad, grad_prev, *, dir_prev=None, norm2_grad_prev=None, norm2_grad=None
     ):
+        """
+        Compute Dai-Yuan beta.
+        
+        Protected method.
+        """
         if norm2_grad is None:
             norm2_grad = _norm2(grad)
         grad_diff = grad - grad_prev
@@ -303,14 +454,30 @@ class DaiYuan(ConjugateGradient):
 
 @dataclass(init=True, repr=True)
 class HagerZhang(ConjugateGradient):
-    """Hager-Zhang: beta = (1/(d^T y)) * (y - 2*d*||y||^2/(d^T y))^T g_{k+1}, y = g_{k+1} - g_k."""
+    """
+    Hager-Zhang CG variant.
+    
+    Beta formula: beta = (1/(d^T y)) * (y - 2*d*||y||^2/(d^T y))^T g_{k+1},
+    where y = g_{k+1} - g_k.
+    """
 
     def method_name(self) -> str:
+        """
+        Return method name.
+        
+        Returns:
+            "Hager-Zhang"
+        """
         return "Hager-Zhang"
 
     def _conjugate_gradient_parameter(
         self, grad, grad_prev, *, dir_prev=None, norm2_grad_prev=None, norm2_grad=None
     ):
+        """
+        Compute Hager-Zhang beta.
+        
+        Protected method.
+        """
         grad_diff = grad - grad_prev
         denom = _inner(dir_prev, grad_diff)
         if abs(denom) < 1e-20:

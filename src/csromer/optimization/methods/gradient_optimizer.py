@@ -16,13 +16,34 @@ from ..optimizer import Optimizer
 
 
 def _inner(a, b) -> float:
-    """Inner product; works with dask by computing to scalar."""
+    """
+    Inner product; works with dask by computing to scalar.
+    
+    Private helper function. Computes <a, b> and returns real part.
+    
+    Args:
+        a: First array
+        b: Second array
+        
+    Returns:
+        Inner product (float, real part)
+    """
     out = np.vdot(np.ravel(a), np.ravel(b))
     return float(np.real(maybe_compute(out)))
 
 
 def _norm2(a) -> float:
-    """Squared L2 norm; works with dask."""
+    """
+    Squared L2 norm; works with dask.
+    
+    Private helper function. Computes ||a||^2.
+    
+    Args:
+        a: Input array
+        
+    Returns:
+        Squared L2 norm (float)
+    """
     out = np.vdot(np.ravel(a), np.ravel(a))
     return float(np.real(maybe_compute(out)))
 
@@ -31,7 +52,15 @@ def _norm2(a) -> float:
 class GradientOptimizer(Optimizer):
     """
     Base class for gradient-based optimizers.
-    Uses gradient and function tolerances for convergence.
+    
+    Provides gradient and function convergence checks, line search parameters,
+    and initialization helpers. Uses gradient and function tolerances for convergence.
+    
+    Attributes:
+        grad_fun: Optional gradient function (default: F_obj.calculate_gradient)
+        gtol: Gradient tolerance (default: 1e-8)
+        c1: Armijo parameter for line search (default: 1e-4)
+        rho: Backtracking factor for line search (default: 0.5)
     """
 
     grad_fun: Optional[Callable] = None
@@ -40,6 +69,17 @@ class GradientOptimizer(Optimizer):
     rho: float = 0.5
 
     def _grad(self, x):
+        """
+        Compute gradient at x.
+        
+        Protected method. Uses grad_fun if provided, otherwise F_obj.calculate_gradient.
+        
+        Args:
+            x: Input array
+            
+        Returns:
+            Gradient array
+        """
         if self.grad_fun is not None:
             return self.grad_fun(x)
         return self.F_obj.calculate_gradient(x)
@@ -47,7 +87,19 @@ class GradientOptimizer(Optimizer):
     def _condition(
         self, parameter: Parameter, gradient, function_value: float
     ) -> float:
-        """Scaled gradient stopping condition (Pyralysis-style)."""
+        """
+        Compute scaled gradient stopping condition (Pyralysis-style).
+        
+        Protected method. Computes max(|grad| * max(|param|, 1)) / max(|f|, 1).
+        
+        Args:
+            parameter: Parameter object
+            gradient: Gradient array
+            function_value: Current function value
+            
+        Returns:
+            Scaled gradient condition (float)
+        """
         xp = math_module(gradient)
         abs_param = xp.abs(parameter.data)
         div = max(float(function_value), 1.0)
@@ -58,7 +110,18 @@ class GradientOptimizer(Optimizer):
     def _check_function_convergence(
         self, func_current: float, func_previous: float
     ) -> bool:
-        """Relative function change <= ftol (with epsilon)."""
+        """
+        Check relative function change convergence.
+        
+        Protected method. Returns True if relative function change <= tol.
+        
+        Args:
+            func_current: Current function value
+            func_previous: Previous function value
+            
+        Returns:
+            True if converged
+        """
         eps = np.finfo(np.float64).tiny
         denom = abs(func_current) + abs(func_previous) + eps
         return 2.0 * abs(func_current - func_previous) <= self.tol * denom
@@ -71,7 +134,21 @@ class GradientOptimizer(Optimizer):
         verbose: bool,
         gtol: float = None,
     ) -> bool:
-        """True if scaled gradient norm < gtol."""
+        """
+        Check scaled gradient norm convergence.
+        
+        Protected method. Returns True if scaled gradient norm < gtol.
+        
+        Args:
+            parameter: Parameter object
+            gradient: Gradient array
+            function_value: Current function value
+            verbose: Verbose output flag
+            gtol: Gradient tolerance (default: self.gtol)
+            
+        Returns:
+            True if converged
+        """
         gcond = self._condition(parameter, gradient, function_value)
         g_tol = gtol if gtol is not None else self.gtol
         if gcond < g_tol:
@@ -83,7 +160,17 @@ class GradientOptimizer(Optimizer):
     def _initialize_optimization_state(
         self, parameter: Parameter
     ) -> Tuple[Parameter, float, any]:
-        """Compute initial function value and gradient. Returns (param, f_value, gradient)."""
+        """
+        Compute initial function value and gradient.
+        
+        Protected method. Evaluates objective and gradient at initial point.
+        
+        Args:
+            parameter: Initial parameter
+            
+        Returns:
+            Tuple of (param, f_value, gradient)
+        """
         x = np.array(parameter.data, copy=False)
         f_value = self.F_obj.evaluate(x)
         if hasattr(f_value, "compute"):

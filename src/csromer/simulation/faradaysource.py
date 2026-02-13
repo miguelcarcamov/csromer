@@ -1,6 +1,11 @@
+"""
+Base class for simulated Faraday sources.
+
+Abstract base class for generating synthetic polarization data with various
+source models (thin, thick, manual).
+"""
 import copy
 import itertools
-import sys
 from abc import abstractmethod
 from dataclasses import dataclass
 
@@ -12,15 +17,47 @@ from ..base.dataset import Dataset
 
 @dataclass(init=False, repr=True)
 class FaradaySource(Dataset):
+    """
+    Base class for simulated Faraday sources.
+    
+    Extends Dataset with simulation capabilities. Subclasses implement different
+    source models (thin, thick, manual). Supports source addition, channel removal,
+    and noise application.
+    
+    Attributes:
+        s_nu: Flux density at reference frequency (Jy)
+    """
     s_nu: float = None
 
     def __init__(self, s_nu=None, **kwargs):
+        """
+        Initialize Faraday source.
+        
+        Args:
+            s_nu: Flux density at reference frequency (Jy)
+            **kwargs: Additional arguments passed to Dataset
+        """
         super().__init__(**kwargs)
 
         self.s_nu = s_nu
         self.sigma = np.ones_like(self.lambda2)
 
     def __add__(self, other):
+        """
+        Add two sources (operator overloading).
+        
+        Public method. Combines two sources by summing data and computing
+        weighted average of spectral indices.
+        
+        Args:
+            other: Another FaradaySource instance
+            
+        Returns:
+            New FaradaySource with combined data
+            
+        Raises:
+            TypeError: If sources are incompatible or data is None
+        """
         if isinstance(other, FaradaySource) and hasattr(other, "data"):
             if (
                 (self.nu == other.nu).all() and self.data is not None and other.data is not None
@@ -37,6 +74,20 @@ class FaradaySource(Dataset):
                 raise TypeError("Data attribute in sources cannot be NoneType")
 
     def __iadd__(self, other):
+        """
+        In-place addition of sources (operator overloading).
+        
+        Public method. Modifies self by adding other source's data.
+        
+        Args:
+            other: Another FaradaySource instance
+            
+        Returns:
+            Modified self
+            
+        Raises:
+            TypeError: If sources are incompatible or data is None
+        """
         if isinstance(other, FaradaySource) and hasattr(other, "data"):
             if (
                 (self.nu == other.nu).all() and self.data is not None and other.data is not None
@@ -54,15 +105,41 @@ class FaradaySource(Dataset):
 
     @abstractmethod
     def simulate(self):
+        """
+        Simulate polarization data.
+        
+        Abstract method: subclasses must implement. Generates synthetic polarization
+        data P(lambda²) based on source model.
+        """
         pass
 
-    def add_external_faraday_depolarization(self, sigma_rm=None):
+    def add_external_faraday_depolarization(self, sigma_rm: float = None):
+        """
+        Add external Faraday depolarization (Burn law).
+        
+        Public method. Multiplies data by exp(-2 * sigma_rm^2 * lambda²^2) to
+        simulate external depolarization.
+        
+        Args:
+            sigma_rm: RMS rotation measure (rad/m², default: 0.0)
+        """
         if sigma_rm is None:
             sigma_rm = 0.0
 
         self.data *= np.exp(-2.0 * sigma_rm**2 * self.lambda2**2)
 
-    def remove_channels(self, remove_frac=None, random_state=None, chunksize=None):
+    def remove_channels(self, remove_frac: float = None, random_state=None, chunksize: int = None):
+        """
+        Remove random channels (for testing incomplete coverage).
+        
+        Public method. Removes a fraction of channels in random chunks to simulate
+        incomplete frequency coverage.
+        
+        Args:
+            remove_frac: Fraction of channels to remove (0.0-1.0)
+            random_state: Random state for reproducibility (optional)
+            chunksize: Maximum chunk size for removal (auto if None)
+        """
         if remove_frac == 0.0:
             return
         else:
@@ -112,6 +189,18 @@ class FaradaySource(Dataset):
             self.data = self.data[chans_removed]
 
     def apply_noise(self, noise=None, random_state=None):
+        """
+        Apply Gaussian noise to polarization data.
+        
+        Public method. Adds independent Gaussian noise to Q and U components.
+        
+        Args:
+            noise: Noise level (float for same Q/U, or complex for different)
+            random_state: Random state for reproducibility (optional)
+            
+        Raises:
+            TypeError: If noise is not float or complex
+        """
         applied_noise = np.zeros((2, ), dtype=np.float32)
 
         if noise is not None:

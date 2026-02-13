@@ -1,6 +1,8 @@
 """
 Utilities for array handling that support both NumPy and Dask arrays.
-Used across csromer for dask array compatibility.
+
+Used across csromer for dask array compatibility. Functions detect array type
+and handle numpy/dask appropriately to maintain lazy computation when possible.
 """
 from __future__ import annotations
 
@@ -17,8 +19,16 @@ except ImportError:
 
 def asnumpy(arr) -> np.ndarray:
     """
-    Convert array to NumPy. If it is a Dask array, compute it.
-    Otherwise return as NumPy array (copy if needed).
+    Convert array to NumPy.
+    
+    Public utility function. If input is a Dask array, computes it. Otherwise
+    returns as NumPy array (copy if needed).
+    
+    Args:
+        arr: Input array (numpy, dask, or None)
+        
+    Returns:
+        NumPy array or None
     """
     if arr is None:
         return None
@@ -28,7 +38,17 @@ def asnumpy(arr) -> np.ndarray:
 
 
 def is_dask_array(arr) -> bool:
-    """Return True if arr is a Dask array."""
+    """
+    Check if array is a Dask array.
+    
+    Public utility function.
+    
+    Args:
+        arr: Input array
+        
+    Returns:
+        True if arr is a Dask array, False otherwise
+    """
     if not HAS_DASK:
         return False
     return isinstance(arr, da.Array)
@@ -36,8 +56,17 @@ def is_dask_array(arr) -> bool:
 
 def maybe_compute(scalar_or_array):
     """
-    If the argument is a Dask array (including 0-d), return the computed value.
-    Otherwise return as-is.
+    Compute Dask array if needed, otherwise return as-is.
+    
+    Public utility function. If the argument is a Dask array (including 0-d),
+    returns the computed value. Otherwise returns as-is. Useful for scalars
+    that might be lazy dask arrays.
+    
+    Args:
+        scalar_or_array: Scalar or array (numpy, dask, or None)
+        
+    Returns:
+        Computed value or original (if not dask)
     """
     if scalar_or_array is None:
         return None
@@ -47,7 +76,17 @@ def maybe_compute(scalar_or_array):
 
 
 def length_of(arr) -> int:
-    """Return length along first axis, supporting both NumPy and Dask arrays."""
+    """
+    Return length along first axis.
+    
+    Public utility function. Supports both NumPy and Dask arrays.
+    
+    Args:
+        arr: Input array (or None)
+        
+    Returns:
+        Length (int) or 0 if arr is None
+    """
     if arr is None:
         return 0
     return arr.shape[0]
@@ -55,8 +94,16 @@ def length_of(arr) -> int:
 
 def math_module(arr):
     """
-    Return the math/array module (numpy or dask.array) appropriate for the given array.
-    Use for element-wise math (sqrt, cos, sin, sinc, etc.) so dask arrays stay lazy.
+    Return the math/array module appropriate for the given array.
+    
+    Public utility function. Returns numpy or dask.array based on input type.
+    Use for element-wise math (sqrt, cos, sin, etc.) so dask arrays stay lazy.
+    
+    Args:
+        arr: Input array (or None)
+        
+    Returns:
+        numpy or dask.array module
     """
     if arr is None:
         return np
@@ -67,8 +114,17 @@ def math_module(arr):
 
 def zeros_like(arr, **kwargs):
     """
-    Return zeros with same shape/dtype as arr, in the same backend (numpy or dask).
-    Use so gradient accumulation stays dask when input is dask.
+    Return zeros with same shape/dtype as arr, in the same backend.
+    
+    Public utility function. Returns numpy.zeros_like or da.zeros_like based
+    on input type. Use so gradient accumulation stays dask when input is dask.
+    
+    Args:
+        arr: Input array (or None)
+        **kwargs: Additional arguments passed to zeros_like
+        
+    Returns:
+        Zeros array (same backend as arr) or None
     """
     if arr is None:
         return None

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass
-from typing import Literal, Optional
+from typing import Literal, Optional, Tuple
 
 import numpy as np
 
@@ -16,13 +16,35 @@ from ..optimizer import Optimizer
 
 
 def _f_value(F, x) -> float:
-    """Evaluate F(x) and return scalar (dask-safe)."""
+    """
+    Evaluate F(x) and return scalar (dask-safe).
+    
+    Private helper function. Handles both numpy and dask arrays.
+    
+    Args:
+        F: Objective function callable
+        x: Input array
+        
+    Returns:
+        Function value (float)
+    """
     v = F(x)
     return float(maybe_compute(v)) if hasattr(v, "compute") else float(np.asarray(v).item())
 
 
 def _inner_real(a, b) -> float:
-    """Real part of inner product (dask-safe)."""
+    """
+    Real part of inner product (dask-safe).
+    
+    Private helper function. Computes real part of <a, b>.
+    
+    Args:
+        a: First array
+        b: Second array
+        
+    Returns:
+        Real part of inner product (float)
+    """
     out = np.real(np.vdot(np.ravel(a), np.ravel(b)))
     return float(maybe_compute(out))
 
@@ -30,16 +52,33 @@ def _inner_real(a, b) -> float:
 @dataclass(init=True, repr=True)
 class FISTA(Optimizer):
     """
-    FISTA for objectives F(x) = f(x) + g(x) with smooth f and proximal for g.
+    Fast Iterative Shrinkage-Thresholding Algorithm (FISTA).
+    
+    Optimizes objectives F(x) = f(x) + g(x) with smooth f and proximal for g.
     Uses F_obj only: gradient = F_obj.calculate_gradient(..., differentiable_only=True),
-    prox = F_obj.apply_prox_nondiff(...). Optional: monotone (MFISTA), adaptive restart.
+    prox = F_obj.apply_prox_nondiff(...). Supports monotone FISTA (MFISTA) and
+    adaptive restart strategies.
+    
+    Attributes:
+        noise: Noise level for cooling schedule (optional)
+        monotonic: If True, use monotone FISTA (reject non-monotone steps)
+        adaptive_restart: Restart strategy: "function", "gradient", or None
     """
 
     noise: float = None
     monotonic: bool = False
     adaptive_restart: Optional[Literal["function", "gradient"]] = None
 
-    def run(self):
+    def run(self) -> Tuple[float, "Parameter"]:
+        """
+        Run FISTA optimization.
+        
+        Public method. Performs FISTA iterations with optional cooling schedule
+        and adaptive restart.
+        
+        Returns:
+            Tuple of (final_cost, optimized_parameter)
+        """
         # Gradient of smooth part
         def grad_f(z):
             return self.F_obj.calculate_gradient(z, differentiable_only=True)
@@ -88,14 +127,38 @@ class FISTA(Optimizer):
         prox_g=None,
         get_lambda=None,
         set_lambda=None,
-        max_iter=500,
-        tol=np.finfo(np.float32).tiny,
-        n=None,
-        noise=None,
-        verbose=True,
-        monotonic=False,
-        adaptive_restart=None,
-    ):
+        max_iter: int = 500,
+        tol: float = np.finfo(np.float32).tiny,
+        n: int = None,
+        noise: float = None,
+        verbose: bool = True,
+        monotonic: bool = False,
+        adaptive_restart: Optional[Literal["function", "gradient"]] = None,
+    ) -> Tuple[float, np.ndarray]:
+        """
+        Core FISTA algorithm implementation.
+        
+        Private static method. Performs FISTA iterations with optional monotonicity
+        and adaptive restart. Supports cooling schedule via lambda updates.
+        
+        Args:
+            x: Initial guess (or None to use zeros)
+            F: Objective function callable
+            grad_f: Gradient of smooth part
+            prox_g: Proximal operator for non-differentiable part
+            get_lambda: Function to get regularization parameter
+            set_lambda: Function to set regularization parameter
+            max_iter: Maximum iterations
+            tol: Tolerance (unused, kept for interface)
+            n: Problem size (if x is None)
+            noise: Noise level for cooling
+            verbose: Verbose output
+            monotonic: Use monotone FISTA
+            adaptive_restart: Restart strategy
+            
+        Returns:
+            Tuple of (final_cost, optimized_x)
+        """
         if x is None and n is not None:
             x = np.zeros(n, dtype=np.complex64)
         x = np.array(x, copy=True)

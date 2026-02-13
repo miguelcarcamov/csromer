@@ -3,6 +3,8 @@ CG-based Faraday depth reconstructor: minimizes ChiSquared (smooth) with non-lin
 Conjugate Gradient. No L1 regularization; same Parameter/Dataset/DFT setup as
 CSROMERReconstructorWrapper.
 """
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -19,20 +21,48 @@ from .csromer_reconstructor import CSROMERReconstructorWrapper
 class CGReconstructorWrapper(CSROMERReconstructorWrapper):
     """
     Reconstructor that minimizes ChiSquared using non-linear Conjugate Gradient.
-    Uses PolakRibiere by default; no L1/wavelet. Same dirty/restored/residual
-    outputs as CSROMERReconstructorWrapper.
+    
+    Uses PolakRibiere optimizer by default; no L1/wavelet regularization.
+    Same dirty/restored/residual outputs as CSROMERReconstructorWrapper.
+    
+    Attributes:
+        cg_method: CG method class (default: PolakRibiere). Options:
+            - PolakRibiere (default)
+            - FletcherReeves
+            - HestenesStiefel
+            - DaiYuan
+            - HagerZhang
+        cg_maxiter: Maximum CG iterations (default: 500)
+        cg_tol: CG tolerance (default: 1e-6)
+        cg_verbose: Verbose output (default: True)
     """
 
+    cg_method: type = PolakRibiere
     cg_maxiter: int = 500
     cg_tol: float = 1e-6
     cg_verbose: bool = True
 
     def __post_init__(self):
+        """
+        Post-initialization: disable wavelet and L1, call parent.
+        """
         self.wavelet = None
         self.lambda_l_norm = None
         super().__post_init__()
 
     def reconstruct(self):
+        """
+        Run CG reconstruction.
+        
+        Public method. Performs full reconstruction pipeline:
+        1. Flag data (if flagger set)
+        2. Compute dirty map and statistics
+        3. Optimize chi-squared with CG
+        4. Compute model, residual, restored maps and statistics
+        
+        Sets attributes: fd_dirty, rm_dirty, fd_model, rm_model, fd_residual,
+        fd_restored, rm_restored, and error estimates.
+        """
         if self.flagger:
             self.flag_dataset()
 
@@ -59,7 +89,8 @@ class CGReconstructorWrapper(CSROMERReconstructorWrapper):
         chi_squared = ChiSquared(measurement_operator=self.nufft, wavelet=self.wavelet)
         F_obj = OFunction([chi_squared])
 
-        opt = PolakRibiere(
+        # Use specified CG method (default: PolakRibiere)
+        opt = self.cg_method(
             guess_param=self.parameter,
             F_obj=F_obj,
             grad_fun=chi_squared.calculate_gradient,
