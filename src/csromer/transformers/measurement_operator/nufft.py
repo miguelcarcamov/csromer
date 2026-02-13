@@ -3,9 +3,10 @@ NUFFT measurement operator: Kaiser-kernel forward (FFT + interpolate), adjoint o
 Forward uses FFT + Kaiser interpolation; adjoint is IFFT(A^H (phase* b)) so gradient is consistent.
 No optimization algorithm in the adjoint—just the linear adjoint of the Kaiser forward.
 
-Efficiency: interpolation matrix A is built once in configure() and stored as sparse (CSR) for
-the numpy path (O(n_ch * support) memory). Dense A is built on demand only when dask inputs are
-used, since scipy.sparse does not support dask matvec.
+Efficiency: interpolation matrix A is built once in configure() and stored as sparse. When
+pydata/sparse is installed, A is stored as sparse.COO so the same matrix works for both numpy
+and dask (da.dot(sparse, dask_vector) via dask's tensordot_lookup). Otherwise we use scipy.sparse
+for numpy and build dense A on demand for dask.
 """
 from __future__ import annotations
 
@@ -23,6 +24,11 @@ try:
     import dask.array as da
 except ImportError:
     da = None
+
+try:
+    import sparse as _pydata_sparse  # type: ignore[import-untyped]
+except ImportError:
+    _pydata_sparse = None
 
 
 def _kaiser_1d(u: float, half_width: int, beta: float) -> float:
@@ -96,19 +102,26 @@ class NUFFT1D(DirectFourier1D):
             self.configure()
 
     def configure(self) -> None:
-        """Build and cache sparse interpolation matrix and phase (once). Dense A is built on demand for dask."""
+        """Build and cache sparse interpolation matrix and phase (once). Prefer pydata/sparse so
+        the same matrix works with dask (no dense copy). Otherwise scipy.sparse + dense on demand for dask."""
         self._nufft_A_sparse = None
         self._nufft_A_H_sparse = None
         self._nufft_phase = None
         self._nufft_A_dense = None
         self._nufft_A_H_dense = None
+        self._nufft_pydata = False
         if self.parameter is None or self.dataset is None or self.parameter.cellsize is None:
             return
         _, A, phase, _, _ = _kaiser_forward_arrays(
             self.parameter, self.dataset, self.conv_size, self.kaiser_beta
         )
-        self._nufft_A_sparse = csr_matrix(A)
-        self._nufft_A_H_sparse = csr_matrix(A.T)
+        if _pydata_sparse is not None:
+            self._nufft_A_sparse = _pydata_sparse.COO.from_scipy_sparse(csr_matrix(A))
+            self._nufft_A_H_sparse = self._nufft_A_sparse.T
+            self._nufft_pydata = True
+        else:
+            self._nufft_A_sparse = csr_matrix(A)
+            self._nufft_A_H_sparse = csr_matrix(A.T)
         self._nufft_phase = phase.astype(np.complex64)
 
     def _forward_impl(self, x: Union[np.ndarray, Any]) -> Union[np.ndarray, Any]:
@@ -121,7 +134,15 @@ class NUFFT1D(DirectFourier1D):
         else:
             A_c = None
         xp = math_module(x)
-        if da is not None and is_dask_array(x):
+        use_dask = da is not None and is_dask_array(x)
+        if self._nufft_pydata and self._nufft_A_sparse is not None:
+            X = da.fft.fft(x) if use_dask else xp.fft.fft(x)
+            if use_dask:
+                interp = da.dot(self._nufft_A_sparse, X)
+            else:
+                interp = np.asarray(self._nufft_A_sparse @ np.asarray(X))
+            out = phase * interp
+        elif use_dask:
             if self._nufft_A_dense is None and self._nufft_A_sparse is not None:
                 self._nufft_A_dense = self._nufft_A_sparse.toarray().astype(np.complex64)
             A_use = self._nufft_A_dense if self._nufft_A_dense is not None else A_c
@@ -156,7 +177,14 @@ class NUFFT1D(DirectFourier1D):
         xp = math_module(b)
         phase_conj = xp.conj(phase)
         phased = (phase_conj * b).astype(np.complex64)
-        if da is not None and is_dask_array(b):
+        use_dask = da is not None and is_dask_array(b)
+        if self._nufft_pydata and self._nufft_A_H_sparse is not None:
+            if use_dask:
+                back = da.dot(self._nufft_A_H_sparse, phased)
+            else:
+                back = np.asarray(self._nufft_A_H_sparse @ np.asarray(phased))
+            out = da.fft.ifft(back) if use_dask else xp.fft.ifft(back)
+        elif use_dask:
             if self._nufft_A_H_dense is None and self._nufft_A_H_sparse is not None:
                 self._nufft_A_H_dense = self._nufft_A_H_sparse.toarray().astype(np.complex64)
             A_H_use = self._nufft_A_H_dense if self._nufft_A_H_dense is not None else A_H
