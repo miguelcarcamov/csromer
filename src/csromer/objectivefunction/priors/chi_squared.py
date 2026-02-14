@@ -41,8 +41,9 @@ class ChiSquared(Fi):
         """
         Evaluate chi-squared: (1/2) * sum(w * |residual|^2).
         
-        Public method. Computes model data via forward operator, sets residual,
-        and returns weighted sum of squared residuals.
+        Public method. Forward is unweighted: model_data = A(x). Residual
+        residual = data - model_data. Weights w are applied only to the
+        squared residuals (not to the forward operator).
         
         Args:
             x: Input array (Faraday depth or coefficients)
@@ -51,9 +52,9 @@ class ChiSquared(Fi):
             Chi-squared value (scalar)
         """
         op = self.measurement_operator
-        model_data = op.forward(x)
+        model_data = op.forward(x)  # unweighted forward
         op.dataset.model_data = model_data
-        res = op.dataset.residual
+        res = op.dataset.residual  # data - model_data
         chi_squared_vector = op.dataset.w * (res.real**2 + res.imag**2)
         xp = math_module(chi_squared_vector)
         result = 0.5 * xp.sum(chi_squared_vector)
@@ -62,10 +63,12 @@ class ChiSquared(Fi):
 
     def calculate_gradient(self, x):
         """
-        Calculate gradient: backward(weighted residual).
+        Calculate gradient: -backward(weighted residual).
         
-        Public method. Computes model data, sets residual, weights it, and applies
-        backward operator (adjoint of forward).
+        F(x) = (1/2) sum(w * |residual|^2), residual = data - model_data.
+        Gradient dF/dx = -A^H (w * residual). We pass w*residual to backward
+        (adjoint); backward does not apply weights again. Sign: steepest
+        descent updates x -= alpha*grad, so we return -A^H(w*r).
         
         Args:
             x: Input array (Faraday depth or coefficients)
@@ -74,10 +77,10 @@ class ChiSquared(Fi):
             Gradient array (same shape as x)
         """
         op = self.measurement_operator
-        model_data = op.forward(x)
+        model_data = op.forward(x)  # unweighted
         op.dataset.model_data = model_data
-        weighted_res = op.dataset.w * op.dataset.residual
-        result = op.backward(weighted_res)
+        weighted_res = op.dataset.w * op.dataset.residual  # w * (data - model_data)
+        result = -op.backward(weighted_res)  # -A^H(weighted_res); backward = raw adjoint
         self._grad_value = result
         return result
 

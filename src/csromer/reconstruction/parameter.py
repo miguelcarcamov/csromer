@@ -134,7 +134,14 @@ class Parameter:
             l2_min = float(np.min(l2_nonzero))
             l2_max = float(np.max(dataset.lambda2) if not is_dask_array(dataset.lambda2) else np.max(l2))
 
-            delta_phi_fwhm = 2.0 * np.sqrt(3.0) / (l2_max - l2_min)  # FWHM of the FPSF
+            # Single source of truth: RMTF FWHM from Dataset (full vs nominal by l2_ref)
+            delta_phi_fwhm = dataset.delta_phi
+            if delta_phi_fwhm is None:
+                # Fallback when Dataset has no lambda2: nominal if spread > 0, else full (avoids div by zero)
+                if l2_max > l2_min:
+                    delta_phi_fwhm = 2.0 * np.sqrt(3.0) / (l2_max - l2_min)
+                else:
+                    delta_phi_fwhm = 2.0 / (l2_max + l2_min)
             delta_phi_theo = np.pi / l2_min
 
             delta_phi = min(delta_phi_fwhm, delta_phi_theo)
@@ -173,7 +180,7 @@ class Parameter:
                 self.n = int(temp - np.mod(temp, 32))
 
             self.cellsize = 2 * phi_max / self.n
-            self.phi = self.cellsize * np.arange(-(self.n / 2), (self.n / 2), 1)
+            self.phi = self.cellsize * (np.arange(self.n) - self.n // 2)
             self.data = np.zeros_like(self.phi, dtype=np.complex64)
 
     def calculate_sparsity(self) -> float:
@@ -226,39 +233,49 @@ class Parameter:
 
     def convolve(self, x=None, rmtf_fwhm=None) -> np.ndarray:
         """
-        Convolve Faraday depth spectrum with Gaussian kernel (restore/clean beam).
+        Convolve Faraday depth spectrum with Gaussian restore beam (max=1).
+        
+        Convolves real and imaginary parts separately; multiple peaks stay
+        separated. Caller scales by pixels_per_rmtf and peak_scale to get Jy/rmtf.
         
         Args:
-            x: Input array (default: self.data)
+            x: Input array (default: self.data), Jy/phi_pixel
             rmtf_fwhm: RMTF FWHM for kernel (default: self.rmtf_fwhm)
             
         Returns:
-            Convolved spectrum (complex)
+            Convolved spectrum (complex), Jy/phi_pixel
         """
         if rmtf_fwhm is None:
             rmtf_fwhm = self.rmtf_fwhm
 
-        rmtf_fwhm_pixels = int(np.round(rmtf_fwhm / self.cellsize))
         val_fwhm = 2.0 * np.sqrt(2.0 * np.log(2.0))
         sigma_x = rmtf_fwhm / val_fwhm
-        sigma_x_pixels = int(np.round(sigma_x / self.cellsize))
+        # Use float sigma so kernel FWHM in physical space equals rmtf_fwhm (integer rounding
+        # would oversmooth and merge closely spaced components)
+        sigma_x_pixels = max(1.0, sigma_x / self.cellsize)
+        rmtf_fwhm_pixels = rmtf_fwhm / self.cellsize
 
         print(
-            "Convolving with Gaussian kernel where FWHM {0:2.3f} rad/m^2 - pixels {1}, sigma {2:2.3f} rad/m^2 - pixels {3}"
-            .format(rmtf_fwhm, rmtf_fwhm_pixels, sigma_x, sigma_x_pixels)
+            "Convolving with Gaussian kernel where FWHM {0:2.3f} rad/m^2 - sigma {1:2.3f} rad/m^2 - sigma_pixels {2:.4f}"
+            .format(rmtf_fwhm, sigma_x, sigma_x_pixels)
         )
 
         clean_beam = Gaussian1DKernel(stddev=sigma_x_pixels)
-        clean_beam_array = clean_beam.array
+        clean_beam_array = np.asarray(clean_beam.array, dtype=np.float64).ravel()
+        # Normalize so max=1: conserves peak (flux) so conv_model peak ≈ model peak
+        k_max = float(np.max(clean_beam_array))
+        if k_max > 0:
+            clean_beam_array = clean_beam_array / k_max
+        print("  [convolve] kernel len=%d sum=%.6f max=%.6f (max=1, peak-conserving)" % (
+            len(clean_beam_array), float(np.sum(clean_beam_array)), float(np.max(clean_beam_array))))
 
-        data_src = self.data if x is None else x
-        data_np = asnumpy(data_src)
+        data_src = x if x is not None else self.data
+        data_np = np.asarray(asnumpy(data_src), dtype=np.complex128)
+        print("  [convolve] input x is None=%s  peak|data_np|=%.6e  sum|data_np|=%.6e" % (
+            x is None, float(np.max(np.abs(data_np))), float(np.sum(np.abs(data_np)))))
 
-        q_stokes = sci_signal.convolve(
-            data_np.real, clean_beam_array, mode="same", method="fft"
-        )
-        u_stokes = sci_signal.convolve(
-            data_np.imag, clean_beam_array, mode="same", method="fft"
-        )
-        p_stokes = q_stokes + 1j * u_stokes
+        # Convolve real and imaginary parts separately (keeps multiple peaks separated)
+        q_stokes = sci_signal.convolve(data_np.real, clean_beam_array, mode="same", method="fft")
+        u_stokes = sci_signal.convolve(data_np.imag, clean_beam_array, mode="same", method="fft")
+        p_stokes = (q_stokes + 1j * u_stokes).astype(data_np.dtype)
         return p_stokes

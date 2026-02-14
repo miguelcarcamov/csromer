@@ -380,11 +380,26 @@ class Dataset(metaclass=ABCMeta):
                 val = val[::-1]
                 self.__lambda2 = val
             self.__m = length_of(val)
-            self.__nu = c / np.sqrt(val)
-            nu_min, nu_max = maybe_compute(np.min(self.__nu)), maybe_compute(np.max(self.__nu))
-            self.__nu_0 = 0.5 * (float(nu_min) + float(nu_max))
-            if hasattr(self, "spectral_idx") and self.__spectral_idx is not None:
-                self.__s = (self.__nu / self.__nu_0) ** self.__spectral_idx
+            # Avoid divide-by-zero: nu = c/sqrt(lambda²) is invalid for lambda² <= 0
+            val_np_safe = np.where(val_np > 0, val_np, np.nan)
+            self.__nu = np.asarray(c / np.sqrt(val_np_safe), dtype=np.float64)
+            if da is not None and is_dask_array(val):
+                ch = getattr(val, "chunks", None)
+                chunks = ch[0] if isinstance(ch, tuple) else "auto"
+                self.__nu = da.from_array(self.__nu, chunks=chunks)
+            nu_min = maybe_compute(np.nanmin(self.__nu))
+            nu_max = maybe_compute(np.nanmax(self.__nu))
+            if np.isfinite(nu_min) and np.isfinite(nu_max):
+                self.__nu_0 = 0.5 * (float(nu_min) + float(nu_max))
+            else:
+                self.__nu_0 = np.nan
+            if hasattr(self, "spectral_idx") and self.__spectral_idx is not None and np.isfinite(self.__nu_0):
+                # Only compute s where nu is finite; otherwise use 1.0 (no spectral correction)
+                with np.errstate(invalid="ignore"):
+                    s_vals = (self.__nu / self.__nu_0) ** self.__spectral_idx
+                self.__s = np.where(np.isfinite(self.__nu), s_vals, 1.0)
+            elif hasattr(self, "spectral_idx") and self.__spectral_idx is not None:
+                self.__s = np.ones_like(self.__nu)
             if da is not None and is_dask_array(val):
                 ch = getattr(val, "chunks", None)
                 chunks = ch[0] if isinstance(ch, tuple) else "auto"
@@ -776,6 +791,10 @@ class Dataset(metaclass=ABCMeta):
     def delta_phi(self) -> float:
         """
         Resolution (rad/m²): full resolution if lambda²_0 = 0, nominal resolution if lambda²_0 > 0.
+        
+        Used by Parameter.calculate_cellsize for the phi grid. With l2_ref > 0 the grid is
+        coarser (nominal), so the peak of the dirty/restored Faraday spectrum can be higher
+        than with l2_ref = 0 (full resolution); integrated flux is consistent.
         
         Returns:
             Full resolution if l2_ref == 0, nominal resolution if l2_ref > 0,

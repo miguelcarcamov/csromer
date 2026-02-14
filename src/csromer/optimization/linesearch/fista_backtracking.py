@@ -62,8 +62,15 @@ class FISTABacktracking(LineSearcher):
             raise ValueError("objective_function.dphi must be set (call calculate_gradient)")
         grad_f_y = np.asarray(grad_f_y)
         f_y = self.objective_function.calculate_function(y_k, differentiable_only=True)
+        F_y = self.objective_function.evaluate(y_k)
+        F_y = float(maybe_compute(F_y)) if hasattr(F_y, "compute") else float(np.asarray(F_y).item())
         prox = self._get_proximal()
-        lipschitz_L = self._prev_lipschitz if self._prev_lipschitz is not None else self.initial_lipschitz
+        # Warm start (Pyralysis-style): try larger step (smaller L) than last time
+        # First iteration: use initial_lipschitz only (e.g. 1.0) so we try full gradient step; backtracking increases L until bound holds
+        if self._prev_lipschitz is not None:
+            lipschitz_L = max(self.initial_lipschitz, self._prev_lipschitz * 0.5)
+        else:
+            lipschitz_L = self.initial_lipschitz
         for _ in range(self.max_iter):
             gradient_step = y_k - (1.0 / lipschitz_L) * grad_f_y
             x_k_candidate = prox(gradient_step, lipschitz_L)
@@ -71,7 +78,8 @@ class FISTABacktracking(LineSearcher):
             full_F = self.objective_function.evaluate(x_k_candidate)
             full_F = float(maybe_compute(full_F)) if hasattr(full_F, "compute") else float(np.asarray(full_F).item())
             Q_L = self._compute_Q_L(x_k_candidate, y_k, f_y, grad_f_y, lipschitz_L)
-            if full_F <= Q_L:
+            # Require F <= Q_L (bound) and F(x) <= F(y) (monotone step for MFISTA)
+            if np.isfinite(full_F) and full_F <= Q_L and full_F <= F_y:
                 break
             lipschitz_L /= self.decrease
             if lipschitz_L > 1e10:

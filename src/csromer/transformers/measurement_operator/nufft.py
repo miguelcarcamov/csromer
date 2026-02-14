@@ -355,13 +355,18 @@ class NUFFT1D(DirectFourier1D):
                 # This undoes the ifftshift applied in forward direction
                 out = np.fft.fftshift(x_fft)
         out = out.astype(np.complex64)
-        # Note: With norm="forward" in FFT/IFFT, the scaling is already handled correctly
-        # Multiplying by N here would cause incorrect scaling and overflow
-        # GriddedFFT1D doesn't multiply by N, and it works correctly with norm="forward"
-        # The normalize parameter is kept for backward compatibility but does nothing
-        # if self.normalize:
-        #     out = out * len(self.parameter.phi)
+        # Adjoint is pure: no extra scaling; dirty-spectrum scaling is applied in _dirty_spectrum_impl.
         return out
+
+    def _dirty_spectrum_impl(self, data: Union[np.ndarray, Any]) -> Union[np.ndarray, Any]:
+        """
+        Dirty spectrum: A^H(weighted data) with scaling so the result matches the
+        continuous definition (sum over channels; no 1/N from FFT).
+        The FFT adjoint with norm="forward" yields (1/n_phi)*sum; multiply by n_ch here.
+        """
+        raw = super()._dirty_spectrum_impl(data)
+        n_ch = self.dataset.m
+        return raw * n_ch
 
     def RMTF(self, phi_x: float = 0.0):
         """

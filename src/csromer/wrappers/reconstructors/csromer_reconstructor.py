@@ -54,8 +54,13 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
         second_moment: Second moment of model
         cellsize: Grid spacing (rad/m², optional)
         oversampling: Oversampling factor (default: 7.0)
-        lambda_l_norm: L1 regularization factor (auto-computed if None)
+        lambda_l_norm: L1 regularization factor (required for L1; use 0.0 for Chi-squared only)
         calculate_l2_zero: Whether to compute l2_ref (default: False)
+        fista_maxiter: Max FISTA iterations (optional; default 500)
+        fista_tol: FISTA tolerance (optional)
+        fista_verbose: FISTA verbose output (default: True)
+        fista_step: FISTA gradient step size (optional; backtracking if None)
+        fista_monotonic: If True, use MFISTA (monotone FISTA, reject non-decreasing steps)
     """
     parameter: Parameter = field(init=False)
     flagger: Flagger = None
@@ -81,8 +86,13 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
     second_moment: float = field(init=False)
     cellsize: float = None
     oversampling: float = None
-    lambda_l_norm: float = None
+    lambda_l_norm: float = None  # L1 reg; None => 0.0 (Chi-squared only, no L1)
     calculate_l2_zero: bool = None
+    fista_maxiter: int = None
+    fista_tol: float = None
+    fista_verbose: bool = True
+    fista_step: float = None  # Gradient step. None => backtracking.
+    fista_monotonic: bool = False  # If True, use MFISTA.
 
     def __post_init__(self):
         """
@@ -117,7 +127,14 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
             Tuple of (phi_peak, peak_value)
         """
         length_n = len(fd_signal)
-        index_0 = np.argmax(np.abs(fd_signal))
+        index_0 = int(np.argmax(np.abs(fd_signal)))
+
+        # Need both neighbors for quadratic interpolation; at boundaries use raw peak
+        if index_0 <= 0 or index_0 >= length_n - 1:
+            location = float(index_0)
+            estimated_peak = float(np.abs(fd_signal[index_0]))
+            pos_phi_peak = (location - length_n / 2) * cellsize
+            return pos_phi_peak, estimated_peak
 
         fd_signal_0 = np.abs(fd_signal[index_0])
         fd_signal_m1 = np.abs(fd_signal[index_0 - 1])
@@ -380,15 +397,20 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
         Get rotation measure at peak of Faraday depth spectrum.
         
         Public method. Finds peak location and returns phi value at that location.
+        Uses maybe_compute so that dask arrays are realized before argmax (avoids
+        wrong peak from chunked argmax or lazy evaluation).
         
         Args:
-            fd_data: Faraday depth spectrum
+            fd_data: Faraday depth spectrum (numpy or dask)
             
         Returns:
             Rotation measure (rad/m²)
         """
-        rm_at_peak = self.parameter.phi[np.argmax(np.abs(fd_data))]
-        return rm_at_peak
+        from ...utils.array_utils import maybe_compute
+        fd_abs = np.asarray(maybe_compute(np.abs(fd_data)))
+        idx = int(np.argmax(fd_abs))
+        phi = np.asarray(maybe_compute(self.parameter.phi))
+        return float(phi[idx])
 
     def reconstruct(self):
         """
@@ -412,7 +434,9 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
         )
 
         self.fd_dirty = fd_dirty
-        self.parameter.data = fd_dirty
+        # Optimizer works in Jy/phi_pixel; start from complex zeros (not from dirty).
+        n_phi = self.parameter.n
+        self.parameter.data = np.zeros(n_phi, dtype=np.complex64)
         self.rm_dirty = self.get_rm(fd_dirty)
         self.rm_dirty_error = self.calculate_sigma_phi_peak(
             self.parameter.rmtf_fwhm, np.max(np.abs(fd_dirty)), dirty_noise
@@ -426,38 +450,32 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
         )
         # When using wavelets, optimize in coefficient space; otherwise complex Faraday throughout
         if self.wavelet is not None:
-            self.parameter.data = self.wavelet.decompose_complex(fd_dirty)
+            self.parameter.data = self.wavelet.decompose_complex(self.parameter.data)
         # Faraday depth kept as complex; no real stacking
 
         if self.lambda_l_norm is None:
-            if self.wavelet is not None:
-                self.lambda_l_norm = (
-                    np.sqrt(self.dataset.m + 2 * np.sqrt(self.dataset.m)) * 2.0 * np.sqrt(2) *
-                    np.mean(self.dataset.sigma)
-                )
-            else:
-                self.lambda_l_norm = (
-                    np.sqrt(self.dataset.m + 2 * np.sqrt(self.dataset.m)) * np.sqrt(2) *
-                    np.mean(self.dataset.sigma)
-                )
+            self.lambda_l_norm = 0.0  # No L1; set lambda_l_norm explicitly for sparse reconstruction
 
-        chi_squared = ChiSquared(measurement_operator=self.nufft, wavelet=self.wavelet)
+        # Use DFT (same as dirty map / CG) so scaling matches and backtracking finds reasonable steps
+        chi_squared = ChiSquared(measurement_operator=self.dft, wavelet=self.wavelet)
         l1 = L1(reg=self.lambda_l_norm)
 
         F_func = [chi_squared, l1]
         F_obj = OFunction(F_func, persist_gradient=True)
 
-        if self.wavelet is not None:
-            opt_noise = 2.0 * self.dataset.theo_noise
-        else:
-            opt_noise = self.dataset.theo_noise
-
-        opt = FISTA(
+        fista_kw = dict(
             guess_param=self.parameter,
             F_obj=F_obj,
-            noise=opt_noise,
-            verbose=True,
+            verbose=self.fista_verbose,
+            monotonic=self.fista_monotonic,
         )
+        if self.fista_maxiter is not None:
+            fista_kw["maxiter"] = self.fista_maxiter
+        if self.fista_tol is not None:
+            fista_kw["tol"] = self.fista_tol
+        if self.fista_step is not None:
+            fista_kw["step"] = self.fista_step
+        opt = FISTA(**fista_kw)
 
         obj, X = opt.run()
 
@@ -465,13 +483,46 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
         if self.wavelet is not None:
             X.data = self.wavelet.reconstruct_complex(X.data)
 
+        # Model and dirty/residual in same Faraday-depth space
         self.fd_model = X.data
         self.rm_model = self.get_rm(self.fd_model)
         self.second_moment = self.calculate_second_moment()
 
-        self.fd_residual = self.dft.backward(self.dataset.data - self.dataset.model_data)
+        # Residual: dirty of (data - model_data), in Jy/rmtf (same as dirty)
+        self.fd_residual = self.dft.dirty_spectrum(self.dataset.data - self.dataset.model_data)
 
-        self.fd_restored = X.convolve() + self.fd_residual
+        # Model is Jy/phi_pixel; dirty and residual are Jy/rmtf. Real/imag convolution;
+        # scale so conv peak = model peak, then convert with pixels_per_rmtf.
+        conv_model = self.parameter.convolve(x=self.fd_model)
+        pixels_per_rmtf = self.parameter.rmtf_fwhm / self.parameter.cellsize
+        from ...utils.array_utils import maybe_compute
+        _fd_dirty = self.get_dirty_faraday_depth()
+        def _peak(a):
+            a = np.asarray(maybe_compute(a))
+            return float(np.max(np.abs(a)))
+        model_peak = _peak(self.fd_model)
+        conv_peak = _peak(conv_model)
+        peak_scale = (model_peak / conv_peak) if conv_peak > 1e-30 else 1.0
+        conv_model_scaled = conv_model * peak_scale
+        self.fd_restored = conv_model_scaled * pixels_per_rmtf + self.fd_residual
+
+        # --- DEBUG: restoration units and scaling ---
+        def _sumabs(a):
+            a = np.asarray(maybe_compute(a))
+            return float(np.sum(np.abs(a)))
+        conv_Jy_rmtf = conv_model_scaled * pixels_per_rmtf
+        print("[restore DEBUG]")
+        print("  cellsize=%.6f  rmtf_fwhm=%.6f  pixels_per_rmtf=%.4f  peak_scale=%.4f" % (
+            self.parameter.cellsize, self.parameter.rmtf_fwhm, pixels_per_rmtf, peak_scale))
+        print("  peak:  dirty=%.6e  model=%.6e  residual=%.6e" % (
+            _peak(_fd_dirty), _peak(self.fd_model), _peak(self.fd_residual)))
+        print("  peak:  conv_model(Jy/phi)=%.6e  conv_scaled*ppr=%.6e  restored=%.6e" % (
+            _peak(conv_model), _peak(conv_Jy_rmtf), _peak(self.fd_restored)))
+        print("  sum|model|=%.6e  sum|conv_model|=%.6e" % (
+            _sumabs(self.fd_model), _sumabs(conv_model)))
+        print("  ratio dirty_peak/model_peak=%.4f  (if model Jy/phi_pixel expect ~pixels_per_rmtf=%.4f)" % (
+            _peak(_fd_dirty) / (_peak(self.fd_model) + 1e-30), pixels_per_rmtf))
+
         restored_noise = self.calculate_fd_signal_noise(
             self.fd_restored, self.parameter.phi, self.parameter.max_faraday_depth
         )

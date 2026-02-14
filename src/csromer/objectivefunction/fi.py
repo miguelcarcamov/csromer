@@ -5,11 +5,12 @@ from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Union
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 
-from ..dictionaries import Wavelet
+if TYPE_CHECKING:
+    from ..dictionaries import Wavelet
 
 try:
     import dask.array as da
@@ -38,7 +39,7 @@ class Fi(metaclass=ABCMeta):
     """
     reg: float = None
     norm_factor: float = None
-    wavelet: Wavelet = None
+    wavelet: "Wavelet | None" = None
     # Pyralysis-style attributes (backward compatible: reg is the storage)
     is_differentiable: bool = True
     persist_proximal: bool = False

@@ -132,10 +132,12 @@ class MeasurementOperator(metaclass=ABCMeta):
 
     def backward(self, b: Union[np.ndarray, Any], **kwargs) -> Union[np.ndarray, Any]:
         """
-        Backward operator: alias for adjoint.
+        Backward operator: alias for adjoint (raw linear adjoint, no weighting).
         
-        Public method. Used in gradients with weighted residuals.
-        Equivalent to adjoint(b).
+        Public method. Used in chi-squared gradient: caller passes weighted
+        residual (w * (data - model_data)); backward returns A^H(b). No
+        weights or normalization are applied here—dirty_spectrum does that
+        separately for the dirty map.
         
         Args:
             b: Complex polarization P(lambda²) (n_channels,)

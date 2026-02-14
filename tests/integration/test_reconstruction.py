@@ -73,3 +73,36 @@ def test_fista_reconstruction_end_to_end(small_thin_source):
     assert np.all(np.isfinite(recon.fd_restored))
     assert np.isfinite(recon.rm_model)
     assert np.isfinite(recon.second_moment)
+
+
+@pytest.mark.xfail(reason="FISTA currently stuck in monotone reject; model/restored near zero until fixed")
+def test_fista_restored_amplitude_vs_dirty(small_thin_source):
+    """
+    FISTA with lambda_l_norm=0 (Chi-squared only, same as CG) should produce
+    non-trivial model/restored: max|restored| should be a non-negligible
+    fraction of max|dirty| (restored close to dirty in scale).
+    Remove xfail when FISTA backtracking/step is fixed.
+    """
+    recon = CSROMERReconstructorWrapper(
+        dataset=small_thin_source,
+        oversampling=4.0,
+        wavelet=None,
+        lambda_l_norm=0.0,
+        fista_maxiter=100,
+        fista_verbose=False,
+    )
+    recon.reconstruct()
+
+    max_dirty = np.max(np.abs(recon.fd_dirty))
+    max_restored = np.max(np.abs(recon.fd_restored))
+    max_model = np.max(np.abs(recon.fd_model))
+    assert max_dirty > 0, "Dirty spectrum should have non-zero peak"
+    # Restored = conv(model) * rmtf_fwhm + residual; should be on same scale as dirty
+    assert max_restored >= 1e-6 * max_dirty, (
+        f"FISTA restored should have non-negligible amplitude: "
+        f"max|restored|={max_restored:.2e}, max|dirty|={max_dirty:.2e}"
+    )
+    # Model (Jy/phi_pixel) can be smaller than dirty (Jy/rmtf); check it's not identically zero
+    assert max_model >= 1e-10, (
+        f"FISTA model should be non-zero: max|model|={max_model:.2e}"
+    )

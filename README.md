@@ -87,6 +87,8 @@ python -m pytest tests/ -v
 - Run only integration tests (requires PyWavelets): `python -m pytest tests/ -m integration -v`
 - With conda: `conda activate csromer-env` then `python -m pytest tests/ -v`
 
+**Troubleshooting:** If you see `RuntimeWarning: numpy.ndarray size changed, may indicate binary incompatibility (Expected 80 from C header, got 96 from PyObject)`, your NumPy and binary extensions (e.g. scipy, astropy) were built for different NumPy ABIs. Fix by using the env from `environment.yml`, or run `pip install "numpy>=1.24.2,<2"` then `pip install --force-reinstall scipy astropy` so they match.
+
 ### From PyPI
 
 `pip install csromer`

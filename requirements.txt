@@ -1,5 +1,6 @@
 # For NumPy/Astropy ABI compatibility (avoid "numpy.ndarray size changed" warning),
 # prefer creating the env from environment.yml so numpy and astropy come from conda-forge.
+# Pin numpy<2 so binary extensions (scipy, astropy, etc.) match the C ABI (Expected 80 vs 96).
 astropy==5.2.1
 astropy-healpix==0.7
 astroquery==0.4.6
@@ -7,7 +8,7 @@ dask==2023.2.0
 h5py==3.8.0
 joblib==1.2.0
 matplotlib==3.6.3
-numpy==1.24.2
+numpy>=1.24.2,<2
 prox_tv==3.2.1
 proxmin==0.6.12
 pynufft==2023.1.1

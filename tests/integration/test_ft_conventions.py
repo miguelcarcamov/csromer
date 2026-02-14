@@ -125,61 +125,27 @@ def test_gridded_fft_point_source_peak(phi_gal, uniform_frequency_grid):
     )
     source.simulate()
     
-    # Grid to uniform lambda²
-    gridding = Gridding(dataset=source)
+    # Phi-first: choose phi grid (formulas + oversampling), then Nyquist gives d_lambda²
+    param = Parameter()
+    param.calculate_cellsize(dataset=source, oversampling=4.0, verbose=False)
+    d_lambda2 = np.pi / (param.n * param.cellsize)
+    
+    # Grid with same length as phi grid (n=param.n) and Nyquist d_lambda²
+    gridding = Gridding(dataset=source, d_lambda2=d_lambda2, n=param.n)
     gridded_source = gridding.run()
     
-    # Verify lambda² is uniformly spaced
     assert _is_uniformly_spaced(gridded_source.lambda2), "lambda² must be uniformly spaced for GriddedFFT1D"
-    
     n_channels = len(gridded_source.lambda2)
     
-    # For GriddedFFT1D, grids must satisfy Nyquist relationship: d_phi * d_lambda² = π/N
-    # Set up phi grid to satisfy this relationship
     l2_array = np.asarray(gridded_source.lambda2)
-    d_lambda2 = float(np.diff(l2_array)[0])  # Uniform spacing
-    
-    # Calculate d_phi from Nyquist relationship: d_phi * d_lambda² = π/N
-    d_phi = np.pi / (n_channels * d_lambda2)
-    
-    # Calculate phi_max to ensure phi_gal is covered
-    phi_max_needed = abs(phi_gal) * 1.5 if abs(phi_gal) > 0 else 100.0
-    phi_max_from_l2 = np.sqrt(3) / gridded_source.delta_l2_mean
-    phi_max = max(phi_max_needed, phi_max_from_l2)
-    
-    # Set n to n_channels and calculate cellsize to satisfy Nyquist
-    # But also ensure phi_max is covered
-    # cellsize = 2 * phi_max / n, but we also need d_phi = π/(N * d_lambda²)
-    # So: 2 * phi_max / n = π/(N * d_lambda²)
-    # This gives: phi_max = π * n / (2 * N * d_lambda²) = π / (2 * d_lambda²) (since n=N)
-    # But we want phi_max to cover phi_gal, so we might need to adjust
-    # For now, use d_phi as cellsize and calculate phi_max accordingly
-    param = Parameter()
-    param.n = n_channels
-    param.cellsize = d_phi  # Use Nyquist d_phi as cellsize
-    # Recalculate phi_max based on cellsize: phi_max = (n/2) * cellsize
-    phi_max = (n_channels / 2.0) * param.cellsize
-    
-    # If phi_max is too small, we need to increase n (but then n != n_channels)
-    # For GriddedFFT1D, we must have n == n_channels, so we accept the limitation
-    if abs(phi_gal) > phi_max:
-        # Extend phi_max by using a larger n, but then we can't use GriddedFFT1D
-        # Instead, adjust cellsize slightly to cover phi_gal while maintaining approximate Nyquist
-        phi_max = abs(phi_gal) * 1.5
-        # Recalculate cellsize: cellsize = 2 * phi_max / n
-        param.cellsize = 2.0 * phi_max / n_channels
-        # This breaks Nyquist, but ensures coverage
-        # Note: This is a limitation - GriddedFFT1D requires n_phi == n_channels
-    
-    # Create phi grid symmetric around zero: phi_n = (n - N/2) * cellsize
-    param.phi = param.cellsize * np.arange(-(param.n / 2), (param.n / 2), 1)
-    param.max_faraday_depth = np.max(np.abs(param.phi))
     
     # Calculate RMTF properties for completeness
     l2_min = float(np.min(l2_array))
     l2_max = float(np.max(l2_array))
     param.rmtf_fwhm = 2.0 * np.sqrt(3.0) / (l2_max - l2_min)
-    param.max_recovered_width = np.pi / l2_min
+    # Grid starts at 0 when n is fixed; avoid division by zero
+    l2_min_safe = l2_min if l2_min > 0 else d_lambda2
+    param.max_recovered_width = np.pi / l2_min_safe
     
     # Verify phi_gal is within range
     phi_max_actual = np.max(np.abs(param.phi))
@@ -415,7 +381,7 @@ def test_lambda2_ref_phase_factor(uniform_frequency_grid):
         param.cellsize = 2.0 * phi_max / n_channels
     
     # Create phi grid symmetric around zero
-    param.phi = param.cellsize * np.arange(-(param.n / 2), (param.n / 2), 1)
+    param.phi = param.cellsize * (np.arange(param.n) - param.n // 2)
     param.max_faraday_depth = np.max(np.abs(param.phi))
     
     # Calculate RMTF properties

@@ -118,9 +118,7 @@ class GriddedFFT1D(MeasurementOperator):
             Complex Faraday depth spectrum (n_phi,)
         """
         # Apply FFT with norm="forward" for positive sign convention (adjoint of ifft)
-        # Lambda² grid is monotonic, so no shift needed before FFT
-        # Shift output to restore phi grid order (fftshift after FFT)
-        # This undoes the ifftshift applied in forward direction
+        # Adjoint is pure: no extra scaling; dirty-spectrum scaling is applied in _dirty_spectrum_impl.
         if da is not None and is_dask_array(b):
             # Use fft with norm="forward" for positive sign convention (adjoint of ifft)
             x_fft = da.fft.fft(b, norm="forward").astype(np.complex64)
@@ -148,6 +146,16 @@ class GriddedFFT1D(MeasurementOperator):
         if da is not None and is_dask_array(x_fft):
             return (x_fft * phase_conj).astype(np.complex64)
         return (x_fft * phase_conj).astype(np.complex64)
+
+    def _dirty_spectrum_impl(self, data: Union[np.ndarray, Any]) -> Union[np.ndarray, Any]:
+        """
+        Dirty spectrum: A^H(weighted data) with scaling so the result matches the
+        continuous definition (sum over channels; no 1/N from FFT).
+        The FFT adjoint with norm="forward" yields (1/N)*sum; multiply by N here.
+        """
+        raw = super()._dirty_spectrum_impl(data)
+        n_chan = self.dataset.m
+        return raw * n_chan
 
     def RMTF(self, phi_x: float = 0.0) -> Union[np.ndarray, Any]:
         """

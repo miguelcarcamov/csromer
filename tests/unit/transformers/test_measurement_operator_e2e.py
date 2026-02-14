@@ -144,7 +144,7 @@ class TestGriddedFFT1DE2E:
         np.testing.assert_allclose(energy_data, n * energy_model, rtol=1e-5)
 
     def test_point_source_1jy_dirty_value(self, dataset_gridded_fft, parameter_gridded_fft):
-        """1 Jy point source (delta at center) -> dirty peak = 1 when K=sum(w) (Jy per unit RMTF)."""
+        """1 Jy point source (delta at center) -> dirty peak = 1 (Jy per unit RMTF), same as DirectFourier1D."""
         op = GriddedFFT1D(dataset=dataset_gridded_fft, parameter=parameter_gridded_fft)
         n = parameter_gridded_fft.n
         center = n // 2
@@ -152,15 +152,11 @@ class TestGriddedFFT1DE2E:
         x[center] = 1.0
         data = op.forward(x)
         dataset_gridded_fft.data = data
-        # k is automatically set to sum(w) when weights are set
-        # With new behavior: normalize by sum(w) before adjoint, so peak = adjoint(p)/sum(w) = 1/sum(w)
-        # This is equivalent to old behavior: adjoint(w*p)/k = adjoint(p)/sum(w) = 1/sum(w) when k=sum(w)
         dirty = op.dirty_spectrum(data)
         dirty_np = np.asarray(maybe_compute(dirty))
         peak = np.abs(dirty_np).max()
-        # With normalization by sum(w) before adjoint: adjoint(w*p/sum(w)) = adjoint(p)/sum(w)
-        # For 1 Jy point source: adjoint(p) = 1.0, so peak = 1.0/sum(w)
-        expected_peak = 1.0 / np.sum(dataset_gridded_fft.w) if dataset_gridded_fft.w is not None else 1.0
+        # dirty_spectrum passes (w*p)/sum(w); adjoint then scaled by N to match direct FT. Peak = 1.
+        expected_peak = 1.0
         np.testing.assert_allclose(peak, expected_peak, rtol=1e-5)
 
     def test_rmtf_peak(self, dataset_gridded_fft, parameter_gridded_fft):
