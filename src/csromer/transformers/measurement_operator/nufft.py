@@ -1,13 +1,10 @@
 """
-NUFFT measurement operator: Kaiser-kernel forward (FFT + interpolate), adjoint of forward (no iterative solver).
+NUFFT measurement operator: Kaiser-kernel forward (FFT + interpolate), adjoint of forward.
 
-Implements the Faraday depth Fourier transform:
+Implements the Faraday depth Fourier transform (Burn 1966):
 P(lambda²) = ∫ F(phi) * exp(+2j * phi * lambda²) dphi
 
-Forward uses FFT + Kaiser interpolation with phase correction for lambda²_0 reference.
-The phase factor accounts for the reference lambda² in the non-uniform sampling.
-Adjoint is IFFT(A^H (phase* b)) so gradient is consistent. No optimization algorithm
-in the adjoint—just the linear adjoint of the Kaiser forward.
+No l2_ref in forward/adjoint. Adjoint is linear adjoint of the Kaiser forward.
 
 Efficiency: interpolation matrix A is built once in configure() and stored as sparse. When
 pydata/sparse is installed, A is stored as sparse.COO so the same matrix works for both numpy
@@ -92,70 +89,30 @@ def _build_kaiser_interp_matrix(
                 j_mod += n_phi
             u = k_c - j
             A[c, j_mod] += _kaiser_1d(u, half_width, beta)
+        # Normalize row so sum_j A[c,j] = 1; then A^H(weighted) sums to sum(weighted)
+        # and dirty spectrum amplitude matches DirectFourier/GriddedFFT.
+        row_sum = float(np.sum(A[c, :]))
+        if row_sum > 1e-15:
+            A[c, :] /= row_sum
     return A
 
 
 def _kaiser_forward_arrays(parameter, dataset, conv_size: int, kaiser_beta: float):
     """
     Compute k_cont, A, phase for forward/adjoint.
-    
-    Private helper function. Builds interpolation matrix and phase factor for NUFFT.
-    The phase factor accounts for the lambda²_0 reference in the non-uniform sampling,
-    implementing exp(+2j * phi * lambda²) with proper FFT domain mapping.
-    
-    Args:
-        parameter: Parameter object with phi grid
-        dataset: Dataset with lambda²
-        conv_size: Convolution size (half-width)
-        kaiser_beta: Kaiser beta parameter
-        
-    Returns:
-        Tuple of (k_cont, A, phase, N, d_phi)
+
+    Private helper. No l2_ref in transform; uses lambda² directly for k_cont and phase=1.
     """
     N = len(parameter.phi)
     d_phi = float(parameter.cellsize)
-    l2_diff = dataset.lambda2 - dataset.l2_ref
-    l2_diff_np = np.asarray(maybe_compute(l2_diff))
-    n_ch = l2_diff_np.size
-    l2_ref = float(maybe_compute(dataset.l2_ref)) if dataset.l2_ref is not None else 0.0
-    
-    # Map lambda² to FFT k indices for NUFFT interpolation
-    # For exp(+2j * phi * lambda²) with ifft(norm='forward'): exp(+2πikn/N)
-    # The relationship: phi_n * lambda² = πkn/N
-    # After ifftshift, phi_n = (n - N/2) * d_phi maps to FFT index n
-    # For uniform lambda² grid with Nyquist: d_phi * d_lambda² = π/N
-    # So: k = N * d_phi * (lambda² - lambda²_0) / π
-    #
-    # k_cont maps non-uniform lambda² to continuous FFT k indices
-    # For positive sign convention exp(+2j * phi * lambda²):
-    # - Positive l2_diff maps to positive k_cont (positive frequencies)
-    # - Negative l2_diff maps to negative k_cont (negative frequencies)
-    # After ifftshift: FFT k=0 is DC (phi=0), k>0 corresponds to positive frequencies
-    k_cont = N * d_phi * l2_diff_np / np.pi
+    l2_np = np.asarray(maybe_compute(dataset.lambda2))
+    n_ch = l2_np.size
+
+    # Map lambda² to FFT k indices: k = N * d_phi * lambda² / π (no l2_ref)
+    k_cont = N * d_phi * l2_np / np.pi
     A = _build_kaiser_interp_matrix(n_ch, N, k_cont, conv_size, kaiser_beta)
-    
-    # Phase factor accounts for lambda²_0 reference
-    # In GriddedFFT1D: phase = exp(+2j * phi * lambda²_0) applied BEFORE FFT
-    # In NUFFT: we apply phase AFTER interpolation to account for lambda²_0
-    #
-    # The phase correction accounts for the lambda²_0 reference in the transform
-    # Since we're interpolating at non-uniform lambda² positions, we need to compute
-    # which phi value corresponds to each interpolation point
-    #
-    # However, k_cont is a continuous FFT frequency index, not a phi value
-    # The mapping from FFT k to phi is complex and depends on ifftshift
-    # For simplicity and numerical stability, we use phi_ref = 0 (center phi)
-    # This makes phase = exp(+2j * 0 * lambda²_0) = 1.0 when lambda²_0 = 0
-    # and avoids numerical issues with large phi_ref values
-    #
-    # Note: This is an approximation. A more accurate approach would compute
-    # phi_ref from the actual phi values used in interpolation, but that's complex
-    # and the current approach works correctly when lambda²_0 = 0 (most common case)
-    phi_ref = np.zeros_like(l2_diff_np)  # Use phi = 0 for all channels
-    
-    # Phase: exp(+2j * phi_ref * lambda²_0) = 1.0 when lambda²_0 = 0
-    phase = np.exp(2.0j * phi_ref * l2_ref).astype(np.complex64)
-    
+    # No l2_ref: phase = 1
+    phase = np.ones(n_ch, dtype=np.complex64)
     return k_cont, A, phase, N, d_phi
 
 
@@ -163,13 +120,9 @@ def _kaiser_forward_arrays(parameter, dataset, conv_size: int, kaiser_beta: floa
 class NUFFT1D(DirectFourier1D):
     """
     Non-uniform FFT: Kaiser-kernel forward (FFT + interpolate), adjoint of that (A^H then IFFT).
-    
-    Implements the Faraday depth Fourier transform for non-uniformly spaced lambda²:
-    P(lambda²) = ∫ F(phi) * exp(+2j * phi * lambda²) dphi
-    
-    Uses Kaiser interpolation kernel for efficient non-uniform FFT. The phase factor
-    accounts for the lambda²_0 reference. No iterative solver—adjoint is the linear
-    adjoint of the Kaiser forward, consistent with the "positive" sign convention.
+
+    Implements the Faraday depth Fourier transform (Burn 1966) for non-uniform lambda².
+    No l2_ref in forward/adjoint.
     """
 
     conv_size: int = None
@@ -362,11 +315,12 @@ class NUFFT1D(DirectFourier1D):
         """
         Dirty spectrum: A^H(weighted data) with scaling so the result matches the
         continuous definition (sum over channels; no 1/N from FFT).
-        The FFT adjoint with norm="forward" yields (1/n_phi)*sum; multiply by n_ch here.
+        The FFT adjoint with norm="forward" yields (1/N)*sum; multiply by N (n_phi)
+        so dirty amplitude matches DirectFourier/GriddedFFT (GriddedFFT uses n_chan = N).
         """
         raw = super()._dirty_spectrum_impl(data)
-        n_ch = self.dataset.m
-        return raw * n_ch
+        n_phi = len(self.parameter.phi)
+        return raw * n_phi
 
     def RMTF(self, phi_x: float = 0.0):
         """

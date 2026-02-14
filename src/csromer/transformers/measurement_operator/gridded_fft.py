@@ -2,11 +2,11 @@
 Gridded FFT for uniformly spaced lambda². Uses da.fft.fft / da.fft.ifft
 when inputs are dask arrays.
 
-Implements the Faraday depth Fourier transform with proper lambda²_0 phase factor:
+Implements the Faraday depth Fourier transform (Burn 1966):
 P(lambda²) = ∫ F(phi) * exp(+2j * phi * lambda²) dphi
 
-For gridded lambda² uniformly spaced, applies exp(+2j * phi * lambda²_0) phase
-factor before FFT to account for the reference lambda².
+No l2_ref in the transform; gridded lambda² should be 0, d_l2, 2*d_l2, ...
+so FFT bins align with physical channels.
 """
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from typing import Any, Union
 
 import numpy as np
 
-from ...utils.array_utils import asnumpy, is_dask_array, maybe_compute
+from ...utils.array_utils import asnumpy, is_dask_array
 from .base import MeasurementOperator
 
 try:
@@ -28,15 +28,11 @@ except ImportError:
 class GriddedFFT1D(MeasurementOperator):
     """
     FFT-based measurement operator when lambda² is on a regular grid.
-    
-    Implements the Faraday depth Fourier transform:
+
+    Implements the Faraday depth Fourier transform (Burn 1966):
     P(lambda²) = ∫ F(phi) * exp(+2j * phi * lambda²) dphi
-    
-    For uniformly spaced lambda² grids, applies the lambda²_0 phase factor
-    exp(+2j * phi * lambda²_0) before FFT, where lambda²_0 is the reference
-    lambda² (dataset.l2_ref). Uses numpy FFT convention (exp(-2πikn/N) for forward)
-    with proper mapping to match the continuous FT sign convention.
-    
+
+    No l2_ref in forward/adjoint. Expects lambda² grid 0, d_l2, ..., (n-1)*d_l2.
     Uses da.fft.fft/ifft for dask arrays to maintain lazy computation.
     """
 
@@ -48,101 +44,45 @@ class GriddedFFT1D(MeasurementOperator):
 
     def configure(self) -> None:
         """
-        Configure operator: precompute lambda²_0 phase factor.
-        
-        Public method. Computes phase factor exp(+2j * phi * lambda²_0) for
-        efficient application in forward/adjoint operations.
+        Configure operator (no phase factor; transform does not use l2_ref).
         """
         if self.dataset is None or self.parameter is None:
             return
-        
-        l2_ref = float(maybe_compute(self.dataset.l2_ref)) if self.dataset.l2_ref is not None else 0.0
         phi = asnumpy(self.parameter.phi)
-        
-        # Phase factor: exp(+2j * phi * lambda²_0)
-        # This accounts for the reference lambda² in the gridded FFT
-        self._l2_ref_phase = np.exp(2.0j * phi * l2_ref).astype(np.complex64)
+        # No l2_ref in transform: phase = 1
+        self._l2_ref_phase = np.ones(phi.shape[0], dtype=np.complex64)
 
     def _forward_impl(self, x: Union[np.ndarray, Any]) -> Union[np.ndarray, Any]:
         """
         Forward operator implementation: phi -> P(lambda²) via FFT.
-        
-        Protected method. Applies lambda²_0 phase factor, then FFT to Faraday depth spectrum.
-        The phase factor accounts for the reference lambda² in the gridded transform.
-        
-        Args:
-            x: Complex Faraday depth spectrum (n_phi,)
-            
-        Returns:
-            Complex polarization P(lambda²) (n_channels,)
+
+        Protected method. No l2_ref; shift then ifft for positive sign convention.
         """
-        # Apply lambda²_0 phase factor: exp(+2j * phi * lambda²_0)
         if not hasattr(self, '_l2_ref_phase') or self._l2_ref_phase is None:
             self.configure()
-        
-        phase = self._l2_ref_phase
-        if phase is None:
-            # Fallback: compute on the fly
-            l2_ref = float(maybe_compute(self.dataset.l2_ref)) if self.dataset.l2_ref is not None else 0.0
-            phi = asnumpy(self.parameter.phi)
-            phase = np.exp(2.0j * phi * l2_ref).astype(np.complex64)
-        
-        # Apply phase factor before FFT
-        x_phased = x * phase
-        
-        # For phi grid symmetric around zero: phi_n = (n - N/2) * d_phi
-        # Shift input so phi=0 (at index N/2) maps to FFT DC (index 0)
-        # Use ifftshift to move phi=0 to index 0
-        # For Faraday depth synthesis with exp(+2j*phi*lambda²) (positive sign),
-        # use ifft with norm="forward" to get exp(+2πikn/N) instead of fft's exp(-2πikn/N)
+        # Phase is 1 (no l2_ref); x_phased = x
+        x_phased = x * self._l2_ref_phase
+        # ifftshift so phi=0 maps to FFT DC; ifft(norm="forward") for exp(+2j*phi*lambda²)
         if da is not None and is_dask_array(x_phased):
             x_shifted = da.fft.ifftshift(x_phased)
-            # Use ifft with norm="forward" for positive sign convention
             return da.fft.ifft(x_shifted, norm="forward").astype(np.complex64)
         x_shifted = np.fft.ifftshift(x_phased)
-        # Use ifft with norm="forward" for positive sign convention
         return np.fft.ifft(x_shifted, norm="forward").astype(np.complex64)
 
     def _adjoint_impl(self, b: Union[np.ndarray, Any], **kwargs) -> Union[np.ndarray, Any]:
         """
         Adjoint operator implementation: P(lambda²) -> phi via IFFT.
-        
-        Protected method. Applies IFFT to polarization data, then removes lambda²_0 phase factor.
-        The phase conjugation accounts for the reference lambda² in the gridded transform.
-        
-        Args:
-            b: Complex polarization P(lambda²) (n_channels,)
-            **kwargs: Additional arguments (unused)
-            
-        Returns:
-            Complex Faraday depth spectrum (n_phi,)
+        No l2_ref; FFT then fftshift (adjoint of forward).
         """
-        # Apply FFT with norm="forward" for positive sign convention (adjoint of ifft)
-        # Adjoint is pure: no extra scaling; dirty-spectrum scaling is applied in _dirty_spectrum_impl.
         if da is not None and is_dask_array(b):
-            # Use fft with norm="forward" for positive sign convention (adjoint of ifft)
             x_fft = da.fft.fft(b, norm="forward").astype(np.complex64)
-            # Shift output to restore phi grid order (fftshift after FFT)
             x_fft = da.fft.fftshift(x_fft).astype(np.complex64)
         else:
-            # Use fft with norm="forward" for positive sign convention (adjoint of ifft)
             x_fft = np.fft.fft(b, norm="forward").astype(np.complex64)
-            # Shift output to restore phi grid order (fftshift after FFT)
             x_fft = np.fft.fftshift(x_fft).astype(np.complex64)
-        
-        # Remove lambda²_0 phase factor: conjugate of exp(+2j * phi * lambda²_0)
         if not hasattr(self, '_l2_ref_phase') or self._l2_ref_phase is None:
             self.configure()
-        
-        phase = self._l2_ref_phase
-        if phase is None:
-            # Fallback: compute on the fly
-            l2_ref = float(maybe_compute(self.dataset.l2_ref)) if self.dataset.l2_ref is not None else 0.0
-            phi = asnumpy(self.parameter.phi)
-            phase = np.exp(2.0j * phi * l2_ref).astype(np.complex64)
-        
-        # Conjugate phase factor for adjoint
-        phase_conj = np.conj(phase)
+        phase_conj = np.conj(self._l2_ref_phase)  # = 1, no l2_ref
         if da is not None and is_dask_array(x_fft):
             return (x_fft * phase_conj).astype(np.complex64)
         return (x_fft * phase_conj).astype(np.complex64)

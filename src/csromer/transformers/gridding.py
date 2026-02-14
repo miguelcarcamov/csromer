@@ -50,10 +50,9 @@ class Gridding:
                 satisfying Nyquist d_phi * d_lambda2 = π/N. If None, uses
                 dataset.delta_l2_mean.
             n: Optional number of grid points. When given with d_lambda2, the
-                gridded grid has exactly n points (d_lambda2, 2*d_lambda2, ..., n*d_lambda2)
+                gridded grid has exactly n points (0, d_lambda2, ..., (n-1)*d_lambda2)
                 so that the same param (same length and resolution) can be used
-                for GriddedFFT1D as for DirectFourier1D/NUFFT1D. The grid starts at
-                d_lambda2 (not 0) to avoid divide-by-zero when computing nu from lambda².
+                for GriddedFFT1D as for DirectFourier1D/NUFFT1D.
         """
         self.dataset = dataset
         self.d_lambda2 = d_lambda2
@@ -68,9 +67,9 @@ class Gridding:
             else self.dataset.delta_l2_mean
         )
         if self.n is not None:
-            # Fixed length grid: exactly n points with Nyquist step.
-            # Start at step (not 0) so nu = c/sqrt(lambda²) is never divide-by-zero in Dataset.
-            l2_grid = np.arange(step, (self.n + 1) * step, step, dtype=np.float64)[: self.n]
+            # Fixed length grid: 0, d_l2, ..., (n-1)*d_l2 for GriddedFFT1D (no l2_ref in transform).
+            # Dataset handles lambda²=0 defensively (nu/weights set without divide-by-zero).
+            l2_grid = np.arange(0.0, self.n * step, step, dtype=np.float64)[: self.n]
         else:
             l2_grid = np.arange(
                 start=0.0 + EPSILON,

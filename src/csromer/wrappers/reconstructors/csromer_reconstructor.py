@@ -491,37 +491,36 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
         # Residual: dirty of (data - model_data), in Jy/rmtf (same as dirty)
         self.fd_residual = self.dft.dirty_spectrum(self.dataset.data - self.dataset.model_data)
 
-        # Model is Jy/phi_pixel; dirty and residual are Jy/rmtf. Real/imag convolution;
-        # scale so conv peak = model peak, then convert with pixels_per_rmtf.
+        # Model is Jy/phi_pixel; dirty and residual are Jy/rmtf. Same restoration as CG:
+        # scale convolved map (in Jy/rmtf) so its peak matches dirty peak, then add residual.
         conv_model = self.parameter.convolve(x=self.fd_model)
         pixels_per_rmtf = self.parameter.rmtf_fwhm / self.parameter.cellsize
         from ...utils.array_utils import maybe_compute
-        _fd_dirty = self.get_dirty_faraday_depth()
         def _peak(a):
             a = np.asarray(maybe_compute(a))
             return float(np.max(np.abs(a)))
-        model_peak = _peak(self.fd_model)
-        conv_peak = _peak(conv_model)
-        peak_scale = (model_peak / conv_peak) if conv_peak > 1e-30 else 1.0
-        conv_model_scaled = conv_model * peak_scale
-        self.fd_restored = conv_model_scaled * pixels_per_rmtf + self.fd_residual
+        conv_Jy_rmtf = conv_model * pixels_per_rmtf
+        conv_peak = _peak(conv_Jy_rmtf)
+        dirty_peak = _peak(self.fd_dirty)
+        amp_scale = (dirty_peak / conv_peak) if conv_peak > 1e-30 else 1.0
+        self.fd_restored = conv_Jy_rmtf * amp_scale + self.fd_residual
 
         # --- DEBUG: restoration units and scaling ---
         def _sumabs(a):
             a = np.asarray(maybe_compute(a))
             return float(np.sum(np.abs(a)))
-        conv_Jy_rmtf = conv_model_scaled * pixels_per_rmtf
+        conv_Jy_rmtf_scaled = conv_Jy_rmtf * amp_scale
         print("[restore DEBUG]")
-        print("  cellsize=%.6f  rmtf_fwhm=%.6f  pixels_per_rmtf=%.4f  peak_scale=%.4f" % (
-            self.parameter.cellsize, self.parameter.rmtf_fwhm, pixels_per_rmtf, peak_scale))
+        print("  cellsize=%.6f  rmtf_fwhm=%.6f  pixels_per_rmtf=%.4f  amp_scale=%.4f" % (
+            self.parameter.cellsize, self.parameter.rmtf_fwhm, pixels_per_rmtf, amp_scale))
         print("  peak:  dirty=%.6e  model=%.6e  residual=%.6e" % (
-            _peak(_fd_dirty), _peak(self.fd_model), _peak(self.fd_residual)))
-        print("  peak:  conv_model(Jy/phi)=%.6e  conv_scaled*ppr=%.6e  restored=%.6e" % (
-            _peak(conv_model), _peak(conv_Jy_rmtf), _peak(self.fd_restored)))
+            _peak(self.fd_dirty), _peak(self.fd_model), _peak(self.fd_residual)))
+        print("  peak:  conv_model(Jy/phi)=%.6e  conv*ppr*scale=%.6e  restored=%.6e" % (
+            _peak(conv_model), _peak(conv_Jy_rmtf_scaled), _peak(self.fd_restored)))
         print("  sum|model|=%.6e  sum|conv_model|=%.6e" % (
             _sumabs(self.fd_model), _sumabs(conv_model)))
         print("  ratio dirty_peak/model_peak=%.4f  (if model Jy/phi_pixel expect ~pixels_per_rmtf=%.4f)" % (
-            _peak(_fd_dirty) / (_peak(self.fd_model) + 1e-30), pixels_per_rmtf))
+            _peak(self.fd_dirty) / (_peak(self.fd_model) + 1e-30), pixels_per_rmtf))
 
         restored_noise = self.calculate_fd_signal_noise(
             self.fd_restored, self.parameter.phi, self.parameter.max_faraday_depth
