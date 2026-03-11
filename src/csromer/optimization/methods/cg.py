@@ -225,15 +225,15 @@ class ConjugateGradient(GradientOptimizer):
         Returns:
             Tuple of (updated_param, new_f, current_gradient, new_search_direction, converged)
         """
-        if self.verbose:
-            print(f"Iteration {iteration + 1}")
-
         x = np.array(current_param.data, copy=False)
         f_x = self.F_obj.evaluate(x)
         if hasattr(f_x, "compute"):
             f_x = float(f_x.compute())
         else:
             f_x = float(np.asarray(f_x).item())
+
+        if self.verbose and iteration % 10 == 0:
+            print(f"Iteration {iteration + 1}  objective = {f_x}")
         grad_x = self._grad(x)
 
         alpha = self._line_search(x, prev_search_direction, f_x, grad_x)

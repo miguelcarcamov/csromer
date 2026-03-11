@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from ...objectivefunction import ChiSquared, OFunction
+from ...objectivefunction import L1, TSV, TV, ChiSquared, OFunction
 from ...optimization import PolakRibiere
 from .csromer_reconstructor import CSROMERReconstructorWrapper
 
@@ -88,7 +88,8 @@ class CGReconstructorWrapper(CSROMERReconstructorWrapper):
         chi_squared = ChiSquared(
             measurement_operator=self.measurement_operator, wavelet=self.wavelet
         )
-        F_obj = OFunction([chi_squared])
+        l1_norm = L1(reg=self.lambda_l_norm)
+        F_obj = OFunction([chi_squared, l1_norm])
 
         # Use specified CG method (default: PolakRibiere)
         opt = self.cg_method(
@@ -124,7 +125,7 @@ class CGReconstructorWrapper(CSROMERReconstructorWrapper):
         conv_peak = _peak(conv_Jy_rmtf)
         dirty_peak = _peak(self.fd_dirty)
         amp_scale = (dirty_peak / conv_peak) if conv_peak > 1e-30 else 1.0
-        self.fd_restored = conv_Jy_rmtf * amp_scale + self.fd_residual
+        self.fd_restored = conv_Jy_rmtf + self.fd_residual
         # self.fd_restored = conv_Jy_rmtf + self.fd_residual
 
         restored_noise = self.calculate_fd_signal_noise(

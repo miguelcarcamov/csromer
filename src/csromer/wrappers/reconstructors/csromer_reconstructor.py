@@ -555,7 +555,7 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
         conv_peak = _peak(conv_Jy_rmtf)
         dirty_peak = _peak(self.fd_dirty)
         amp_scale = (dirty_peak / conv_peak) if conv_peak > 1e-30 else 1.0
-        self.fd_restored = conv_Jy_rmtf * amp_scale + self.fd_residual
+        self.fd_restored = conv_Jy_rmtf + self.fd_residual
         # self.fd_restored = conv_Jy_rmtf + self.fd_residual
 
         restored_noise = self.calculate_fd_signal_noise(

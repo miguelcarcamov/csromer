@@ -5,7 +5,7 @@ RFI and depolarization, plus 1×2 figures:
 1. Data in lambda² (polarization vs λ², irregular space — same style as testing_faraday.py)
 2. Faraday depth spectrum: dirty, restored, and model on the same plot
 
-Uses csromer simulation classes and CGReconstructorWrapper; saves 1×2 PNGs per scenario.
+Uses csromer simulation classes and CSROMERReconstructorWrapper; saves 1×2 PNGs per scenario.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from astropy.constants import c as C_LIGHT
 
 from csromer.simulation import FaradayThickSource, FaradayThinSource
 from csromer.utils.array_utils import maybe_compute
-from csromer.wrappers.reconstructors import CGReconstructorWrapper
+from csromer.wrappers.reconstructors import CSROMERReconstructorWrapper, CGReconstructorWrapper
 
 # Speed of light in m/s (float)
 c = float(C_LIGHT.value)
@@ -111,6 +111,9 @@ RFI_REMOVE_FRAC = 0.10  # 10% channels removed
 DEPOL_SIGMA_RM_THIN = 5.0  # rad/m²
 DEPOL_SIGMA_RM_THICK = 3.0  # rad/m²
 
+# Reconstructor: "csromer" (FISTA + L1) or "cg" (conjugate gradient)
+RECONSTRUCTOR = "cg"
+
 # Faraday grid parameters (same for all bands; tweak as needed)
 PHI_MAX = 1000.0  # rad/m²
 PHI_CELLSIZE = 0.5  # rad/m²
@@ -181,20 +184,43 @@ def simulate_sources_for_band(nu: np.ndarray, band_name: str):
     }
 
 
-def run_csromer_reconstruction(source, oversampling: float = 4.0, maxiter: int = 100):
-    """Run CG reconstruction on a single csromer Dataset and return recon object."""
-    recon = CGReconstructorWrapper(
-        dataset=source,
-        oversampling=oversampling,
-        cg_maxiter=maxiter,
-        cg_tol=1e-5,
-        cg_verbose=False,
-        lambda_l_norm=0.01,
+def run_csromer_reconstruction(
+    source,
+    oversampling: float = 4.0,
+    maxiter: int = 500,
+    reconstructor: str = "csromer",
+):
+    """Run reconstruction on a single csromer Dataset and return recon object.
 
-        # Use gridded FFT (no NDFT/NUFFT large arrays); data is gridded onto
-        # regular λ² then FFT-based forward/adjoint.
-        fourier_mode="gridded",
-    )
+    Args:
+        source: Dataset (e.g. simulated source).
+        oversampling: Oversampling factor for Faraday depth grid.
+        maxiter: Maximum iterations (FISTA or CG depending on reconstructor).
+        reconstructor: "csromer" (FISTA + L1) or "cg".
+
+    Returns:
+        Reconstructor instance after reconstruct().
+    """
+    if reconstructor.lower() == "cg":
+        recon = CGReconstructorWrapper(
+            dataset=source,
+            oversampling=oversampling,
+            cg_maxiter=maxiter,
+            cg_tol=1e-12,
+            cg_verbose=True,
+            lambda_l_norm=1e-10,
+            fourier_mode="gridded",
+        )
+    else:
+        recon = CSROMERReconstructorWrapper(
+            dataset=source,
+            oversampling=oversampling,
+            fista_maxiter=maxiter,
+            fista_tol=1e-12,
+            fista_verbose=True,
+            lambda_l_norm=0.0005,
+            fourier_mode="gridded",
+        )
     recon.reconstruct()
     return recon
 
@@ -213,6 +239,7 @@ def plot_1x2_csromer(
     - Right: Two stacked panels — upper: dirty and restored with 5σ limit; lower: residuals (|res|, Re, Im) with 2σ, 3σ, 5σ. Red vertical line at peak φ.
     """
     import matplotlib.gridspec as gridspec
+    from matplotlib.lines import Line2D
 
     # Original (irregular) lambda² and data from simulation
     lambda2 = np.asarray(maybe_compute(source.lambda2))
@@ -223,13 +250,21 @@ def plot_1x2_csromer(
     fd_restored = np.asarray(maybe_compute(recon.fd_restored))
     fd_residual = np.asarray(maybe_compute(recon.fd_residual))
 
-    # Noise level for sigma lines (use dirty map for consistency)
-    sigma_noise = recon.calculate_fd_signal_noise(
+    # Noise: use edge regions only (threshold=0.5 so |phi| > 0.5*max_fd) to avoid including the source
+    sigma_spectrum = recon.calculate_fd_signal_noise(
         recon.fd_dirty,
         recon.parameter.phi,
         recon.parameter.max_faraday_depth,
+        threshold=0.5,
     )
-    sigma_noise = float(np.asarray(maybe_compute(sigma_noise)))
+    sigma_spectrum = float(np.asarray(maybe_compute(sigma_spectrum)))
+    sigma_residual = recon.calculate_fd_signal_noise(
+        recon.fd_residual,
+        recon.parameter.phi,
+        recon.parameter.max_faraday_depth,
+        threshold=0.5,
+    )
+    sigma_residual = float(np.asarray(maybe_compute(sigma_residual)))
 
     # Peak Faraday depth for red vertical line (use restored peak)
     peak_idx = np.argmax(np.abs(fd_restored))
@@ -245,7 +280,7 @@ def plot_1x2_csromer(
         xlim_right = (-x, x)
 
     fig = plt.figure(figsize=(14, 6))
-    gs = gridspec.GridSpec(2, 2, figure=fig, height_ratios=[1, 0.6], width_ratios=[1, 1], hspace=0.25)
+    gs = gridspec.GridSpec(2, 2, figure=fig, height_ratios=[1, 0.6], width_ratios=[1, 1], hspace=0)
 
     # Left: Polarization vs λ² (full height)
     ax_left = fig.add_subplot(gs[:, 0])
@@ -262,34 +297,34 @@ def plot_1x2_csromer(
     ax_upper = fig.add_subplot(gs[0, 1])
     ax_upper.plot(phi, np.abs(fd_dirty), "-", color=COLORS["teal"], lw=1.2, alpha=0.9, label=r"Dirty $|F(\phi)|$")
     ax_upper.plot(phi, np.abs(fd_restored), "-", color=COLORS["black"], lw=1.5, alpha=0.9, label=r"Restored $|F(\phi)|$")
-    ax_upper.axhline(5.0 * sigma_noise, color=COLORS["gray"], linestyle="--", lw=1, alpha=0.8, label=r"5$\sigma$")
-    ax_upper.axvline(phi_peak, color="red", linestyle="-", lw=1.2, alpha=0.8)
+    ax_upper.axhline(5.0 * sigma_spectrum, color=COLORS["gray"], linestyle="--", lw=1, alpha=0.8, label=r"5$\sigma$")
+    ax_upper.axvline(phi_peak, color="red", linestyle="-", lw=1.2, alpha=0.45)
     ax_upper.set_xlim(xlim_right[0], xlim_right[1])
     ax_upper.set_ylabel(r"$|F(\phi)|$ [Jy/RMSF]", fontsize=11)
     ax_upper.set_title("Faraday depth spectrum", fontsize=12, fontweight="bold")
-    ax_upper.legend(loc="best", fontsize=9)
+    # Legend including peak position (proxy line for the red vertical line)
+    h, _ = ax_upper.get_legend_handles_labels()
+    peak_handle = Line2D([0], [0], color="red", alpha=0.45, lw=1.2, label=rf"Peak $\phi$ = {phi_peak:.2f}")
+    ax_upper.legend(handles=h + [peak_handle], loc="best", fontsize=9)
     ax_upper.grid(True, alpha=0.3)
-    ax_upper.set_xticklabels([])
+    ax_upper.tick_params(axis="x", labelbottom=False)
 
-    # Right lower: Residuals (abs, real, imag) and 2σ, 3σ, 5σ limits
-    ax_lower = fig.add_subplot(gs[1, 1], sharex=ax_upper)
-    ax_lower.plot(phi, np.abs(fd_residual), "-", color=COLORS["blue"], lw=1, alpha=0.9, label=r"$|$res$|$")
-    ax_lower.plot(phi, fd_residual.real, "--", color=COLORS["blue"], lw=0.9, alpha=0.8, label=r"Re(res)")
-    ax_lower.plot(phi, fd_residual.imag, ":", color=COLORS["blue"], lw=0.9, alpha=0.8, label=r"Im(res)")
-    for n, sig in enumerate([2, 3, 5]):
-        ax_lower.axhline(sig * sigma_noise, color=COLORS["gray"], linestyle="--", lw=0.8, alpha=0.7)
-        ax_lower.axhline(-sig * sigma_noise, color=COLORS["gray"], linestyle="--", lw=0.8, alpha=0.7)
+    # Right lower: Residuals (abs, real, imag) and 2σ, 3σ, 5σ limits — no legend
+    ax_lower = fig.add_subplot(gs[1, 1])
+    ax_lower.plot(phi, np.abs(fd_residual), "-", color=COLORS["blue"], lw=1, alpha=0.9)
+    ax_lower.plot(phi, fd_residual.real, "--", color=COLORS["blue"], lw=0.9, alpha=0.8)
+    ax_lower.plot(phi, fd_residual.imag, ":", color=COLORS["blue"], lw=0.9, alpha=0.8)
+    for sig in [2, 3, 5]:
+        ax_lower.axhline(sig * sigma_residual, color=COLORS["gray"], linestyle="--", lw=0.8, alpha=0.7)
+        ax_lower.axhline(-sig * sigma_residual, color=COLORS["gray"], linestyle="--", lw=0.8, alpha=0.7)
     ax_lower.axhline(0, color=COLORS["gray"], linestyle="-", lw=0.5, alpha=0.5)
-    ax_lower.axvline(phi_peak, color="red", linestyle="-", lw=1.2, alpha=0.8)
+    ax_lower.axvline(phi_peak, color="red", linestyle="-", lw=1.2, alpha=0.45)
     ax_lower.set_xlim(xlim_right[0], xlim_right[1])
     ax_lower.set_xlabel(r"$\phi$ [rad/m²]", fontsize=11)
     ax_lower.set_ylabel("Residuals", fontsize=11)
-    ax_lower.legend(loc="best", fontsize=8)
     ax_lower.grid(True, alpha=0.3)
-    plt.setp(ax_upper.get_xticklabels(), visible=False)
-    # Peak φ label below x-axis (in axis coordinates: 0,0 = bottom-left of axes)
-    ax_lower.text(phi_peak, -0.18, f"{phi_peak:.2f}", color="red", fontsize=9, ha="center", va="top",
-                  transform=ax_lower.get_xaxis_transform(), clip_on=False)
+    ax_lower.tick_params(axis="x", labelbottom=True)
+    plt.setp(ax_lower.get_xticklabels(), visible=True)
 
     plt.suptitle(f"{band_label} — {scenario_label}", fontsize=14, fontweight="bold")
     plt.tight_layout()
@@ -304,8 +339,9 @@ def main():
     print("=" * 80)
     print("CS-ROMER Faraday revision script (thin/thick/mixed, SKA bands)")
     print("=" * 80)
+    print(f"Reconstructor: {RECONSTRUCTOR}")
 
-    # Faraday grid used implicitly by CGReconstructorWrapper via Parameter.calculate_cellsize,
+    # Faraday grid used implicitly by CSROMERReconstructorWrapper via Parameter.calculate_cellsize,
     # so PHI_MAX / PHI_CELLSIZE are mostly for reference and consistency with testing_faraday.
 
     for band_name, cfg in SKA_BANDS.items():
@@ -323,7 +359,7 @@ def main():
 
         # THIN: clean, RFI, depol
         print("  Reconstructing thin sources...")
-        recon_thin_clean = run_csromer_reconstruction(sims["thin_clean"])
+        recon_thin_clean = run_csromer_reconstruction(sims["thin_clean"], reconstructor=RECONSTRUCTOR)
         plot_1x2_csromer(
             sims["thin_clean"],
             recon_thin_clean,
@@ -333,7 +369,7 @@ def main():
             phi_xlim=phi_xlim,
         )
 
-        recon_thin_rfi = run_csromer_reconstruction(sims["thin_rfi"])
+        recon_thin_rfi = run_csromer_reconstruction(sims["thin_rfi"], reconstructor=RECONSTRUCTOR)
         plot_1x2_csromer(
             sims["thin_rfi"],
             recon_thin_rfi,
@@ -343,7 +379,7 @@ def main():
             phi_xlim=phi_xlim,
         )
 
-        recon_thin_depol = run_csromer_reconstruction(sims["thin_depol"])
+        recon_thin_depol = run_csromer_reconstruction(sims["thin_depol"], reconstructor=RECONSTRUCTOR)
         plot_1x2_csromer(
             sims["thin_depol"],
             recon_thin_depol,
@@ -356,7 +392,7 @@ def main():
         # THICK + MIXED (skip for SKA-LOW)
         if band_name != "SKA-LOW":
             print("  Reconstructing thick sources...")
-            recon_thick_clean = run_csromer_reconstruction(sims["thick_clean"])
+            recon_thick_clean = run_csromer_reconstruction(sims["thick_clean"], reconstructor=RECONSTRUCTOR)
             plot_1x2_csromer(
                 sims["thick_clean"],
                 recon_thick_clean,
@@ -366,7 +402,7 @@ def main():
                 phi_xlim=phi_xlim,
             )
 
-            recon_thick_rfi = run_csromer_reconstruction(sims["thick_rfi"])
+            recon_thick_rfi = run_csromer_reconstruction(sims["thick_rfi"], reconstructor=RECONSTRUCTOR)
             plot_1x2_csromer(
                 sims["thick_rfi"],
                 recon_thick_rfi,
@@ -376,7 +412,7 @@ def main():
                 phi_xlim=phi_xlim,
             )
 
-            recon_thick_depol = run_csromer_reconstruction(sims["thick_depol"])
+            recon_thick_depol = run_csromer_reconstruction(sims["thick_depol"], reconstructor=RECONSTRUCTOR)
             plot_1x2_csromer(
                 sims["thick_depol"],
                 recon_thick_depol,
@@ -387,7 +423,7 @@ def main():
             )
 
             print("  Reconstructing mixed sources...")
-            recon_mixed_clean = run_csromer_reconstruction(sims["mixed_clean"])
+            recon_mixed_clean = run_csromer_reconstruction(sims["mixed_clean"], reconstructor=RECONSTRUCTOR)
             plot_1x2_csromer(
                 sims["mixed_clean"],
                 recon_mixed_clean,
@@ -397,7 +433,7 @@ def main():
                 phi_xlim=phi_xlim,
             )
 
-            recon_mixed_rfi = run_csromer_reconstruction(sims["mixed_rfi"])
+            recon_mixed_rfi = run_csromer_reconstruction(sims["mixed_rfi"], reconstructor=RECONSTRUCTOR)
             plot_1x2_csromer(
                 sims["mixed_rfi"],
                 recon_mixed_rfi,
