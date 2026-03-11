@@ -29,7 +29,7 @@ def complex_bincount(x: np.ndarray = None, complex_array: np.ndarray = None):
 class Gridding:
     """
     Grid non-uniform lambda² data onto a uniform lambda² grid.
-    
+
     When d_lambda2 is provided (e.g. from Nyquist: π/(n_phi * d_phi)), the grid
     uses that spacing. If n is also provided, the grid has exactly n points so
     that GriddedFFT1D can use the same phi grid (same length and resolution) as
@@ -81,7 +81,18 @@ class Gridding:
             l2_grid_pos = np.clip(l2_grid_pos, 0, self.n - 1)
         m_grid = len(l2_grid)
         bincount_data = complex_bincount(l2_grid_pos, self.dataset.w * self.dataset.data)
-        bincount_model = complex_bincount(l2_grid_pos, self.dataset.w * self.dataset.model_data)
+        # model_data may be None or have a different length (e.g. after channel
+        # removal where weights/data were shortened but model_data kept original
+        # length). In that case, treat model_data as zero to avoid shape errors.
+        if (
+            self.dataset.model_data is not None
+            and self.dataset.model_data.shape == self.dataset.data.shape
+        ):
+            bincount_model = complex_bincount(
+                l2_grid_pos, self.dataset.w * self.dataset.model_data
+            )
+        else:
+            bincount_model = np.zeros(m_grid, dtype=np.complex64)
         bincount_weights = np.bincount(l2_grid_pos, self.dataset.w, minlength=m_grid)
         # For complex bincount we need to pad to m_grid manually
         if len(bincount_data) < m_grid:

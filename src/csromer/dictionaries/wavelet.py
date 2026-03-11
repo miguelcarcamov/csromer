@@ -14,10 +14,10 @@ from pywt import Wavelet
 class Wavelet(metaclass=ABCMeta):
     """
     Base class for wavelet transforms.
-    
+
     Abstract interface for wavelet decomposition and reconstruction. Subclasses
     implement discrete, undecimated, or continuous wavelets.
-    
+
     Attributes:
         wavelet_name: Name of wavelet (e.g. 'db4', 'haar')
         wavelet_level: Decomposition level
@@ -40,7 +40,7 @@ class Wavelet(metaclass=ABCMeta):
     def __post_init__(self):
         """
         Post-initialization: validate wavelet_name.
-        
+
         Raises:
             TypeError: If wavelet_name is not a string
         """
@@ -51,12 +51,12 @@ class Wavelet(metaclass=ABCMeta):
     def calculate_max_level(self, x):
         """
         Calculate maximum decomposition level for signal x.
-        
+
         Abstract method: subclasses must implement.
-        
+
         Args:
             x: Input signal
-            
+
         Returns:
             Maximum level (int)
         """
@@ -66,12 +66,12 @@ class Wavelet(metaclass=ABCMeta):
     def decompose(self, x):
         """
         Decompose signal into wavelet coefficients (real).
-        
+
         Abstract method: subclasses must implement.
-        
+
         Args:
             x: Input signal (real)
-            
+
         Returns:
             Wavelet coefficients
         """
@@ -81,13 +81,13 @@ class Wavelet(metaclass=ABCMeta):
     def decompose_complex(self, x):
         """
         Decompose complex signal into wavelet coefficients.
-        
+
         Abstract method: subclasses must implement. Decomposes real and imaginary
         parts separately.
-        
+
         Args:
             x: Input signal (complex)
-            
+
         Returns:
             Wavelet coefficients (complex)
         """
@@ -97,12 +97,12 @@ class Wavelet(metaclass=ABCMeta):
     def reconstruct(self, input_coeffs):
         """
         Reconstruct signal from wavelet coefficients (real).
-        
+
         Abstract method: subclasses must implement.
-        
+
         Args:
             input_coeffs: Wavelet coefficients
-            
+
         Returns:
             Reconstructed signal (real)
         """
@@ -112,13 +112,13 @@ class Wavelet(metaclass=ABCMeta):
     def reconstruct_complex(self, input_coeffs):
         """
         Reconstruct complex signal from wavelet coefficients.
-        
+
         Abstract method: subclasses must implement. Reconstructs real and imaginary
         parts separately.
-        
+
         Args:
             input_coeffs: Wavelet coefficients (complex)
-            
+
         Returns:
             Reconstructed signal (complex)
         """

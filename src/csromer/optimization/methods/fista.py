@@ -13,20 +13,20 @@ from typing import Literal, Optional, Tuple
 import numpy as np
 
 from ...utils.array_utils import maybe_compute
-from ..optimizer import Optimizer
 from ..linesearch import FISTABacktracking
+from ..optimizer import Optimizer
 
 
 def _f_value(F, x) -> float:
     """
     Evaluate F(x) and return scalar (dask-safe).
-    
+
     Private helper function. Handles both numpy and dask arrays.
-    
+
     Args:
         F: Objective function callable
         x: Input array
-        
+
     Returns:
         Function value (float)
     """
@@ -37,13 +37,13 @@ def _f_value(F, x) -> float:
 def _inner_real(a, b) -> float:
     """
     Real part of inner product (dask-safe).
-    
+
     Private helper function. Computes real part of <a, b>.
-    
+
     Args:
         a: First array
         b: Second array
-        
+
     Returns:
         Real part of inner product (float)
     """
@@ -55,11 +55,11 @@ def _inner_real(a, b) -> float:
 class FISTA(Optimizer):
     """
     Fast Iterative Shrinkage-Thresholding Algorithm (FISTA).
-    
+
     Optimizes objectives F(x) = f(x) + g(x) with smooth f and proximal for g.
     Step size: by default uses FISTABacktracking to adaptively find L each iteration.
     Set step= to use a fixed step size instead.
-    
+
     Attributes:
         noise: Noise level for cooling schedule (optional)
         monotonic: If True, use monotone FISTA (reject non-monotone steps)
@@ -77,10 +77,10 @@ class FISTA(Optimizer):
     def run(self) -> Tuple[float, "Parameter"]:
         """
         Run FISTA optimization.
-        
+
         Public method. Performs FISTA iterations with optional cooling schedule
         and adaptive restart. Step size: FISTABacktracking (default) or fixed step if step= is set.
-        
+
         Returns:
             Tuple of (final_cost, optimized_parameter)
         """
@@ -144,7 +144,7 @@ class FISTA(Optimizer):
     ) -> Tuple[float, np.ndarray]:
         """
         Core FISTA algorithm implementation (Pyralysis-style: no lambda cooling).
-        
+
         step_callback(y) must return (x, f_new) where x = prox(y - step*grad) and f_new = F(x).
         """
         if x is None and n is not None:

@@ -6,8 +6,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from ..fi import Fi
 from ...utils.array_utils import math_module
+from ..fi import Fi
 
 if TYPE_CHECKING:
     from ...transformers.measurement_operator import MeasurementOperator
@@ -17,11 +17,11 @@ if TYPE_CHECKING:
 class ChiSquared(Fi):
     """
     Chi-squared data fidelity term: (1/2) * sum(w * |residual|^2).
-    
+
     Differentiable term that measures the fit between model and data. Uses the
     measurement operator's forward to compute residuals, and backward for gradient.
     No proximal operator (is_differentiable=True).
-    
+
     Attributes:
         measurement_operator: Measurement operator (forward/backward)
         is_differentiable: Always True (chi-squared is differentiable)
@@ -40,14 +40,14 @@ class ChiSquared(Fi):
     def evaluate(self, x):
         """
         Evaluate chi-squared: (1/2) * sum(w * |residual|^2).
-        
+
         Public method. Forward is unweighted: model_data = A(x). Residual
         residual = data - model_data. Weights w are applied only to the
         squared residuals (not to the forward operator).
-        
+
         Args:
             x: Input array (Faraday depth or coefficients)
-            
+
         Returns:
             Chi-squared value (scalar)
         """
@@ -64,15 +64,15 @@ class ChiSquared(Fi):
     def calculate_gradient(self, x):
         """
         Calculate gradient: -backward(weighted residual).
-        
+
         F(x) = (1/2) sum(w * |residual|^2), residual = data - model_data.
         Gradient dF/dx = -A^H (w * residual). We pass w*residual to backward
         (adjoint); backward does not apply weights again. Sign: steepest
         descent updates x -= alpha*grad, so we return -A^H(w*r).
-        
+
         Args:
             x: Input array (Faraday depth or coefficients)
-            
+
         Returns:
             Gradient array (same shape as x)
         """
@@ -87,13 +87,13 @@ class ChiSquared(Fi):
     def calculate_prox(self, x, nu=0):
         """
         Proximal operator (not defined for chi-squared).
-        
+
         Public method. Chi-squared is differentiable, so proximal is not needed.
-        
+
         Args:
             x: Input array (unused)
             nu: Step size (unused)
-            
+
         Raises:
             NotImplementedError: Always raised (chi-squared is differentiable)
         """

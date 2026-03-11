@@ -8,8 +8,8 @@ from typing import Tuple
 
 import numpy as np
 
-from ...utils.array_utils import maybe_compute
 from ...reconstruction.parameter import Parameter
+from ...utils.array_utils import maybe_compute
 from .linesearcher import LineSearcher
 
 

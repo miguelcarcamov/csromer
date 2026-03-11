@@ -7,22 +7,22 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from ..fi import Fi
 from ...utils.array_utils import math_module
+from ..fi import Fi
 
 
 def _approx_abs(x, epsilon: float, xp=None):
     """
     Approximate magnitude: real or complex (Faraday depth treated as complex).
-    
+
     Private helper function. Handles both numpy and dask arrays, and both real
     and complex inputs. Uses epsilon to avoid division by zero in gradients.
-    
+
     Args:
         x: Input array (real or complex)
         epsilon: Small value to avoid division by zero
         xp: Math module (numpy or dask.array, default: numpy)
-        
+
     Returns:
         Magnitude array (same shape as x)
     """
@@ -46,10 +46,10 @@ def _approx_abs(x, epsilon: float, xp=None):
 class L1(Fi):
     """
     L1 regularization term: sum(|x|) for sparse reconstruction.
-    
+
     Non-differentiable term that promotes sparsity. Uses soft-thresholding for
     proximal operator. Supports both real and complex arrays (magnitude-based).
-    
+
     Attributes:
         is_differentiable: Always False (L1 is non-differentiable at zero)
     """
@@ -64,13 +64,13 @@ class L1(Fi):
     def evaluate(self, x, epsilon: float = np.finfo(np.float32).tiny):
         """
         Evaluate L1 norm: sum(|x|).
-        
+
         Public method. Computes magnitude (with epsilon smoothing) and sums.
-        
+
         Args:
             x: Input array (real or complex)
             epsilon: Small value for numerical stability (default: float32 tiny)
-            
+
         Returns:
             L1 norm (scalar)
         """
@@ -83,14 +83,14 @@ class L1(Fi):
     def calculate_gradient(self, x, epsilon: float = np.finfo(np.float32).tiny):
         """
         Calculate subgradient: x / |x| (with epsilon smoothing).
-        
+
         Public method. Returns subgradient (not true gradient since L1 is non-differentiable).
         Uses epsilon to avoid division by zero.
-        
+
         Args:
             x: Input array (real or complex)
             epsilon: Small value for numerical stability (default: float32 tiny)
-            
+
         Returns:
             Subgradient array (same shape as x)
         """
@@ -103,14 +103,14 @@ class L1(Fi):
     def calculate_prox(self, x, nu: float = 0):
         """
         Soft-thresholding proximal operator.
-        
+
         Public method. Applies soft-thresholding on magnitude (real or complex).
         When nu > 0, threshold = self.reg * nu.
-        
+
         Args:
             x: Input array (real or complex)
             nu: Step size parameter (default: 0, uses self.reg as threshold)
-            
+
         Returns:
             Soft-thresholded array (same shape and dtype as x)
         """

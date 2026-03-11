@@ -10,21 +10,21 @@ from typing import Callable, Optional, Tuple
 
 import numpy as np
 
-from ...utils.array_utils import math_module, maybe_compute
 from ...reconstruction.parameter import Parameter
+from ...utils.array_utils import math_module, maybe_compute
 from ..optimizer import Optimizer
 
 
 def _inner(a, b) -> float:
     """
     Inner product; works with dask by computing to scalar.
-    
+
     Private helper function. Computes <a, b> and returns real part.
-    
+
     Args:
         a: First array
         b: Second array
-        
+
     Returns:
         Inner product (float, real part)
     """
@@ -35,12 +35,12 @@ def _inner(a, b) -> float:
 def _norm2(a) -> float:
     """
     Squared L2 norm; works with dask.
-    
+
     Private helper function. Computes ||a||^2.
-    
+
     Args:
         a: Input array
-        
+
     Returns:
         Squared L2 norm (float)
     """
@@ -52,10 +52,10 @@ def _norm2(a) -> float:
 class GradientOptimizer(Optimizer):
     """
     Base class for gradient-based optimizers.
-    
+
     Provides gradient and function convergence checks, line search parameters,
     and initialization helpers. Uses gradient and function tolerances for convergence.
-    
+
     Attributes:
         grad_fun: Optional gradient function (default: F_obj.calculate_gradient)
         gtol: Gradient tolerance (default: 1e-8)
@@ -71,12 +71,12 @@ class GradientOptimizer(Optimizer):
     def _grad(self, x):
         """
         Compute gradient at x.
-        
+
         Protected method. Uses grad_fun if provided, otherwise F_obj.calculate_gradient.
-        
+
         Args:
             x: Input array
-            
+
         Returns:
             Gradient array
         """
@@ -89,14 +89,14 @@ class GradientOptimizer(Optimizer):
     ) -> float:
         """
         Compute scaled gradient stopping condition (Pyralysis-style).
-        
+
         Protected method. Computes max(|grad| * max(|param|, 1)) / max(|f|, 1).
-        
+
         Args:
             parameter: Parameter object
             gradient: Gradient array
             function_value: Current function value
-            
+
         Returns:
             Scaled gradient condition (float)
         """
@@ -112,13 +112,13 @@ class GradientOptimizer(Optimizer):
     ) -> bool:
         """
         Check relative function change convergence.
-        
+
         Protected method. Returns True if relative function change <= tol.
-        
+
         Args:
             func_current: Current function value
             func_previous: Previous function value
-            
+
         Returns:
             True if converged
         """
@@ -136,16 +136,16 @@ class GradientOptimizer(Optimizer):
     ) -> bool:
         """
         Check scaled gradient norm convergence.
-        
+
         Protected method. Returns True if scaled gradient norm < gtol.
-        
+
         Args:
             parameter: Parameter object
             gradient: Gradient array
             function_value: Current function value
             verbose: Verbose output flag
             gtol: Gradient tolerance (default: self.gtol)
-            
+
         Returns:
             True if converged
         """
@@ -162,12 +162,12 @@ class GradientOptimizer(Optimizer):
     ) -> Tuple[Parameter, float, any]:
         """
         Compute initial function value and gradient.
-        
+
         Protected method. Evaluates objective and gradient at initial point.
-        
+
         Args:
             parameter: Initial parameter
-            
+
         Returns:
             Tuple of (param, f_value, gradient)
         """

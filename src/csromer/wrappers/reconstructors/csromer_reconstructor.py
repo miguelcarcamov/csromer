@@ -7,6 +7,7 @@ sparse representation. Computes dirty map, model, residual, and restored maps.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 from astropy.stats import sigma_clipped_stats
@@ -15,25 +16,27 @@ from ...dictionaries import Wavelet
 from ...objectivefunction import L1, TSV, TV, ChiSquared, OFunction
 from ...optimization import FISTA
 from ...reconstruction import Parameter
-from ...transformers.dfts import NDFT1D, NUFFT1D
+from ...transformers.dfts import NDFT1D, NUFFT1D, GriddedFFT1D
 from ...transformers.flaggers.flagger import Flagger
 from .faraday_reconstructor import FaradayReconstructorWrapper
+
+if TYPE_CHECKING:
+    from ...transformers.measurement_operator import MeasurementOperator
 
 
 @dataclass(init=True, repr=True)
 class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
     """
     CS-ROMER reconstructor: FISTA-based sparse reconstruction.
-    
+
     Minimizes ChiSquared + L1 using FISTA optimizer. Supports optional wavelet
     transforms for sparse representation. Computes dirty map, model, residual,
     and restored maps with error estimates.
-    
+
     Attributes:
         parameter: Parameter object (Faraday depth space)
         flagger: Optional flagger for data quality control
-        dft: Direct Fourier transform operator (for dirty map)
-        nufft: NUFFT operator (for optimization)
+        measurement_operator: Single operator for forward/adjoint/dirty/RMTF (built from fourier_mode if None)
         wavelet: Optional wavelet transform
         coefficients: Wavelet coefficients (if wavelet used)
         fd_restored: Restored Faraday depth spectrum
@@ -64,8 +67,7 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
     """
     parameter: Parameter = field(init=False)
     flagger: Flagger = None
-    dft: NDFT1D = field(init=False)
-    nufft: NUFFT1D = field(init=False)
+    measurement_operator: Optional["MeasurementOperator"] = None
     wavelet: Wavelet = None
     coefficients: np.ndarray = field(init=False)
     fd_restored: np.ndarray = field(init=False)
@@ -93,6 +95,10 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
     fista_verbose: bool = True
     fista_step: float = None  # Gradient step. None => backtracking.
     fista_monotonic: bool = False  # If True, use MFISTA.
+    # How to build measurement_operator when measurement_operator is None: "direct" (NDFT1D),
+    # "nufft" (NUFFT1D), or "gridded" (grid data then GriddedFFT1D). Pass measurement_operator
+    # explicitly to use a custom operator (e.g. pre-built GriddedFFT1D).
+    fourier_mode: str = "direct"
 
     def __post_init__(self):
         """
@@ -110,19 +116,29 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
 
         self.parameter = Parameter()
         self.config_fd_space(self.cellsize, self.oversampling)
+        # #region agent log
+        try:
+            import json
+            _m = getattr(self.dataset, "m", None)
+            _mode = getattr(self, "fourier_mode", "direct")
+            _log = {"sessionId": "95531f", "hypothesisId": "H4", "location": "csromer_reconstructor.py:__post_init__", "message": "Before config_fourier_transforms", "data": {"dataset_m": _m, "fourier_mode": _mode}, "timestamp": __import__("time").time() * 1000}
+            open("/home/miguel/Documents/csromer/.cursor/debug-95531f.log", "a").write(json.dumps(_log) + "\n")
+        except Exception:
+            pass
+        # #endregion
         self.config_fourier_transforms()
 
     @staticmethod
     def estimate_peak_quadratic_interpolation(fd_signal: np.ndarray, cellsize: float) -> tuple:
         """
         Estimate peak location and value using quadratic interpolation.
-        
+
         Public static method. Fits quadratic to peak and neighbors to sub-pixel accuracy.
-        
+
         Args:
             fd_signal: Faraday depth spectrum
             cellsize: Grid spacing (rad/m²)
-            
+
         Returns:
             Tuple of (phi_peak, peak_value)
         """
@@ -155,13 +171,13 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
     def calculate_ricean_peak(peak: float, noise: float) -> float:
         """
         Calculate Ricean-corrected peak value.
-        
+
         Public static method. Corrects for Ricean bias in peak estimation.
-        
+
         Args:
             peak: Observed peak value
             noise: Noise level
-            
+
         Returns:
             Ricean-corrected peak value
         """
@@ -180,10 +196,10 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
     ) -> float:
         """
         Calculate noise level in Faraday depth signal.
-        
+
         Public static method. Uses sigma-clipped statistics on edge regions
         (where |phi| > max_fd_depth * threshold) to estimate background noise.
-        
+
         Args:
             fd_signal: Faraday depth spectrum
             phi: Faraday depth grid
@@ -192,7 +208,7 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
             sigma: Sigma clipping threshold (default: 0.3)
             cenfunc: Center function for clipping (default: 'mean')
             stdfunc: Std function for clipping (default: 'mad_std')
-            
+
         Returns:
             Estimated noise level (or small positive value if calculation fails)
         """
@@ -201,7 +217,7 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
         # So we select points where |phi| > threshold * max_fd_depth
         edge_mask = np.abs(phi) > max_fd_depth * threshold
         n_edge_points = np.sum(edge_mask)
-        
+
         # Need sufficient points for sigma clipping to work properly
         # If threshold=0.0 leaves too few edge points, use progressively larger thresholds
         # to get more edge points (further from center where signal is)
@@ -221,41 +237,41 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
                         # Very few points available, use all points
                         edge_mask = np.ones_like(phi, dtype=bool)
                         n_edge_points = len(phi)
-        
+
         # Extract edge region data for noise analysis
         edge_real = fd_signal.real[edge_mask]
         edge_imag = fd_signal.imag[edge_mask]
-        
+
         def robust_rms_estimate(data, sigma_val, cenfunc_val, stdfunc_val):
             """
             Robustly estimate RMS, avoiding warnings from sigma_clipped_stats.
-            
+
             Uses sigma clipping only when data has sufficient points and variance.
             Otherwise falls back to simple std to avoid warnings.
             """
             n_points = len(data)
-            
+
             # Need at least 10 points for sigma clipping to work reliably
             if n_points < 10:
                 return np.std(data) if n_points > 1 else 0.0
-            
+
             # Check initial statistics
             initial_std = np.std(data)
             initial_mean = np.mean(data)
-            
+
             # If variance is too low, sigma clipping will remove all points
             # Use a threshold based on the data range
             data_range = np.max(data) - np.min(data)
             if initial_std < 1e-10 or data_range < 1e-10:
                 return initial_std
-            
+
             # Check if data is too uniform (all values very close)
             # If coefficient of variation is very small, skip sigma clipping
             if abs(initial_mean) > 1e-10:
                 cv = initial_std / abs(initial_mean)
                 if cv < 1e-6:
                     return initial_std
-            
+
             # For sigma clipping to work without warnings, we need:
             # 1. Enough points (>= 10, already checked)
             # 2. Sufficient variance (checked above)
@@ -275,11 +291,11 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
             except (ValueError, RuntimeError):
                 # Exception occurred, use std
                 return initial_std
-        
+
         # Use robust RMS estimation for both real and imaginary parts from edge regions
         background_real_rms = robust_rms_estimate(edge_real, sigma, cenfunc, stdfunc)
         background_imag_rms = robust_rms_estimate(edge_imag, sigma, cenfunc, stdfunc)
-        
+
         # Final fallback if we somehow got invalid results
         if not np.isfinite(background_real_rms) or background_real_rms == 0:
             background_real_rms = np.std(edge_real) if len(edge_real) > 1 else np.std(fd_signal.real)
@@ -287,28 +303,28 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
             background_imag_rms = np.std(edge_imag) if len(edge_imag) > 1 else np.std(fd_signal.imag)
 
         fd_signal_noise = 0.5 * (background_real_rms + background_imag_rms)
-        
+
         # Ensure non-zero noise to avoid NaN in error calculations
         # Use a small fraction of the peak as minimum noise estimate
         if fd_signal_noise == 0 or not np.isfinite(fd_signal_noise):
             fd_peak = np.max(np.abs(fd_signal))
             fd_signal_noise = fd_peak * 1e-6  # Use 1e-6 of peak as minimum noise
-        
+
         return fd_signal_noise
 
     @staticmethod
     def calculate_sigma_phi_peak(rmtf_fwhm: float, fd_peak: float, fd_signal_noise: float) -> float:
         """
         Calculate error on rotation measure peak.
-        
+
         Public static method. Uses RMTF FWHM and signal-to-noise ratio.
         Returns NaN if peak or noise is zero (avoids divide by zero).
-        
+
         Args:
             rmtf_fwhm: RMTF FWHM (rad/m²)
             fd_peak: Peak Faraday depth value
             fd_signal_noise: Noise level
-            
+
         Returns:
             Error on RM peak (rad/m²) or NaN if invalid
         """
@@ -321,12 +337,12 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
     def flag_dataset(self, flagger: Flagger = None) -> tuple:
         """
         Flag dataset using flagger.
-        
+
         Public method. Applies flagging to remove outliers.
-        
+
         Args:
             flagger: Flagger instance (default: self.flagger)
-            
+
         Returns:
             Tuple of (indexes, outliers_indexes)
         """
@@ -340,14 +356,14 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
     def config_fd_space(self, cellsize: float = None, oversampling: float = None):
         """
         Configure Faraday depth space (grid and cellsize).
-        
+
         Public method (required by abstract base). Called during initialization.
         Computes optimal cellsize and phi grid from dataset.
-        
+
         Args:
             cellsize: Grid spacing (rad/m², optional)
             oversampling: Oversampling factor (optional)
-            
+
         Raises:
             ValueError: If both cellsize and oversampling are None
         """
@@ -362,47 +378,78 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
 
     def config_fourier_transforms(self):
         """
-        Configure Fourier transform operators.
-        
-        Public method. Called during initialization. Sets up DFT (for dirty map)
-        and NUFFT (for optimization).
+        Configure the measurement operator.
+
+        Public method. Called during initialization. If measurement_operator is
+        already set (e.g. passed by caller), it is left as is. Otherwise builds
+        one from fourier_mode: "direct" (NDFT1D), "nufft" (NUFFT1D), or "gridded"
+        (grid data onto regular λ² then GriddedFFT1D).
         """
-        self.dft = NDFT1D(dataset=self.dataset, parameter=self.parameter)
-        self.nufft = NUFFT1D(dataset=self.dataset, parameter=self.parameter, solve=True)
+        if self.measurement_operator is not None:
+            return
+        mode = (self.fourier_mode or "direct").lower()
+        if mode == "direct":
+            self.measurement_operator = NDFT1D(
+                dataset=self.dataset, parameter=self.parameter
+            )
+        elif mode == "nufft":
+            self.measurement_operator = NUFFT1D(
+                dataset=self.dataset, parameter=self.parameter, solve=True
+            )
+        elif mode == "gridded":
+            from ...transformers.gridding import Gridding
+
+            # Nyquist d_phi * d_lambda2 = π/N: derive d_l2 from (full-resolution) cellsize
+            d_l2 = np.pi / (self.parameter.n * self.parameter.cellsize)
+            gridding = Gridding(
+                dataset=self.dataset,
+                d_lambda2=d_l2,
+                n=self.parameter.n,
+            )
+            self.dataset = gridding.run()
+            # Restore beam = Nyquist resolution (cellsize), so dirty and restored FWHM align
+            self.parameter.rmtf_fwhm = np.pi / (self.parameter.n * d_l2)
+            self.measurement_operator = GriddedFFT1D(
+                dataset=self.dataset, parameter=self.parameter
+            )
+        else:
+            raise ValueError(
+                "fourier_mode must be 'direct', 'nufft', or 'gridded', got %r" % self.fourier_mode
+            )
 
     def get_dirty_faraday_depth(self) -> np.ndarray:
         """
         Compute dirty Faraday depth spectrum.
-        
+
         Public method. Returns A^H(weighted data) / K.
-        
+
         Returns:
             Dirty Faraday depth spectrum (n_phi,)
         """
-        return self.dft.dirty_spectrum(self.dataset.data)
+        return self.measurement_operator.dirty_spectrum(self.dataset.data)
 
     def get_rmtf(self) -> np.ndarray:
         """
         Get Rotation Measure Transfer Function.
-        
+
         Public method.
-        
+
         Returns:
             RMTF array (n_phi,)
         """
-        return self.dft.RMTF()
+        return self.measurement_operator.RMTF()
 
     def get_rm(self, fd_data: np.ndarray) -> float:
         """
         Get rotation measure at peak of Faraday depth spectrum.
-        
+
         Public method. Finds peak location and returns phi value at that location.
         Uses maybe_compute so that dask arrays are realized before argmax (avoids
         wrong peak from chunked argmax or lazy evaluation).
-        
+
         Args:
             fd_data: Faraday depth spectrum (numpy or dask)
-            
+
         Returns:
             Rotation measure (rad/m²)
         """
@@ -415,13 +462,13 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
     def reconstruct(self):
         """
         Run FISTA reconstruction.
-        
+
         Public method. Performs full reconstruction pipeline:
         1. Flag data (if flagger set)
         2. Compute dirty map and statistics
         3. Optimize ChiSquared + L1 with FISTA
         4. Compute model, residual, restored maps and statistics
-        
+
         Sets attributes: fd_dirty, rm_dirty, fd_model, rm_model, fd_residual,
         fd_restored, rm_restored, and error estimates.
         """
@@ -456,8 +503,10 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
         if self.lambda_l_norm is None:
             self.lambda_l_norm = 0.0  # No L1; set lambda_l_norm explicitly for sparse reconstruction
 
-        # Use DFT (same as dirty map / CG) so scaling matches and backtracking finds reasonable steps
-        chi_squared = ChiSquared(measurement_operator=self.dft, wavelet=self.wavelet)
+        # Use same operator as dirty map so scaling matches and backtracking finds reasonable steps
+        chi_squared = ChiSquared(
+            measurement_operator=self.measurement_operator, wavelet=self.wavelet
+        )
         l1 = L1(reg=self.lambda_l_norm)
 
         F_func = [chi_squared, l1]
@@ -489,12 +538,15 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
         self.second_moment = self.calculate_second_moment()
 
         # Residual: dirty of (data - model_data), in Jy/rmtf (same as dirty)
-        self.fd_residual = self.dft.dirty_spectrum(self.dataset.data - self.dataset.model_data)
+        self.fd_residual = self.measurement_operator.dirty_spectrum(
+            self.dataset.data - self.dataset.model_data
+        )
 
         # Model is Jy/phi_pixel; dirty and residual are Jy/rmtf. Same restoration as CG:
         # scale convolved map (in Jy/rmtf) so its peak matches dirty peak, then add residual.
         conv_model = self.parameter.convolve(x=self.fd_model)
         pixels_per_rmtf = self.parameter.rmtf_fwhm / self.parameter.cellsize
+
         from ...utils.array_utils import maybe_compute
         def _peak(a):
             a = np.asarray(maybe_compute(a))
@@ -504,23 +556,7 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
         dirty_peak = _peak(self.fd_dirty)
         amp_scale = (dirty_peak / conv_peak) if conv_peak > 1e-30 else 1.0
         self.fd_restored = conv_Jy_rmtf * amp_scale + self.fd_residual
-
-        # --- DEBUG: restoration units and scaling ---
-        def _sumabs(a):
-            a = np.asarray(maybe_compute(a))
-            return float(np.sum(np.abs(a)))
-        conv_Jy_rmtf_scaled = conv_Jy_rmtf * amp_scale
-        print("[restore DEBUG]")
-        print("  cellsize=%.6f  rmtf_fwhm=%.6f  pixels_per_rmtf=%.4f  amp_scale=%.4f" % (
-            self.parameter.cellsize, self.parameter.rmtf_fwhm, pixels_per_rmtf, amp_scale))
-        print("  peak:  dirty=%.6e  model=%.6e  residual=%.6e" % (
-            _peak(self.fd_dirty), _peak(self.fd_model), _peak(self.fd_residual)))
-        print("  peak:  conv_model(Jy/phi)=%.6e  conv*ppr*scale=%.6e  restored=%.6e" % (
-            _peak(conv_model), _peak(conv_Jy_rmtf_scaled), _peak(self.fd_restored)))
-        print("  sum|model|=%.6e  sum|conv_model|=%.6e" % (
-            _sumabs(self.fd_model), _sumabs(conv_model)))
-        print("  ratio dirty_peak/model_peak=%.4f  (if model Jy/phi_pixel expect ~pixels_per_rmtf=%.4f)" % (
-            _peak(self.fd_dirty) / (_peak(self.fd_model) + 1e-30), pixels_per_rmtf))
+        # self.fd_restored = conv_Jy_rmtf + self.fd_residual
 
         restored_noise = self.calculate_fd_signal_noise(
             self.fd_restored, self.parameter.phi, self.parameter.max_faraday_depth
@@ -541,9 +577,9 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
     def calculate_second_moment(self) -> float:
         """
         Calculate second moment of model (width measure).
-        
+
         Public method. Computes weighted second moment around first moment.
-        
+
         Returns:
             Second moment (rad²/m⁴)
         """

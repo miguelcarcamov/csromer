@@ -29,11 +29,11 @@ except ImportError:
 class Parameter:
     """
     Faraday depth space parameter configuration.
-    
+
     Manages the phi grid (Faraday depth axis), cellsize, RMTF properties,
     and data storage. Supports conversion between complex and real representations
     for optimizers that require real-only arrays.
-    
+
     Attributes:
         phi: Faraday depth grid (rad/m²)
         data: Complex Faraday depth spectrum (or real stacked [real, imag])
@@ -54,7 +54,7 @@ class Parameter:
     def __init__(self, phi=None, cellsize=None, data=None):
         """
         Initialize Parameter.
-        
+
         Args:
             phi: Faraday depth grid (rad/m²). If None, will be computed by calculate_cellsize.
             cellsize: Grid spacing (rad/m²). If None, will be computed by calculate_cellsize.
@@ -84,7 +84,7 @@ class Parameter:
     def data(self, val):
         """
         Set data array and update n.
-        
+
         Args:
             val: Data array (complex or real stacked)
         """
@@ -114,10 +114,10 @@ class Parameter:
     ):
         """
         Calculate optimal cellsize and phi grid from dataset.
-        
+
         Computes RMTF properties (FWHM, max recovered width, max Faraday depth)
         and sets phi grid with appropriate cellsize and size.
-        
+
         Args:
             dataset: Dataset with lambda² coverage
             oversampling: Oversampling factor (default: 8.0)
@@ -186,7 +186,7 @@ class Parameter:
     def calculate_sparsity(self) -> float:
         """
         Calculate sparsity percentage of data.
-        
+
         Returns:
             Sparsity percentage (0-100): 100 * (1 - nonzeros / total_elements)
         """
@@ -202,9 +202,9 @@ class Parameter:
     def complex_data_to_real(self):
         """
         Convert Faraday depth from complex (n_phi,) to real stacked [real, imag] (2n).
-        
+
         For use with real-only optimizers. Converts complex array to [real, imag] stacked.
-        
+
         Raises:
             TypeError: If data is not complex
         """
@@ -218,9 +218,9 @@ class Parameter:
     def real_data_to_complex(self):
         """
         Convert Faraday depth from real stacked [real, imag] (2n) to complex (n_phi,).
-        
+
         For use after real-only optimization. Converts [real, imag] stacked array back to complex.
-        
+
         Raises:
             ValueError: If data is not real
         """
@@ -234,14 +234,14 @@ class Parameter:
     def convolve(self, x=None, rmtf_fwhm=None) -> np.ndarray:
         """
         Convolve Faraday depth spectrum with Gaussian restore beam (max=1).
-        
+
         Convolves real and imaginary parts separately; multiple peaks stay
         separated. Caller scales by pixels_per_rmtf and peak_scale to get Jy/rmtf.
-        
+
         Args:
             x: Input array (default: self.data), Jy/phi_pixel
             rmtf_fwhm: RMTF FWHM for kernel (default: self.rmtf_fwhm)
-            
+
         Returns:
             Convolved spectrum (complex), Jy/phi_pixel
         """
@@ -253,7 +253,6 @@ class Parameter:
         # Use float sigma so kernel FWHM in physical space equals rmtf_fwhm (integer rounding
         # would oversmooth and merge closely spaced components)
         sigma_x_pixels = max(1.0, sigma_x / self.cellsize)
-        rmtf_fwhm_pixels = rmtf_fwhm / self.cellsize
 
         print(
             "Convolving with Gaussian kernel where FWHM {0:2.3f} rad/m^2 - sigma {1:2.3f} rad/m^2 - sigma_pixels {2:.4f}"

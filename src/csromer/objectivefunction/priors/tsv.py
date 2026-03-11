@@ -15,10 +15,10 @@ from ..fi import Fi
 class TSV(Fi):
     """
     Total Squared Variation (TSV) regularization: sum(|x[i+1] - x[i]|^2).
-    
+
     Differentiable term that promotes smoothness (squared differences). Uses prox_tv
     library for efficient proximal operator (TV2).
-    
+
     Attributes:
         is_differentiable: Always True (TSV is differentiable)
         nu: Internal array (unused, kept for compatibility)
@@ -35,12 +35,12 @@ class TSV(Fi):
     def evaluate(self, x) -> float:
         """
         Evaluate TSV norm: sum(|x[i+1] - x[i]|^2).
-        
+
         Public method. Computes sum of squared differences between adjacent elements.
-        
+
         Args:
             x: Input array (1D)
-            
+
         Returns:
             TSV norm (scalar)
         """
@@ -53,12 +53,12 @@ class TSV(Fi):
     def calculate_gradient(self, x) -> np.ndarray:
         """
         Calculate gradient of TSV.
-        
+
         Public method. Computes gradient of squared differences.
-        
+
         Args:
             x: Input array (1D)
-            
+
         Returns:
             Gradient array (same shape as x)
         """
@@ -71,13 +71,13 @@ class TSV(Fi):
     def calculate_prox(self, x, nu: float = 0.0) -> np.ndarray:
         """
         Proximal operator: TSV denoising via prox_tv (TV2).
-        
+
         Public method. Uses prox_tv library for efficient TSV proximal operator.
-        
+
         Args:
             x: Input array (1D)
             nu: Step size parameter (not used, threshold is self.reg)
-            
+
         Returns:
             TSV-denoised array (same shape as x)
         """

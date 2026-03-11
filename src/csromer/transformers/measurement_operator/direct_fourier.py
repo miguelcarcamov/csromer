@@ -88,7 +88,7 @@ class DirectFourier1D(MeasurementOperator):
     def configure(self) -> None:
         """
         Configure operator (no-op for DirectFourier1D).
-        
+
         Public method. Override in subclasses if configuration is needed.
         """
         pass
@@ -143,13 +143,13 @@ class DirectFourier1D(MeasurementOperator):
     def RMTF(self, phi_x: float = 0.0) -> Union[np.ndarray, Any]:
         """
         Rotation Measure Transfer Function (RMTF).
-        
+
         Public method. Computes response to a point source at phi_x. Uses weighted
         adjoint of ones.
-        
+
         Args:
             phi_x: Faraday depth of point source (rad/m², default: 0.0)
-            
+
         Returns:
             RMTF array (n_phi,)
         """
