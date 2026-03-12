@@ -10,11 +10,7 @@ import numpy as np
 from csromer.utils.array_utils import asnumpy
 from csromer.utils.utilities import calculate_noise
 
-from ..defaults import (
-    build_measurement_operator,
-    build_parameter,
-    default_objective_factory,
-)
+from ..defaults import build_measurement_operator, build_parameter, default_objective_factory
 from ..optimizer_factories import make_fista_optimizer
 from ..reconstruction_stats import (
     calculate_fd_signal_noise,
@@ -298,7 +294,10 @@ class RestorationStep:
         # Cache for later reuse in RestoredStatsStep.
         ctx.conv_model = conv_model
         ctx.pixels_per_rmtf = pixels_per_rmtf
-        ctx.fd_restored = conv_model * pixels_per_rmtf + ctx.fd_residual
+        # Original scaling to Jy/RMSF:
+        # ctx.fd_restored = conv_model * pixels_per_rmtf + ctx.fd_residual
+        # Use Jy / phi-bin units instead (no pixels_per_rmtf scaling).
+        ctx.fd_restored = conv_model + ctx.fd_residual
 
 
 class RestoredStatsStep:
@@ -321,7 +320,9 @@ class RestoredStatsStep:
             "conv_model",
             ctx.parameter.convolve(x=ctx.fd_model),
         )
-        conv_Jy_rmtf = conv_model * pixels_per_rmtf
+        # Original Jy/RMSF scaling:
+        # conv_Jy_rmtf = conv_model * pixels_per_rmtf
+        conv_Jy_rmtf = conv_model
         print("[restore DEBUG]")
         print(
             "  cellsize=%.6f  rmtf_fwhm=%.6f  pixels_per_rmtf=%.4f"
@@ -368,11 +369,23 @@ class RestoredStatsStep:
                 stdfunc="mad_std",
             )
         )
-        print("  fd-space: mad_std(fd_residual)=%.6e" % (mad_fd_res,))
-        restored_noise = calculate_fd_signal_noise(
-            ctx.fd_restored,
-            ctx.parameter.phi,
-            ctx.parameter.max_faraday_depth,
+        # Use the MAD-based Faraday-depth noise from the residual spectrum as the
+        # reference noise level for RM error estimation. This ties the RM error
+        # directly to the fd-space noise (mad_std) instead of re-estimating it
+        # from the restored spectrum, and avoids unrealistically small errors.
+        restored_noise = mad_fd_res
+        # Diagnostics: compare FD-space noise estimate, theoretical channel noise,
+        # and RMS levels of residual/restored spectra.
+        dataset_theo_noise = getattr(ctx.dataset, "theo_noise", None)
+        if dataset_theo_noise is not None:
+            print("  theo_noise (chan)=%.6e" % float(dataset_theo_noise))
+        fd_res_amp = np.abs(fd_res)
+        fd_rest_amp = np.abs(np.asarray(asnumpy(ctx.fd_restored)))
+        rms_fd_res = float(np.sqrt(np.mean(fd_res_amp**2)))
+        rms_fd_rest = float(np.sqrt(np.mean(fd_rest_amp**2)))
+        print(
+            "  fd-space: mad_std(fd_residual)=%.6e  rms(|fd_residual|)=%.6e  rms(|fd_restored|)=%.6e"
+            % (mad_fd_res, rms_fd_res, rms_fd_rest)
         )
         ctx.rm_restored = _get_rm(ctx, ctx.fd_restored)
         ctx.rm_restored_error = calculate_sigma_phi_peak(

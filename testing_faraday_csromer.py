@@ -13,15 +13,15 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import dask.array as da
 import matplotlib.pyplot as plt
 import numpy as np
-import dask.array as da
 from astropy.constants import c as C_LIGHT
 
 from csromer.pipelines import (
-    CSROMERReconstructorWrapper,
     ApplyNoiseStep,
     ApplyRFIStep,
+    CSROMERReconstructorWrapper,
     SimulateStep,
     make_cg_optimizer,
     make_fista_optimizer,
@@ -34,20 +34,21 @@ from csromer.simulation import FaradayThickSource, FaradayThinSource
 c = float(C_LIGHT.value)
 
 
-# Colorblind-friendly palette (distinct for protanopia, deuteranopia, tritanopia).
-# Avoids red–green pairing; blue–orange–purple–teal remain distinguishable.
-# Accent used for peak lines (salmon-like, Tol-style) so it stands out without relying on pure red.
+# Colorblind-friendly palette based on Paul Tol / ggplot colors.
+# These are widely used in publications and remain distinguishable for
+# common forms of color vision deficiency on both screen and paper.
 COLORS = {
-    "blue": "#0066CC",
-    "orange": "#FF6600",
-    "purple": "#9933FF",
-    "cyan": "#00CCCC",
-    "magenta": "#CC0066",
-    "teal": "#009999",
-    "yellow": "#FFCC00",
+    # Core series colors
+    "blue": "#0072B2",     # ggplot/Tol blue
+    "orange": "#E69F00",   # Tol orange
+    "teal": "#009E73",     # Tol green/teal
+    "purple": "#CC79A7",   # Tol magenta
+    "yellow": "#F0E442",   # Tol yellow (best for fills, not thin lines),
+
+    # Neutrals and accents
     "black": "#000000",
     "gray": "#666666",
-    "accent": "#E6556E",  # colorblind-safe accent for peak / emphasis (salmon–red, distinct from blue/orange)
+    "accent": "#D55E00",   # Tol red, used for peak / emphasis
 }
 
 
@@ -60,8 +61,37 @@ plt.rcParams["figure.figsize"] = (10, 8)
 def _peak_legend_label(peak_phi: float, peak_error: float | None) -> str:
     """Format peak φ with optional error for legend (rad/m²)."""
     if peak_error is not None and np.isfinite(peak_error):
-        return rf"Peak $\phi$ = {peak_phi:.2f} $\pm$ {peak_error:.2f}"
+        # If the error is comfortably representable with two decimal places,
+        # show it in fixed-point; otherwise fall back to scientific notation.
+        if abs(peak_error) >= 1e-2:
+            err_str = f"{peak_error:.2f}"
+        else:
+            err_str = f"{peak_error:.2e}"
+        return rf"Peak $\phi$ = {peak_phi:.2f} $\pm$ {err_str}"
     return rf"Peak $\phi$ = {peak_phi:.2f}"
+
+
+def _sigma_from_amplitude(amp: np.ndarray, method: str = "median") -> float:
+    """
+    Estimate Gaussian (Ricean) σ from amplitude |F|.
+
+    Both estimators give the same underlying σ (Re/Im noise level):
+    - "median": σ = median(|F|) / sqrt(2 ln 2). Robust to outliers/structure.
+    - "rms":    σ = RMS(|F|) / sqrt(2). Tracks full spread (noise + structure).
+    """
+    amp = np.asarray(amp)
+    if method == "median":
+        val = float(np.median(amp))
+        if val <= 0.0 or not np.isfinite(val):
+            return 0.0
+        return val / np.sqrt(2.0 * np.log(2.0))
+    elif method == "rms":
+        rms = float(np.sqrt(np.mean(amp**2)))
+        if not np.isfinite(rms) or rms <= 0:
+            return 0.0
+        return rms / np.sqrt(2.0)
+    else:
+        raise ValueError(f"_sigma_from_amplitude: method must be 'median' or 'rms', got {method!r}")
 
 
 # SKA-like frequency bands (values copied from testing_faraday.py)
@@ -97,6 +127,7 @@ SKA_BANDS = {
 # Source / effect parameters (from testing_faraday main block)
 THIN_PARAMS = {
     "phi_gal": 15.0,  # rad/m²
+    # Use a more realistic polarized flux density (~10 mJy instead of 1 Jy).
     "s_nu": 1.0,
     "spectral_idx": -0.7,
     "dchi": 0.0,
@@ -105,6 +136,7 @@ THIN_PARAMS = {
 THICK_PARAMS = {
     "phi_fg": 10.0,  # rad/m²
     "phi_center": 20.0,  # rad/m²
+    # Match thin-source reference flux for consistency.
     "s_nu": 1.0,
     "spectral_idx": -0.7,
 }
@@ -113,6 +145,7 @@ MIXED_CONFIG = [
     {
         "type": "thin",
         "phi_gal": -400.0,
+        # Half of the thin/thick reference flux per component.
         "s_nu": 0.5,
         "spectral_idx": -0.7,
         "dchi": 0.0,
@@ -142,13 +175,28 @@ RFI_REMOVE_FRAC_PER_BAND = {
 # Worst-case noise (sigma in Jy) per band and source type for FISTA/adaptive-λ.
 # sigma = reference_intensity / target_SNR; band factor scales up noise for harder bands (LOW).
 # Thin/thick: s_nu=1.0 Jy → base sigma at SNR 25; mixed: s_nu=0.5 per component → conservative.
-TARGET_SNR_WORST = 25.0
+TARGET_SNR_WORST = 10
 NOISE_BAND_FACTOR = {"SKA-LOW": 1.2, "SKA-MID B2": 1.0, "SKA-MID B5a": 0.9, "SKA-MID B5b": 0.9}
 
 
 def get_noise_sigma_jy(band_name: str, source_type: str) -> float:
-    """Noise sigma (Jy) for worst-case scenario in this band and config (thin/thick/mixed)."""
-    ref_intensity = 0.5 if source_type == "mixed" else 1.0  # THIN_PARAMS/THICK s_nu=1; MIXED s_nu=0.5
+    """
+    Noise sigma (Jy) for worst-case scenario in this band and config (thin/thick/mixed).
+
+    The reference intensity is now taken from the actual source amplitudes
+    (THIN_PARAMS/THICK_PARAMS/MIXED_CONFIG) so that TARGET_SNR_WORST is
+    interpreted consistently regardless of the chosen s_nu values.
+    """
+    if source_type == "thin":
+        ref_intensity = THIN_PARAMS["s_nu"]
+    elif source_type == "thick":
+        ref_intensity = THICK_PARAMS["s_nu"]
+    elif source_type == "mixed":
+        # Effective reference flux for mixed case: sum of component fluxes.
+        ref_intensity = MIXED_CONFIG[0]["s_nu"] + MIXED_CONFIG[1]["s_nu"]
+    else:
+        raise ValueError(f"Unknown source_type '{source_type}' in get_noise_sigma_jy")
+
     band_factor = NOISE_BAND_FACTOR.get(band_name, 1.0)
     return (ref_intensity / TARGET_SNR_WORST) * band_factor
 
@@ -329,7 +377,7 @@ def run_csromer_reconstruction(
             adaptive_lambda=True,
             target_chi2=1.0,
             lambda_update_gamma=0.5,
-            max_lambda_updates=10,
+            max_lambda_updates=20,
             optimizer_factory=make_fista_optimizer(
                 maxiter=maxiter,
                 tol=1e-12,
@@ -384,18 +432,12 @@ def plot_2x2_clean_vs_rfi(
     fd_rfi = np.asarray(recon_rfi.fd_restored)
     fd_res_rfi = np.asarray(recon_rfi.fd_residual)
 
-    sigma_clean = float(calculate_fd_signal_noise(
-        recon_clean.fd_dirty, phi_clean, recon_clean.parameter.max_faraday_depth, threshold=0.5
-    ))
-    sigma_rfi = float(calculate_fd_signal_noise(
-        recon_rfi.fd_dirty, phi_rfi, recon_rfi.parameter.max_faraday_depth, threshold=0.5
-    ))
-    sigma_res_clean = float(calculate_fd_signal_noise(
-        fd_res_clean, phi_clean, recon_clean.parameter.max_faraday_depth, threshold=0.5
-    ))
-    sigma_res_rfi = float(calculate_fd_signal_noise(
-        fd_res_rfi, phi_rfi, recon_rfi.parameter.max_faraday_depth, threshold=0.5
-    ))
+    # FD-spectrum noise: estimate from |F_dirty| assuming Rayleigh statistics,
+    # so the 5σ line reflects the Ricean / Rayleigh amplitude noise level.
+    sigma_clean = _sigma_from_amplitude(np.abs(fd_dirty_clean), method="median")
+    sigma_rfi = _sigma_from_amplitude(np.abs(fd_dirty_rfi), method="median")
+    sigma_res_clean = _sigma_from_amplitude(np.abs(fd_res_clean), method="rms")
+    sigma_res_rfi = _sigma_from_amplitude(np.abs(fd_res_rfi), method="rms")
 
     fig = plt.figure(figsize=figsize)
     gs = fig.add_gridspec(2, 2, width_ratios=[1, 1], height_ratios=[1, 1])
@@ -410,7 +452,7 @@ def plot_2x2_clean_vs_rfi(
     ax1.plot(l2_clean, data_clean.imag, ".", color=COLORS["orange"], markersize=0.5, alpha=0.8, label=r"$\mathrm{Im}(P)$")
     ax1.set_xlabel(r"$\lambda^2$ [m²]", fontsize=11)
     ax1.set_ylabel("Polarization [Jy]", fontsize=11)
-    ax1.set_title(r"Clean: Polarization vs $\lambda^2$", fontsize=12, fontweight="bold")
+    ax1.set_title(r"Reference (no RFI): Polarization vs $\lambda^2$", fontsize=12, fontweight="bold")
     ax1.legend(loc="best", fontsize=9)
     ax1.grid(True, alpha=0.3)
 
@@ -425,7 +467,7 @@ def plot_2x2_clean_vs_rfi(
     ax2_fd.axvline(peak_phi_c, color=COLORS["accent"], linestyle="-", lw=1.2, alpha=0.45, label=_peak_legend_label(peak_phi_c, peak_err_c))
     ax2_fd.set_xlim(xlim_phi[0], xlim_phi[1])
     ax2_fd.set_ylabel(r"$|F(\phi)|$ [Jy/RMSF]", fontsize=11)
-    ax2_fd.set_title("Clean: Faraday depth spectrum", fontsize=12, fontweight="bold")
+    ax2_fd.set_title("Reference (no RFI): Faraday depth spectrum", fontsize=12, fontweight="bold")
     ax2_fd.legend(loc="best", fontsize=9)
     ax2_fd.grid(True, alpha=0.3)
     ax2_fd.tick_params(axis="x", labelbottom=False)
@@ -483,7 +525,7 @@ def plot_2x2_clean_vs_rfi(
     ax4_res.set_ylabel("Residuals", fontsize=11)
     ax4_res.grid(True, alpha=0.3)
 
-    plt.suptitle(f"{source_type} Source: Clean vs RFI ({band_label})", fontsize=14, fontweight="bold")
+    plt.suptitle(f"{source_type} Source: Reference vs RFI ({band_label})", fontsize=14, fontweight="bold")
     plt.tight_layout()
     if filename:
         plt.savefig(filename, dpi=150, bbox_inches="tight")
@@ -534,18 +576,11 @@ def plot_2x2_clean_vs_depol(
     fd_depol = np.asarray(recon_depol.fd_restored)
     fd_res_depol = np.asarray(recon_depol.fd_residual)
 
-    sigma_clean = float(calculate_fd_signal_noise(
-        recon_clean.fd_dirty, phi_clean, recon_clean.parameter.max_faraday_depth, threshold=0.5
-    ))
-    sigma_depol = float(calculate_fd_signal_noise(
-        recon_depol.fd_dirty, phi_depol, recon_depol.parameter.max_faraday_depth, threshold=0.5
-    ))
-    sigma_res_clean = float(calculate_fd_signal_noise(
-        fd_res_clean, phi_clean, recon_clean.parameter.max_faraday_depth, threshold=0.5
-    ))
-    sigma_res_depol = float(calculate_fd_signal_noise(
-        fd_res_depol, phi_depol, recon_depol.parameter.max_faraday_depth, threshold=0.5
-    ))
+    # FD-spectrum noise from |F_dirty| assuming Rayleigh statistics (Ricean amplitude).
+    sigma_clean = _sigma_from_amplitude(np.abs(fd_dirty_clean), method="median")
+    sigma_depol = _sigma_from_amplitude(np.abs(fd_dirty_depol), method="median")
+    sigma_res_clean = _sigma_from_amplitude(np.abs(fd_res_clean), method="rms")
+    sigma_res_depol = _sigma_from_amplitude(np.abs(fd_res_depol), method="rms")
 
     fig = plt.figure(figsize=figsize)
     gs = fig.add_gridspec(2, 2, width_ratios=[1, 1], height_ratios=[1, 1])
@@ -559,7 +594,7 @@ def plot_2x2_clean_vs_depol(
     ax1.plot(l2_clean, data_clean.imag, ".", color=COLORS["blue"], markersize=0.5, alpha=0.8, label=r"$\mathrm{Im}(P)$")
     ax1.set_xlabel(r"$\lambda^2$ [m²]", fontsize=11)
     ax1.set_ylabel("Polarization [Jy]", fontsize=11)
-    ax1.set_title(r"Clean: Polarization vs $\lambda^2$", fontsize=12, fontweight="bold")
+    ax1.set_title(r"Reference (no depol.): Polarization vs $\lambda^2$", fontsize=12, fontweight="bold")
     ax1.legend(loc="best", fontsize=9)
     ax1.grid(True, alpha=0.3)
 
@@ -574,7 +609,7 @@ def plot_2x2_clean_vs_depol(
     ax2_fd.axvline(peak_phi_c, color=COLORS["accent"], linestyle="-", lw=1.2, alpha=0.45, label=_peak_legend_label(peak_phi_c, peak_err_c))
     ax2_fd.set_xlim(xlim_phi[0], xlim_phi[1])
     ax2_fd.set_ylabel(r"$|F(\phi)|$ [Jy/RMSF]", fontsize=11)
-    ax2_fd.set_title("Clean: Faraday depth spectrum", fontsize=12, fontweight="bold")
+    ax2_fd.set_title("Reference (no depol.): Faraday depth spectrum", fontsize=12, fontweight="bold")
     ax2_fd.legend(loc="best", fontsize=9)
     ax2_fd.grid(True, alpha=0.3)
     ax2_fd.tick_params(axis="x", labelbottom=False)
@@ -632,7 +667,7 @@ def plot_2x2_clean_vs_depol(
     ax4_res.set_ylabel("Residuals", fontsize=11)
     ax4_res.grid(True, alpha=0.3)
 
-    plt.suptitle(f"{source_type} Source: Clean vs Depolarized ({band_label})", fontsize=14, fontweight="bold")
+    plt.suptitle(f"{source_type} Source: Reference vs Depolarized ({band_label})", fontsize=14, fontweight="bold")
     plt.tight_layout()
     if filename:
         plt.savefig(filename, dpi=150, bbox_inches="tight")

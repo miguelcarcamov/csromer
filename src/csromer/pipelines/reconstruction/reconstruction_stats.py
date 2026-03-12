@@ -96,15 +96,34 @@ def calculate_fd_signal_noise(
     if n_edge_points < 10:
         edge_mask = np.ones_like(phi, dtype=bool)
 
+    # Work component-wise and combine via variance propagation rather than
+    # a simple arithmetic mean. This preserves the use of a robust,
+    # MAD-based estimator (default stdfunc="mad_std") and gives a single
+    # scalar sigma for the complex Faraday spectrum.
     edge_real = fd_signal.real[edge_mask]
     edge_imag = fd_signal.imag[edge_mask]
+
     rms_real = _robust_rms(edge_real, sigma, cenfunc, stdfunc)
     rms_imag = _robust_rms(edge_imag, sigma, cenfunc, stdfunc)
+
+    # Fallback: retry with MAD-based robust RMS explicitly if the first
+    # pass failed or returned ~0. Avoid dropping back to plain np.std.
     if not np.isfinite(rms_real) or rms_real == 0:
-        rms_real = np.std(edge_real) if len(edge_real) > 1 else np.std(fd_signal.real)
+        rms_real = _robust_rms(edge_real, sigma, cenfunc, "mad_std")
     if not np.isfinite(rms_imag) or rms_imag == 0:
-        rms_imag = np.std(edge_imag) if len(edge_imag) > 1 else np.std(fd_signal.imag)
-    fd_signal_noise = 0.5 * (rms_real + rms_imag)
+        rms_imag = _robust_rms(edge_imag, sigma, cenfunc, "mad_std")
+
+    # If we *still* fail, use a tiny fraction of the peak as a last resort.
+    if (not np.isfinite(rms_real)) or rms_real == 0:
+        rms_real = np.max(np.abs(fd_signal.real)) * 1e-6
+    if (not np.isfinite(rms_imag)) or rms_imag == 0:
+        rms_imag = np.max(np.abs(fd_signal.imag)) * 1e-6
+
+    # Proper combination for a complex quantity: average the variances of
+    # Re and Im and then take the square root. When rms_real ~= rms_imag,
+    # this reduces to that common sigma, unlike 0.5*(rms_real + rms_imag).
+    fd_signal_noise = float(np.sqrt(0.5 * (rms_real**2 + rms_imag**2)))
+
     if fd_signal_noise == 0 or not np.isfinite(fd_signal_noise):
         fd_signal_noise = np.max(np.abs(fd_signal)) * 1e-6
     return float(fd_signal_noise)
