@@ -7,7 +7,6 @@ from typing import Tuple
 import numpy as np
 
 from ...reconstruction.parameter import Parameter
-from ...utils.array_utils import maybe_compute
 from .backtracking import BacktrackingArmijo
 from .f1dim import f1dim
 

@@ -1,11 +1,11 @@
 """
 CS-ROMER Faraday revision script: SKA bands, thin/thick/mixed sources,
-RFI and depolarization, plus 1×2 figures:
+RFI and depolarization, with 2×2 comparison figures matching testing_faraday.py:
 
-1. Data in lambda² (polarization vs λ², irregular space — same style as testing_faraday.py)
-2. Faraday depth spectrum: dirty, restored, and model on the same plot
+- Clean vs RFI:    top row = normal (pol vs λ², FD spectrum), bottom row = RFI.
+- Clean vs Depolarization: top row = normal, bottom row = depolarized.
 
-Uses csromer simulation classes and CSROMERReconstructorWrapper; saves 1×2 PNGs per scenario.
+Uses csromer pipelines (simulation + reconstruction); FD spectrum from reconstruction (dirty + restored).
 """
 
 from __future__ import annotations
@@ -15,11 +15,19 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+import dask.array as da
 from astropy.constants import c as C_LIGHT
 
+from csromer.pipelines import (
+    CSROMERReconstructorWrapper,
+    ApplyRFIStep,
+    SimulateStep,
+    make_cg_optimizer,
+    make_fista_optimizer,
+    run_simulation,
+)
+from csromer.pipelines.reconstruction.reconstruction_stats import calculate_fd_signal_noise
 from csromer.simulation import FaradayThickSource, FaradayThinSource
-from csromer.utils.array_utils import maybe_compute
-from csromer.wrappers.reconstructors import CSROMERReconstructorWrapper, CGReconstructorWrapper
 
 # Speed of light in m/s (float)
 c = float(C_LIGHT.value)
@@ -49,22 +57,22 @@ plt.rcParams["figure.figsize"] = (10, 8)
 # Using numpy here; csromer simulation classes accept nu arrays.
 def ska_low_freq():
     # 50–350 MHz, 3.9 kHz step
-    return np.arange(50e6, 350e6, 3.9e3, dtype=np.float64)
+    return da.arange(50e6, 350e6, 3.9e3, dtype=np.float64)
 
 
 def ska_mid_b2_freq():
     # 950–1760 MHz, 13.44 kHz step
-    return np.arange(950e6, 1760e6, 13.44e3, dtype=np.float64)
+    return da.arange(950e6, 1760e6, 13.44e3, dtype=np.float64)
 
 
 def ska_mid_b5a_freq():
     # 4.6–8.5 GHz, 13.44 kHz step
-    return np.arange(4.6e9, 8.5e9, 13.44e3, dtype=np.float64)
+    return da.arange(4.6e9, 8.5e9, 13.44e3, dtype=np.float64)
 
 
 def ska_mid_b5b_freq():
     # 8.3–15.4 GHz, 13.44 kHz step
-    return np.arange(8.3e9, 15.4e9, 13.44e3, dtype=np.float64)
+    return da.arange(8.3e9, 15.4e9, 13.44e3, dtype=np.float64)
 
 
 SKA_BANDS = {
@@ -120,19 +128,25 @@ PHI_CELLSIZE = 0.5  # rad/m²
 
 
 def simulate_sources_for_band(nu: np.ndarray, band_name: str):
-    """Simulate thin/thick/mixed, clean/RFI/depol for a given band."""
+    """Simulate thin/thick/mixed, clean/RFI/depol for a given band using pipeline steps."""
+    rng_thin_rfi = np.random.RandomState(42)
+    rng_thick_rfi = np.random.RandomState(43)
+    rng_mixed_rfi = np.random.RandomState(44)
+
     # Thin clean
     thin_clean = FaradayThinSource(nu=nu, **THIN_PARAMS)
-    thin_clean.simulate()
+    run_simulation(thin_clean, [SimulateStep()])
 
     # Thin RFI
     thin_rfi = FaradayThinSource(nu=nu, **THIN_PARAMS)
-    thin_rfi.simulate()
-    thin_rfi.remove_channels(remove_frac=RFI_REMOVE_FRAC, random_state=np.random.RandomState(42))
+    run_simulation(
+        thin_rfi,
+        [SimulateStep(), ApplyRFIStep(remove_frac=RFI_REMOVE_FRAC, random_state=rng_thin_rfi)],
+    )
 
     # Thin depolarized
     thin_depol = FaradayThinSource(nu=nu, **THIN_PARAMS)
-    thin_depol.simulate()
+    run_simulation(thin_depol, [SimulateStep()])
     thin_depol.add_external_faraday_depolarization(sigma_rm=DEPOL_SIGMA_RM_THIN)
 
     thick_clean = thick_rfi = thick_depol = None
@@ -142,16 +156,18 @@ def simulate_sources_for_band(nu: np.ndarray, band_name: str):
     if band_name != "SKA-LOW":
         # Thick clean
         thick_clean = FaradayThickSource(nu=nu, **THICK_PARAMS)
-        thick_clean.simulate()
+        run_simulation(thick_clean, [SimulateStep()])
 
         # Thick RFI
         thick_rfi = FaradayThickSource(nu=nu, **THICK_PARAMS)
-        thick_rfi.simulate()
-        thick_rfi.remove_channels(remove_frac=RFI_REMOVE_FRAC, random_state=np.random.RandomState(43))
+        run_simulation(
+            thick_rfi,
+            [SimulateStep(), ApplyRFIStep(remove_frac=RFI_REMOVE_FRAC, random_state=rng_thick_rfi)],
+        )
 
         # Thick depolarized
         thick_depol = FaradayThickSource(nu=nu, **THICK_PARAMS)
-        thick_depol.simulate()
+        run_simulation(thick_depol, [SimulateStep()])
         thick_depol.add_external_faraday_depolarization(sigma_rm=DEPOL_SIGMA_RM_THICK)
 
         # Mixed clean
@@ -159,18 +175,21 @@ def simulate_sources_for_band(nu: np.ndarray, band_name: str):
         cfg_thick = {k: v for k, v in MIXED_CONFIG[1].items() if k != "type"}
 
         mixed_clean_thin = FaradayThinSource(nu=nu, **cfg_thin)
-        mixed_clean_thin.simulate()
+        run_simulation(mixed_clean_thin, [SimulateStep()])
         mixed_clean_thick = FaradayThickSource(nu=nu, **cfg_thick)
-        mixed_clean_thick.simulate()
+        run_simulation(mixed_clean_thick, [SimulateStep()])
         mixed_clean = mixed_clean_thin + mixed_clean_thick
 
         # Mixed RFI
         mixed_rfi_thin = FaradayThinSource(nu=nu, **cfg_thin)
-        mixed_rfi_thin.simulate()
+        run_simulation(mixed_rfi_thin, [SimulateStep()])
         mixed_rfi_thick = FaradayThickSource(nu=nu, **cfg_thick)
-        mixed_rfi_thick.simulate()
+        run_simulation(mixed_rfi_thick, [SimulateStep()])
         mixed_rfi = mixed_rfi_thin + mixed_rfi_thick
-        mixed_rfi.remove_channels(remove_frac=RFI_REMOVE_FRAC, random_state=np.random.RandomState(44))
+        run_simulation(
+            mixed_rfi,
+            [ApplyRFIStep(remove_frac=RFI_REMOVE_FRAC, random_state=rng_mixed_rfi)],
+        )
 
     return {
         "thin_clean": thin_clean,
@@ -190,7 +209,7 @@ def run_csromer_reconstruction(
     maxiter: int = 500,
     reconstructor: str = "csromer",
 ):
-    """Run reconstruction on a single csromer Dataset and return recon object.
+    """Run reconstruction on a single csromer Dataset using the pipeline reconstructor.
 
     Args:
         source: Dataset (e.g. simulated source).
@@ -199,136 +218,289 @@ def run_csromer_reconstruction(
         reconstructor: "csromer" (FISTA + L1) or "cg".
 
     Returns:
-        Reconstructor instance after reconstruct().
+        CSROMERReconstructorWrapper instance after reconstruct().
     """
     if reconstructor.lower() == "cg":
-        recon = CGReconstructorWrapper(
+        optimizer_factory = make_cg_optimizer(
+            maxiter=maxiter,
+            tol=1e-12,
+            verbose=True,
+        )
+        recon = CSROMERReconstructorWrapper(
             dataset=source,
             oversampling=oversampling,
-            cg_maxiter=maxiter,
-            cg_tol=1e-12,
-            cg_verbose=True,
+            measurement_operator_kind="gridded",
             lambda_l_norm=1e-10,
-            fourier_mode="gridded",
+            optimizer_factory=optimizer_factory,
         )
     else:
         recon = CSROMERReconstructorWrapper(
             dataset=source,
             oversampling=oversampling,
-            fista_maxiter=maxiter,
-            fista_tol=1e-12,
-            fista_verbose=True,
+            measurement_operator_kind="gridded",
             lambda_l_norm=0.0005,
-            fourier_mode="gridded",
+            optimizer_factory=make_fista_optimizer(
+                maxiter=maxiter,
+                tol=1e-12,
+                verbose=True,
+            ),
         )
     recon.reconstruct()
     return recon
 
 
-def plot_1x2_csromer(
-    source,
-    recon,
+def plot_2x2_clean_vs_rfi(
+    clean_source,
+    rfi_source,
+    recon_clean,
+    recon_rfi,
     band_label: str,
-    scenario_label: str,
+    source_type: str,
     filename: str | None = None,
     phi_xlim: float | tuple[float, float] | None = None,
+    figsize=(18, 12),
 ):
     """
-    Make 1×2 plot:
-    - Left: Polarization vs λ² (data before gridding; markers like testing_faraday).
-    - Right: Two stacked panels — upper: dirty and restored with 5σ limit; lower: residuals (|res|, Re, Im) with 2σ, 3σ, 5σ. Red vertical line at peak φ.
+    2×2 comparison: Clean (top) vs RFI (bottom).
+    - (1) Top-left: Clean polarization vs λ² (irregular data)
+    - (2) Top-right: double panel — top: FD spectrum (|dirty|, |restored|, 5σ, red peak); bottom: residuals
+    - (3) Bottom-left: RFI polarization vs λ² (irregular data)
+    - (4) Bottom-right: double panel — top: FD spectrum; bottom: residuals
     """
     import matplotlib.gridspec as gridspec
-    from matplotlib.lines import Line2D
 
-    # Original (irregular) lambda² and data from simulation
-    lambda2 = np.asarray(maybe_compute(source.lambda2))
-    P = np.asarray(maybe_compute(source.data))
-
-    phi = np.asarray(maybe_compute(recon.parameter.phi))
-    fd_dirty = np.asarray(maybe_compute(recon.fd_dirty))
-    fd_restored = np.asarray(maybe_compute(recon.fd_restored))
-    fd_residual = np.asarray(maybe_compute(recon.fd_residual))
-
-    # Noise: use edge regions only (threshold=0.5 so |phi| > 0.5*max_fd) to avoid including the source
-    sigma_spectrum = recon.calculate_fd_signal_noise(
-        recon.fd_dirty,
-        recon.parameter.phi,
-        recon.parameter.max_faraday_depth,
-        threshold=0.5,
-    )
-    sigma_spectrum = float(np.asarray(maybe_compute(sigma_spectrum)))
-    sigma_residual = recon.calculate_fd_signal_noise(
-        recon.fd_residual,
-        recon.parameter.phi,
-        recon.parameter.max_faraday_depth,
-        threshold=0.5,
-    )
-    sigma_residual = float(np.asarray(maybe_compute(sigma_residual)))
-
-    # Peak Faraday depth for red vertical line (use restored peak)
-    peak_idx = np.argmax(np.abs(fd_restored))
-    phi_peak = float(phi[peak_idx])
-
-    xlim_left = (-PHI_MAX, PHI_MAX)
-    if phi_xlim is None:
-        xlim_right = (-PHI_MAX, PHI_MAX)
-    elif isinstance(phi_xlim, (tuple, list)) and len(phi_xlim) == 2:
-        xlim_right = (float(phi_xlim[0]), float(phi_xlim[1]))
-    else:
+    def _xlim(phi_xlim):
+        if phi_xlim is None:
+            return (-PHI_MAX, PHI_MAX)
+        if isinstance(phi_xlim, (tuple, list)) and len(phi_xlim) == 2:
+            return (float(phi_xlim[0]), float(phi_xlim[1]))
         x = float(phi_xlim)
-        xlim_right = (-x, x)
+        return (-x, x)
 
-    fig = plt.figure(figsize=(14, 6))
-    gs = gridspec.GridSpec(2, 2, figure=fig, height_ratios=[1, 0.6], width_ratios=[1, 1], hspace=0)
+    xlim_phi = _xlim(phi_xlim)
+    l2_clean = np.asarray(clean_source.lambda2)
+    data_clean = np.asarray(clean_source.data)
+    l2_rfi = np.asarray(rfi_source.lambda2)
+    data_rfi = np.asarray(rfi_source.data)
 
-    # Left: Polarization vs λ² (full height)
-    ax_left = fig.add_subplot(gs[:, 0])
-    ax_left.plot(lambda2, np.abs(P), ".", color=COLORS["blue"], markersize=0.6, alpha=0.9, label=r"$|P|$")
-    ax_left.plot(lambda2, P.real, ".", color=COLORS["purple"], markersize=0.5, alpha=0.8, label=r"$\mathrm{Re}(P)$")
-    ax_left.plot(lambda2, P.imag, ".", color=COLORS["orange"], markersize=0.5, alpha=0.8, label=r"$\mathrm{Im}(P)$")
-    ax_left.set_xlabel(r"$\lambda^2$ [m²]", fontsize=11)
-    ax_left.set_ylabel("Polarization [Jy]", fontsize=11)
-    ax_left.set_title(f"{scenario_label}: Polarization vs " + r"$\lambda^2$", fontsize=12, fontweight="bold")
-    ax_left.legend(loc="best", fontsize=9)
-    ax_left.grid(True, alpha=0.3)
+    phi_clean = np.asarray(recon_clean.parameter.phi)
+    fd_dirty_clean = np.asarray(recon_clean.fd_dirty)
+    fd_clean = np.asarray(recon_clean.fd_restored)
+    fd_res_clean = np.asarray(recon_clean.fd_residual)
+    phi_rfi = np.asarray(recon_rfi.parameter.phi)
+    fd_dirty_rfi = np.asarray(recon_rfi.fd_dirty)
+    fd_rfi = np.asarray(recon_rfi.fd_restored)
+    fd_res_rfi = np.asarray(recon_rfi.fd_residual)
 
-    # Right upper: Dirty and restored only; 5σ limit; red line at peak
-    ax_upper = fig.add_subplot(gs[0, 1])
-    ax_upper.plot(phi, np.abs(fd_dirty), "-", color=COLORS["teal"], lw=1.2, alpha=0.9, label=r"Dirty $|F(\phi)|$")
-    ax_upper.plot(phi, np.abs(fd_restored), "-", color=COLORS["black"], lw=1.5, alpha=0.9, label=r"Restored $|F(\phi)|$")
-    ax_upper.axhline(5.0 * sigma_spectrum, color=COLORS["gray"], linestyle="--", lw=1, alpha=0.8, label=r"5$\sigma$")
-    ax_upper.axvline(phi_peak, color="red", linestyle="-", lw=1.2, alpha=0.45)
-    ax_upper.set_xlim(xlim_right[0], xlim_right[1])
-    ax_upper.set_ylabel(r"$|F(\phi)|$ [Jy/RMSF]", fontsize=11)
-    ax_upper.set_title("Faraday depth spectrum", fontsize=12, fontweight="bold")
-    # Legend including peak position (proxy line for the red vertical line)
-    h, _ = ax_upper.get_legend_handles_labels()
-    peak_handle = Line2D([0], [0], color="red", alpha=0.45, lw=1.2, label=rf"Peak $\phi$ = {phi_peak:.2f}")
-    ax_upper.legend(handles=h + [peak_handle], loc="best", fontsize=9)
-    ax_upper.grid(True, alpha=0.3)
-    ax_upper.tick_params(axis="x", labelbottom=False)
+    sigma_clean = float(calculate_fd_signal_noise(
+        recon_clean.fd_dirty, phi_clean, recon_clean.parameter.max_faraday_depth, threshold=0.5
+    ))
+    sigma_rfi = float(calculate_fd_signal_noise(
+        recon_rfi.fd_dirty, phi_rfi, recon_rfi.parameter.max_faraday_depth, threshold=0.5
+    ))
+    sigma_res_clean = float(calculate_fd_signal_noise(
+        fd_res_clean, phi_clean, recon_clean.parameter.max_faraday_depth, threshold=0.5
+    ))
+    sigma_res_rfi = float(calculate_fd_signal_noise(
+        fd_res_rfi, phi_rfi, recon_rfi.parameter.max_faraday_depth, threshold=0.5
+    ))
 
-    # Right lower: Residuals (abs, real, imag) and 2σ, 3σ, 5σ limits — no legend
-    ax_lower = fig.add_subplot(gs[1, 1])
-    ax_lower.plot(phi, np.abs(fd_residual), "-", color=COLORS["blue"], lw=1, alpha=0.9)
-    ax_lower.plot(phi, fd_residual.real, "--", color=COLORS["blue"], lw=0.9, alpha=0.8)
-    ax_lower.plot(phi, fd_residual.imag, ":", color=COLORS["blue"], lw=0.9, alpha=0.8)
+    fig = plt.figure(figsize=figsize)
+    gs = fig.add_gridspec(2, 2, width_ratios=[1, 1], height_ratios=[1, 1])
+    # Right column: each cell is two stacked subplots (FD top, residuals bottom)
+    gs_right_top = gs[0, 1].subgridspec(2, 1, height_ratios=[1, 0.6], hspace=0)
+    gs_right_bot = gs[1, 1].subgridspec(2, 1, height_ratios=[1, 0.6], hspace=0)
+
+    # (1) Top-left: Clean polarization vs λ²
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax1.plot(l2_clean, np.abs(data_clean), ".", color=COLORS["blue"], markersize=0.6, alpha=0.9, label=r"$|P|$")
+    ax1.plot(l2_clean, data_clean.real, ".", color=COLORS["purple"], markersize=0.5, alpha=0.8, label=r"$\mathrm{Re}(P)$")
+    ax1.plot(l2_clean, data_clean.imag, ".", color=COLORS["orange"], markersize=0.5, alpha=0.8, label=r"$\mathrm{Im}(P)$")
+    ax1.set_xlabel(r"$\lambda^2$ [m²]", fontsize=11)
+    ax1.set_ylabel("Polarization [Jy]", fontsize=11)
+    ax1.set_title(r"Clean: Polarization vs $\lambda^2$", fontsize=12, fontweight="bold")
+    ax1.legend(loc="best", fontsize=9)
+    ax1.grid(True, alpha=0.3)
+
+    # (2) Top-right: double — FD (abs only, red peak transparent) + residuals
+    ax2_fd = fig.add_subplot(gs_right_top[0])
+    ax2_fd.plot(phi_clean, np.abs(fd_dirty_clean), "-", color=COLORS["teal"], lw=1.2, alpha=0.9, label=r"Dirty $|F(\phi)|$")
+    ax2_fd.plot(phi_clean, np.abs(fd_clean), "-", color=COLORS["black"], lw=1.5, alpha=0.9, label=r"Restored $|F(\phi)|$")
+    ax2_fd.axhline(5.0 * sigma_clean, color=COLORS["gray"], linestyle="--", lw=1, alpha=0.8, label=r"5$\sigma$")
+    peak_idx_c = np.argmax(np.abs(fd_clean))
+    peak_phi_c = float(phi_clean[peak_idx_c])
+    ax2_fd.axvline(peak_phi_c, color="red", linestyle="-", lw=1.2, alpha=0.45, label=rf"Peak $\phi$ = {peak_phi_c:.2f}")
+    ax2_fd.set_xlim(xlim_phi[0], xlim_phi[1])
+    ax2_fd.set_ylabel(r"$|F(\phi)|$ [Jy/RMSF]", fontsize=11)
+    ax2_fd.set_title("Clean: Faraday depth spectrum", fontsize=12, fontweight="bold")
+    ax2_fd.legend(loc="best", fontsize=9)
+    ax2_fd.grid(True, alpha=0.3)
+    ax2_fd.tick_params(axis="x", labelbottom=False)
+    ax2_res = fig.add_subplot(gs_right_top[1])
+    ax2_res.plot(phi_clean, np.abs(fd_res_clean), "-", color=COLORS["blue"], lw=1, alpha=0.9)
+    ax2_res.plot(phi_clean, fd_res_clean.real, "--", color=COLORS["blue"], lw=0.9, alpha=0.8)
+    ax2_res.plot(phi_clean, fd_res_clean.imag, ":", color=COLORS["blue"], lw=0.9, alpha=0.8)
     for sig in [2, 3, 5]:
-        ax_lower.axhline(sig * sigma_residual, color=COLORS["gray"], linestyle="--", lw=0.8, alpha=0.7)
-        ax_lower.axhline(-sig * sigma_residual, color=COLORS["gray"], linestyle="--", lw=0.8, alpha=0.7)
-    ax_lower.axhline(0, color=COLORS["gray"], linestyle="-", lw=0.5, alpha=0.5)
-    ax_lower.axvline(phi_peak, color="red", linestyle="-", lw=1.2, alpha=0.45)
-    ax_lower.set_xlim(xlim_right[0], xlim_right[1])
-    ax_lower.set_xlabel(r"$\phi$ [rad/m²]", fontsize=11)
-    ax_lower.set_ylabel("Residuals", fontsize=11)
-    ax_lower.grid(True, alpha=0.3)
-    ax_lower.tick_params(axis="x", labelbottom=True)
-    plt.setp(ax_lower.get_xticklabels(), visible=True)
+        ax2_res.axhline(sig * sigma_res_clean, color=COLORS["gray"], linestyle="--", lw=0.8, alpha=0.7)
+        ax2_res.axhline(-sig * sigma_res_clean, color=COLORS["gray"], linestyle="--", lw=0.8, alpha=0.7)
+    ax2_res.axhline(0, color=COLORS["gray"], linestyle="-", lw=0.5, alpha=0.5)
+    ax2_res.axvline(peak_phi_c, color="red", linestyle="-", lw=1.2, alpha=0.45)
+    ax2_res.set_xlim(xlim_phi[0], xlim_phi[1])
+    ax2_res.set_xlabel(r"$\phi$ [rad/m²]", fontsize=11)
+    ax2_res.set_ylabel("Residuals", fontsize=11)
+    ax2_res.grid(True, alpha=0.3)
 
-    plt.suptitle(f"{band_label} — {scenario_label}", fontsize=14, fontweight="bold")
+    # (3) Bottom-left: RFI polarization vs λ²
+    ax3 = fig.add_subplot(gs[1, 0])
+    ax3.plot(l2_rfi, np.abs(data_rfi), ".", color=COLORS["blue"], markersize=0.6, alpha=0.9, label=r"$|P|$")
+    ax3.plot(l2_rfi, data_rfi.real, ".", color=COLORS["purple"], markersize=0.5, alpha=0.8, label=r"$\mathrm{Re}(P)$")
+    ax3.plot(l2_rfi, data_rfi.imag, ".", color=COLORS["orange"], markersize=0.5, alpha=0.8, label=r"$\mathrm{Im}(P)$")
+    ax3.set_xlabel(r"$\lambda^2$ [m²]", fontsize=11)
+    ax3.set_ylabel("Polarization [Jy]", fontsize=11)
+    ax3.set_title(r"With RFI: Polarization vs $\lambda^2$", fontsize=12, fontweight="bold")
+    ax3.legend(loc="best", fontsize=9)
+    ax3.grid(True, alpha=0.3)
+
+    # (4) Bottom-right: double — FD (abs only) + residuals
+    ax4_fd = fig.add_subplot(gs_right_bot[0])
+    ax4_fd.plot(phi_rfi, np.abs(fd_dirty_rfi), "-", color=COLORS["teal"], lw=1.2, alpha=0.9, label=r"Dirty $|F(\phi)|$")
+    ax4_fd.plot(phi_rfi, np.abs(fd_rfi), "-", color=COLORS["black"], lw=1.5, alpha=0.9, label=r"Restored $|F(\phi)|$")
+    ax4_fd.axhline(5.0 * sigma_rfi, color=COLORS["gray"], linestyle="--", lw=1, alpha=0.8, label=r"5$\sigma$")
+    peak_idx_r = np.argmax(np.abs(fd_rfi))
+    peak_phi_r = float(phi_rfi[peak_idx_r])
+    ax4_fd.axvline(peak_phi_r, color="red", linestyle="-", lw=1.2, alpha=0.45, label=rf"Peak $\phi$ = {peak_phi_r:.2f}")
+    ax4_fd.set_xlim(xlim_phi[0], xlim_phi[1])
+    ax4_fd.set_ylabel(r"$|F(\phi)|$ [Jy/RMSF]", fontsize=11)
+    ax4_fd.set_title("With RFI: Faraday depth spectrum", fontsize=12, fontweight="bold")
+    ax4_fd.legend(loc="best", fontsize=9)
+    ax4_fd.grid(True, alpha=0.3)
+    ax4_fd.tick_params(axis="x", labelbottom=False)
+    ax4_res = fig.add_subplot(gs_right_bot[1])
+    ax4_res.plot(phi_rfi, np.abs(fd_res_rfi), "-", color=COLORS["blue"], lw=1, alpha=0.9)
+    ax4_res.plot(phi_rfi, fd_res_rfi.real, "--", color=COLORS["blue"], lw=0.9, alpha=0.8)
+    ax4_res.plot(phi_rfi, fd_res_rfi.imag, ":", color=COLORS["blue"], lw=0.9, alpha=0.8)
+    for sig in [2, 3, 5]:
+        ax4_res.axhline(sig * sigma_res_rfi, color=COLORS["gray"], linestyle="--", lw=0.8, alpha=0.7)
+        ax4_res.axhline(-sig * sigma_res_rfi, color=COLORS["gray"], linestyle="--", lw=0.8, alpha=0.7)
+    ax4_res.axhline(0, color=COLORS["gray"], linestyle="-", lw=0.5, alpha=0.5)
+    ax4_res.axvline(peak_phi_r, color="red", linestyle="-", lw=1.2, alpha=0.45)
+    ax4_res.set_xlim(xlim_phi[0], xlim_phi[1])
+    ax4_res.set_xlabel(r"$\phi$ [rad/m²]", fontsize=11)
+    ax4_res.set_ylabel("Residuals", fontsize=11)
+    ax4_res.grid(True, alpha=0.3)
+
+    plt.suptitle(f"{source_type} Source: Clean vs RFI ({band_label})", fontsize=14, fontweight="bold")
     plt.tight_layout()
-    if filename is not None:
+    if filename:
+        plt.savefig(filename, dpi=150, bbox_inches="tight")
+    else:
+        plt.show()
+    plt.close(fig)
+
+
+def plot_2x2_clean_vs_depol(
+    clean_source,
+    depol_source,
+    recon_clean,
+    recon_depol,
+    band_label: str,
+    source_type: str,
+    filename: str | None = None,
+    phi_xlim: float | tuple[float, float] | None = None,
+    figsize=(18, 12),
+):
+    """
+    2×2 comparison: Clean (top) vs Depolarized (bottom), matching testing_faraday.py.
+
+    - Top left: Clean polarization vs λ²
+    - Top right: Clean Faraday depth spectrum
+    - Bottom left: Depolarized polarization vs λ²
+    - Bottom right: Depolarized Faraday depth spectrum
+    """
+    def _xlim(phi_xlim):
+        if phi_xlim is None:
+            return (-PHI_MAX, PHI_MAX)
+        if isinstance(phi_xlim, (tuple, list)) and len(phi_xlim) == 2:
+            return (float(phi_xlim[0]), float(phi_xlim[1]))
+        return (-float(phi_xlim), float(phi_xlim))
+
+    xlim_phi = _xlim(phi_xlim)
+    l2_clean = np.asarray(clean_source.lambda2)
+    data_clean = np.asarray(clean_source.data)
+    l2_depol = np.asarray(depol_source.lambda2)
+    data_depol = np.asarray(depol_source.data)
+
+    phi_clean = np.asarray(recon_clean.parameter.phi)
+    fd_clean = np.asarray(recon_clean.fd_restored)
+    phi_depol = np.asarray(recon_depol.parameter.phi)
+    fd_depol = np.asarray(recon_depol.fd_restored)
+
+    sigma_clean = float(calculate_fd_signal_noise(
+        recon_clean.fd_dirty, phi_clean, recon_clean.parameter.max_faraday_depth, threshold=0.5
+    ))
+    sigma_depol = float(calculate_fd_signal_noise(
+        recon_depol.fd_dirty, phi_depol, recon_depol.parameter.max_faraday_depth, threshold=0.5
+    ))
+
+    fig, axes = plt.subplots(2, 2, figsize=figsize)
+
+    # Top left: Clean polarization vs λ²
+    ax = axes[0, 0]
+    ax.plot(l2_clean, np.abs(data_clean), ".", color=COLORS["blue"], markersize=0.6, alpha=0.9, label=r"$|P|$")
+    ax.plot(l2_clean, data_clean.real, ".", color=COLORS["blue"], markersize=0.5, alpha=0.8, label=r"$\mathrm{Re}(P)$")
+    ax.plot(l2_clean, data_clean.imag, ".", color=COLORS["blue"], markersize=0.5, alpha=0.8, label=r"$\mathrm{Im}(P)$")
+    ax.set_xlabel(r"$\lambda^2$ [m²]", fontsize=11)
+    ax.set_ylabel("Polarization [Jy]", fontsize=11)
+    ax.set_title(r"Clean: Polarization vs $\lambda^2$", fontsize=12, fontweight="bold")
+    ax.legend(loc="best", fontsize=9)
+    ax.grid(True, alpha=0.3)
+
+    # Top right: Clean Faraday depth
+    ax = axes[0, 1]
+    ax.plot(phi_clean, np.abs(fd_clean), "-", color=COLORS["blue"], lw=2.0, alpha=0.95, label=r"$|F(\phi)|$")
+    ax.plot(phi_clean, fd_clean.real, "--", color=COLORS["cyan"], lw=1.5, alpha=0.85, label=r"$\mathrm{Re}(F(\phi))$")
+    ax.plot(phi_clean, fd_clean.imag, ":", color=COLORS["teal"], lw=1.5, alpha=0.85, label=r"$\mathrm{Im}(F(\phi))$")
+    ax.axhline(5.0 * sigma_clean, color=COLORS["gray"], linestyle="--", lw=0.8, alpha=0.7)
+    peak_idx = np.argmax(np.abs(fd_clean))
+    peak_phi = float(phi_clean[peak_idx])
+    ax.axvline(peak_phi, color=COLORS["blue"], linestyle="--", lw=1.5, alpha=0.6, label=rf"Peak $\phi$ = {peak_phi:.1f}")
+    ax.set_xlim(xlim_phi[0], xlim_phi[1])
+    ax.set_xlabel(r"$\phi$ [rad/m²]", fontsize=11)
+    ax.set_ylabel(r"Faraday Intensity [Jy/RMSF]", fontsize=11)
+    ax.set_title("Clean: Faraday Depth Spectrum", fontsize=12, fontweight="bold")
+    ax.legend(loc="best", fontsize=9)
+    ax.grid(True, alpha=0.3)
+
+    # Bottom left: Depolarized polarization vs λ²
+    ax = axes[1, 0]
+    ax.plot(l2_depol, np.abs(data_depol), ".", color=COLORS["orange"], markersize=0.6, alpha=0.9, label=r"$|P|$")
+    ax.plot(l2_depol, data_depol.real, ".", color=COLORS["orange"], markersize=0.5, alpha=0.8, label=r"$\mathrm{Re}(P)$")
+    ax.plot(l2_depol, data_depol.imag, ".", color=COLORS["orange"], markersize=0.5, alpha=0.8, label=r"$\mathrm{Im}(P)$")
+    ax.set_xlabel(r"$\lambda^2$ [m²]", fontsize=11)
+    ax.set_ylabel("Polarization [Jy]", fontsize=11)
+    ax.set_title(r"Depolarized: Polarization vs $\lambda^2$", fontsize=12, fontweight="bold")
+    ax.legend(loc="best", fontsize=9)
+    ax.grid(True, alpha=0.3)
+
+    # Bottom right: Depolarized Faraday depth
+    ax = axes[1, 1]
+    ax.plot(phi_depol, np.abs(fd_depol), "-", color=COLORS["orange"], lw=2.0, alpha=0.95, label=r"$|F(\phi)|$")
+    ax.plot(phi_depol, fd_depol.real, "--", color=COLORS["purple"], lw=1.5, alpha=0.85, label=r"$\mathrm{Re}(F(\phi))$")
+    ax.plot(phi_depol, fd_depol.imag, ":", color=COLORS["magenta"], lw=1.5, alpha=0.85, label=r"$\mathrm{Im}(F(\phi))$")
+    ax.axhline(5.0 * sigma_depol, color=COLORS["gray"], linestyle="--", lw=0.8, alpha=0.7)
+    peak_idx = np.argmax(np.abs(fd_depol))
+    peak_phi = float(phi_depol[peak_idx])
+    ax.axvline(peak_phi, color=COLORS["orange"], linestyle="--", lw=1.5, alpha=0.6, label=rf"Peak $\phi$ = {peak_phi:.1f}")
+    ax.set_xlim(xlim_phi[0], xlim_phi[1])
+    ax.set_xlabel(r"$\phi$ [rad/m²]", fontsize=11)
+    ax.set_ylabel(r"Faraday Intensity [Jy/RMSF]", fontsize=11)
+    ax.set_title("Depolarized: Faraday Depth Spectrum", fontsize=12, fontweight="bold")
+    ax.legend(loc="best", fontsize=9)
+    ax.grid(True, alpha=0.3)
+
+    plt.suptitle(f"{source_type} Source: Clean vs Depolarized ({band_label})", fontsize=14, fontweight="bold")
+    plt.tight_layout()
+    if filename:
         plt.savefig(filename, dpi=150, bbox_inches="tight")
     else:
         plt.show()
@@ -357,93 +529,82 @@ def main():
         # Simulate sources (thin / thick / mixed, clean / RFI / depol)
         sims = simulate_sources_for_band(nu, band_name)
 
-        # THIN: clean, RFI, depol
+        # THIN: Clean vs RFI and Clean vs Depolarization (same as testing_faraday)
         print("  Reconstructing thin sources...")
         recon_thin_clean = run_csromer_reconstruction(sims["thin_clean"], reconstructor=RECONSTRUCTOR)
-        plot_1x2_csromer(
-            sims["thin_clean"],
-            recon_thin_clean,
-            band_label=band_name,
-            scenario_label="Thin clean",
-            filename=f"thin_clean_1x2_{short}.png",
-            phi_xlim=phi_xlim,
-        )
-
         recon_thin_rfi = run_csromer_reconstruction(sims["thin_rfi"], reconstructor=RECONSTRUCTOR)
-        plot_1x2_csromer(
+        recon_thin_depol = run_csromer_reconstruction(sims["thin_depol"], reconstructor=RECONSTRUCTOR)
+
+        print("    Plot: Thin clean vs RFI...")
+        plot_2x2_clean_vs_rfi(
+            sims["thin_clean"],
             sims["thin_rfi"],
+            recon_thin_clean,
             recon_thin_rfi,
             band_label=band_name,
-            scenario_label="Thin RFI",
-            filename=f"thin_rfi_1x2_{short}.png",
+            source_type="Thin",
+            filename=f"thin_clean_vs_rfi_{short}.png",
             phi_xlim=phi_xlim,
         )
-
-        recon_thin_depol = run_csromer_reconstruction(sims["thin_depol"], reconstructor=RECONSTRUCTOR)
-        plot_1x2_csromer(
+        print("    Plot: Thin clean vs depolarized...")
+        plot_2x2_clean_vs_depol(
+            sims["thin_clean"],
             sims["thin_depol"],
+            recon_thin_clean,
             recon_thin_depol,
             band_label=band_name,
-            scenario_label="Thin depol",
-            filename=f"thin_depol_1x2_{short}.png",
+            source_type="Thin",
+            filename=f"thin_depolarization_{short}.png",
             phi_xlim=phi_xlim,
         )
 
-        # THICK + MIXED (skip for SKA-LOW)
+        # THICK + MIXED (skip for SKA-LOW, same as testing_faraday)
         if band_name != "SKA-LOW":
             print("  Reconstructing thick sources...")
             recon_thick_clean = run_csromer_reconstruction(sims["thick_clean"], reconstructor=RECONSTRUCTOR)
-            plot_1x2_csromer(
-                sims["thick_clean"],
-                recon_thick_clean,
-                band_label=band_name,
-                scenario_label="Thick clean",
-                filename=f"thick_clean_1x2_{short}.png",
-                phi_xlim=phi_xlim,
-            )
-
             recon_thick_rfi = run_csromer_reconstruction(sims["thick_rfi"], reconstructor=RECONSTRUCTOR)
-            plot_1x2_csromer(
+            recon_thick_depol = run_csromer_reconstruction(sims["thick_depol"], reconstructor=RECONSTRUCTOR)
+
+            print("    Plot: Thick clean vs RFI...")
+            plot_2x2_clean_vs_rfi(
+                sims["thick_clean"],
                 sims["thick_rfi"],
+                recon_thick_clean,
                 recon_thick_rfi,
                 band_label=band_name,
-                scenario_label="Thick RFI",
-                filename=f"thick_rfi_1x2_{short}.png",
+                source_type="Thick",
+                filename=f"thick_clean_vs_rfi_{short}.png",
                 phi_xlim=phi_xlim,
             )
-
-            recon_thick_depol = run_csromer_reconstruction(sims["thick_depol"], reconstructor=RECONSTRUCTOR)
-            plot_1x2_csromer(
+            print("    Plot: Thick clean vs depolarized...")
+            plot_2x2_clean_vs_depol(
+                sims["thick_clean"],
                 sims["thick_depol"],
+                recon_thick_clean,
                 recon_thick_depol,
                 band_label=band_name,
-                scenario_label="Thick depol",
-                filename=f"thick_depol_1x2_{short}.png",
+                source_type="Thick",
+                filename=f"thick_depolarization_{short}.png",
                 phi_xlim=phi_xlim,
             )
 
             print("  Reconstructing mixed sources...")
             recon_mixed_clean = run_csromer_reconstruction(sims["mixed_clean"], reconstructor=RECONSTRUCTOR)
-            plot_1x2_csromer(
-                sims["mixed_clean"],
-                recon_mixed_clean,
-                band_label=band_name,
-                scenario_label="Mixed clean",
-                filename=f"mixed_clean_1x2_{short}.png",
-                phi_xlim=phi_xlim,
-            )
-
             recon_mixed_rfi = run_csromer_reconstruction(sims["mixed_rfi"], reconstructor=RECONSTRUCTOR)
-            plot_1x2_csromer(
+
+            print("    Plot: Mixed clean vs RFI...")
+            plot_2x2_clean_vs_rfi(
+                sims["mixed_clean"],
                 sims["mixed_rfi"],
+                recon_mixed_clean,
                 recon_mixed_rfi,
                 band_label=band_name,
-                scenario_label="Mixed RFI",
-                filename=f"mixed_rfi_1x2_{short}.png",
+                source_type="Mixed",
+                filename=f"mixed_clean_vs_rfi_{short}.png",
                 phi_xlim=phi_xlim,
             )
 
-    print("\nAll 1×2 CS-ROMER figures generated.")
+    print("\nAll 2×2 comparison figures generated (Clean vs RFI, Clean vs Depolarized).")
 
 
 if __name__ == "__main__":
