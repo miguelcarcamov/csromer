@@ -33,7 +33,9 @@ from csromer.simulation import FaradayThickSource, FaradayThinSource
 c = float(C_LIGHT.value)
 
 
-# Colour palette (same idea as testing_faraday)
+# Colorblind-friendly palette (distinct for protanopia, deuteranopia, tritanopia).
+# Avoids red–green pairing; blue–orange–purple–teal remain distinguishable.
+# Accent used for peak lines (salmon-like, Tol-style) so it stands out without relying on pure red.
 COLORS = {
     "blue": "#0066CC",
     "orange": "#FF6600",
@@ -44,6 +46,7 @@ COLORS = {
     "yellow": "#FFCC00",
     "black": "#000000",
     "gray": "#666666",
+    "accent": "#E6556E",  # colorblind-safe accent for peak / emphasis (salmon–red, distinct from blue/orange)
 }
 
 
@@ -51,6 +54,13 @@ COLORS = {
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "stix"
 plt.rcParams["figure.figsize"] = (10, 8)
+
+
+def _peak_legend_label(peak_phi: float, peak_error: float | None) -> str:
+    """Format peak φ with optional error for legend (rad/m²)."""
+    if peak_error is not None and np.isfinite(peak_error):
+        return rf"Peak $\phi$ = {peak_phi:.2f} $\pm$ {peak_error:.2f}"
+    return rf"Peak $\phi$ = {peak_phi:.2f}"
 
 
 # SKA-like frequency bands (values copied from testing_faraday.py)
@@ -120,7 +130,7 @@ DEPOL_SIGMA_RM_THIN = 5.0  # rad/m²
 DEPOL_SIGMA_RM_THICK = 3.0  # rad/m²
 
 # Reconstructor: "csromer" (FISTA + L1) or "cg" (conjugate gradient)
-RECONSTRUCTOR = "cg"
+RECONSTRUCTOR = "csromer"
 
 # Faraday grid parameters (same for all bands; tweak as needed)
 PHI_MAX = 1000.0  # rad/m²
@@ -230,7 +240,7 @@ def run_csromer_reconstruction(
             dataset=source,
             oversampling=oversampling,
             measurement_operator_kind="gridded",
-            lambda_l_norm=1e-10,
+            lambda_l_norm=1e-6,
             optimizer_factory=optimizer_factory,
         )
     else:
@@ -238,7 +248,7 @@ def run_csromer_reconstruction(
             dataset=source,
             oversampling=oversampling,
             measurement_operator_kind="gridded",
-            lambda_l_norm=0.0005,
+            lambda_l_norm=1e-6,
             optimizer_factory=make_fista_optimizer(
                 maxiter=maxiter,
                 tol=1e-12,
@@ -329,7 +339,8 @@ def plot_2x2_clean_vs_rfi(
     ax2_fd.axhline(5.0 * sigma_clean, color=COLORS["gray"], linestyle="--", lw=1, alpha=0.8, label=r"5$\sigma$")
     peak_idx_c = np.argmax(np.abs(fd_clean))
     peak_phi_c = float(phi_clean[peak_idx_c])
-    ax2_fd.axvline(peak_phi_c, color="red", linestyle="-", lw=1.2, alpha=0.45, label=rf"Peak $\phi$ = {peak_phi_c:.2f}")
+    peak_err_c = getattr(recon_clean, "rm_restored_error", None)
+    ax2_fd.axvline(peak_phi_c, color=COLORS["accent"], linestyle="-", lw=1.2, alpha=0.45, label=_peak_legend_label(peak_phi_c, peak_err_c))
     ax2_fd.set_xlim(xlim_phi[0], xlim_phi[1])
     ax2_fd.set_ylabel(r"$|F(\phi)|$ [Jy/RMSF]", fontsize=11)
     ax2_fd.set_title("Clean: Faraday depth spectrum", fontsize=12, fontweight="bold")
@@ -344,7 +355,7 @@ def plot_2x2_clean_vs_rfi(
         ax2_res.axhline(sig * sigma_res_clean, color=COLORS["gray"], linestyle="--", lw=0.8, alpha=0.7)
         ax2_res.axhline(-sig * sigma_res_clean, color=COLORS["gray"], linestyle="--", lw=0.8, alpha=0.7)
     ax2_res.axhline(0, color=COLORS["gray"], linestyle="-", lw=0.5, alpha=0.5)
-    ax2_res.axvline(peak_phi_c, color="red", linestyle="-", lw=1.2, alpha=0.45)
+    ax2_res.axvline(peak_phi_c, color=COLORS["accent"], linestyle="-", lw=1.2, alpha=0.45)
     ax2_res.set_xlim(xlim_phi[0], xlim_phi[1])
     ax2_res.set_xlabel(r"$\phi$ [rad/m²]", fontsize=11)
     ax2_res.set_ylabel("Residuals", fontsize=11)
@@ -368,7 +379,8 @@ def plot_2x2_clean_vs_rfi(
     ax4_fd.axhline(5.0 * sigma_rfi, color=COLORS["gray"], linestyle="--", lw=1, alpha=0.8, label=r"5$\sigma$")
     peak_idx_r = np.argmax(np.abs(fd_rfi))
     peak_phi_r = float(phi_rfi[peak_idx_r])
-    ax4_fd.axvline(peak_phi_r, color="red", linestyle="-", lw=1.2, alpha=0.45, label=rf"Peak $\phi$ = {peak_phi_r:.2f}")
+    peak_err_r = getattr(recon_rfi, "rm_restored_error", None)
+    ax4_fd.axvline(peak_phi_r, color=COLORS["accent"], linestyle="-", lw=1.2, alpha=0.45, label=_peak_legend_label(peak_phi_r, peak_err_r))
     ax4_fd.set_xlim(xlim_phi[0], xlim_phi[1])
     ax4_fd.set_ylabel(r"$|F(\phi)|$ [Jy/RMSF]", fontsize=11)
     ax4_fd.set_title("With RFI: Faraday depth spectrum", fontsize=12, fontweight="bold")
@@ -383,7 +395,7 @@ def plot_2x2_clean_vs_rfi(
         ax4_res.axhline(sig * sigma_res_rfi, color=COLORS["gray"], linestyle="--", lw=0.8, alpha=0.7)
         ax4_res.axhline(-sig * sigma_res_rfi, color=COLORS["gray"], linestyle="--", lw=0.8, alpha=0.7)
     ax4_res.axhline(0, color=COLORS["gray"], linestyle="-", lw=0.5, alpha=0.5)
-    ax4_res.axvline(peak_phi_r, color="red", linestyle="-", lw=1.2, alpha=0.45)
+    ax4_res.axvline(peak_phi_r, color=COLORS["accent"], linestyle="-", lw=1.2, alpha=0.45)
     ax4_res.set_xlim(xlim_phi[0], xlim_phi[1])
     ax4_res.set_xlabel(r"$\phi$ [rad/m²]", fontsize=11)
     ax4_res.set_ylabel("Residuals", fontsize=11)
@@ -476,7 +488,8 @@ def plot_2x2_clean_vs_depol(
     ax2_fd.axhline(5.0 * sigma_clean, color=COLORS["gray"], linestyle="--", lw=1, alpha=0.8, label=r"5$\sigma$")
     peak_idx_c = np.argmax(np.abs(fd_clean))
     peak_phi_c = float(phi_clean[peak_idx_c])
-    ax2_fd.axvline(peak_phi_c, color="red", linestyle="-", lw=1.2, alpha=0.45, label=rf"Peak $\phi$ = {peak_phi_c:.2f}")
+    peak_err_c = getattr(recon_clean, "rm_restored_error", None)
+    ax2_fd.axvline(peak_phi_c, color=COLORS["accent"], linestyle="-", lw=1.2, alpha=0.45, label=_peak_legend_label(peak_phi_c, peak_err_c))
     ax2_fd.set_xlim(xlim_phi[0], xlim_phi[1])
     ax2_fd.set_ylabel(r"$|F(\phi)|$ [Jy/RMSF]", fontsize=11)
     ax2_fd.set_title("Clean: Faraday depth spectrum", fontsize=12, fontweight="bold")
@@ -491,7 +504,7 @@ def plot_2x2_clean_vs_depol(
         ax2_res.axhline(sig * sigma_res_clean, color=COLORS["gray"], linestyle="--", lw=0.8, alpha=0.7)
         ax2_res.axhline(-sig * sigma_res_clean, color=COLORS["gray"], linestyle="--", lw=0.8, alpha=0.7)
     ax2_res.axhline(0, color=COLORS["gray"], linestyle="-", lw=0.5, alpha=0.5)
-    ax2_res.axvline(peak_phi_c, color="red", linestyle="-", lw=1.2, alpha=0.45)
+    ax2_res.axvline(peak_phi_c, color=COLORS["accent"], linestyle="-", lw=1.2, alpha=0.45)
     ax2_res.set_xlim(xlim_phi[0], xlim_phi[1])
     ax2_res.set_xlabel(r"$\phi$ [rad/m²]", fontsize=11)
     ax2_res.set_ylabel("Residuals", fontsize=11)
@@ -515,7 +528,8 @@ def plot_2x2_clean_vs_depol(
     ax4_fd.axhline(5.0 * sigma_depol, color=COLORS["gray"], linestyle="--", lw=1, alpha=0.8, label=r"5$\sigma$")
     peak_idx_d = np.argmax(np.abs(fd_depol))
     peak_phi_d = float(phi_depol[peak_idx_d])
-    ax4_fd.axvline(peak_phi_d, color="red", linestyle="-", lw=1.2, alpha=0.45, label=rf"Peak $\phi$ = {peak_phi_d:.2f}")
+    peak_err_d = getattr(recon_depol, "rm_restored_error", None)
+    ax4_fd.axvline(peak_phi_d, color=COLORS["accent"], linestyle="-", lw=1.2, alpha=0.45, label=_peak_legend_label(peak_phi_d, peak_err_d))
     ax4_fd.set_xlim(xlim_phi[0], xlim_phi[1])
     ax4_fd.set_ylabel(r"$|F(\phi)|$ [Jy/RMSF]", fontsize=11)
     ax4_fd.set_title("Depolarized: Faraday depth spectrum", fontsize=12, fontweight="bold")
@@ -530,7 +544,7 @@ def plot_2x2_clean_vs_depol(
         ax4_res.axhline(sig * sigma_res_depol, color=COLORS["gray"], linestyle="--", lw=0.8, alpha=0.7)
         ax4_res.axhline(-sig * sigma_res_depol, color=COLORS["gray"], linestyle="--", lw=0.8, alpha=0.7)
     ax4_res.axhline(0, color=COLORS["gray"], linestyle="-", lw=0.5, alpha=0.5)
-    ax4_res.axvline(peak_phi_d, color="red", linestyle="-", lw=1.2, alpha=0.45)
+    ax4_res.axvline(peak_phi_d, color=COLORS["accent"], linestyle="-", lw=1.2, alpha=0.45)
     ax4_res.set_xlim(xlim_phi[0], xlim_phi[1])
     ax4_res.set_xlabel(r"$\phi$ [rad/m²]", fontsize=11)
     ax4_res.set_ylabel("Residuals", fontsize=11)

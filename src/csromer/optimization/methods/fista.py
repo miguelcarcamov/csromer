@@ -50,6 +50,15 @@ def _inner_real(a, b) -> float:
     return float(out.compute()) if hasattr(out, "compute") else float(np.real(out))
 
 
+def _check_function_convergence(f_current: float, f_previous: float, tol: float) -> bool:
+    """
+    True if relative function change is <= tol (same criterion as GradientOptimizer).
+    """
+    eps = np.finfo(np.float64).tiny
+    denom = abs(f_current) + abs(f_previous) + eps
+    return 2.0 * abs(f_current - f_previous) <= tol * denom
+
+
 @dataclass(init=True, repr=True)
 class FISTA(Optimizer):
     """
@@ -184,6 +193,12 @@ class FISTA(Optimizer):
                 t0 = t
                 t = 0.5 * (1.0 + np.sqrt(1.0 + 4.0 * t**2))
                 z = x + ((t0 - 1.0) / t) * (x - x_old)
+
+            if _check_function_convergence(f_new, f_prev, tol):
+                if verbose:
+                    print("FISTA converged (relative function change <= tol) after {} iterations".format(it + 1))
+                f_prev = f_new
+                break
 
             f_prev = f_new
 

@@ -76,6 +76,10 @@ def build_measurement_operator(
             gridding_kernel_beta=gridding_kernel_beta,
         )
         dataset = gridding.run()
+        # Restore beam = gridded RMTF FWHM (nominal/full from gridded span; respects zero weights)
+        delta_phi = dataset.delta_phi
+        if delta_phi is not None:
+            parameter.rmtf_fwhm = float(delta_phi)
         op = GriddedFFT1D(dataset=dataset, parameter=parameter)
         return op, dataset
     raise ValueError(
