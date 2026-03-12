@@ -248,7 +248,7 @@ def run_csromer_reconstruction(
             dataset=source,
             oversampling=oversampling,
             measurement_operator_kind="gridded",
-            lambda_l_norm=1e-6,
+            lambda_l_norm=1e-8,
             optimizer_factory=make_fista_optimizer(
                 maxiter=maxiter,
                 tol=1e-12,
