@@ -410,13 +410,14 @@ def plot_2x2_clean_vs_depol(
     figsize=(18, 12),
 ):
     """
-    2×2 comparison: Clean (top) vs Depolarized (bottom), matching testing_faraday.py.
-
-    - Top left: Clean polarization vs λ²
-    - Top right: Clean Faraday depth spectrum
-    - Bottom left: Depolarized polarization vs λ²
-    - Bottom right: Depolarized Faraday depth spectrum
+    2×2 comparison: Clean (top) vs Depolarized (bottom).
+    - (1) Top-left: Clean polarization vs λ²
+    - (2) Top-right: double — FD spectrum (|dirty|, |restored|, 5σ, red peak); bottom: residuals
+    - (3) Bottom-left: Depolarized polarization vs λ²
+    - (4) Bottom-right: double — FD spectrum; bottom: residuals
     """
+    import matplotlib.gridspec as gridspec
+
     def _xlim(phi_xlim):
         if phi_xlim is None:
             return (-PHI_MAX, PHI_MAX)
@@ -431,9 +432,13 @@ def plot_2x2_clean_vs_depol(
     data_depol = np.asarray(depol_source.data)
 
     phi_clean = np.asarray(recon_clean.parameter.phi)
+    fd_dirty_clean = np.asarray(recon_clean.fd_dirty)
     fd_clean = np.asarray(recon_clean.fd_restored)
+    fd_res_clean = np.asarray(recon_clean.fd_residual)
     phi_depol = np.asarray(recon_depol.parameter.phi)
+    fd_dirty_depol = np.asarray(recon_depol.fd_dirty)
     fd_depol = np.asarray(recon_depol.fd_restored)
+    fd_res_depol = np.asarray(recon_depol.fd_residual)
 
     sigma_clean = float(calculate_fd_signal_noise(
         recon_clean.fd_dirty, phi_clean, recon_clean.parameter.max_faraday_depth, threshold=0.5
@@ -441,62 +446,95 @@ def plot_2x2_clean_vs_depol(
     sigma_depol = float(calculate_fd_signal_noise(
         recon_depol.fd_dirty, phi_depol, recon_depol.parameter.max_faraday_depth, threshold=0.5
     ))
+    sigma_res_clean = float(calculate_fd_signal_noise(
+        fd_res_clean, phi_clean, recon_clean.parameter.max_faraday_depth, threshold=0.5
+    ))
+    sigma_res_depol = float(calculate_fd_signal_noise(
+        fd_res_depol, phi_depol, recon_depol.parameter.max_faraday_depth, threshold=0.5
+    ))
 
-    fig, axes = plt.subplots(2, 2, figsize=figsize)
+    fig = plt.figure(figsize=figsize)
+    gs = fig.add_gridspec(2, 2, width_ratios=[1, 1], height_ratios=[1, 1])
+    gs_right_top = gs[0, 1].subgridspec(2, 1, height_ratios=[1, 0.6], hspace=0)
+    gs_right_bot = gs[1, 1].subgridspec(2, 1, height_ratios=[1, 0.6], hspace=0)
 
-    # Top left: Clean polarization vs λ²
-    ax = axes[0, 0]
-    ax.plot(l2_clean, np.abs(data_clean), ".", color=COLORS["blue"], markersize=0.6, alpha=0.9, label=r"$|P|$")
-    ax.plot(l2_clean, data_clean.real, ".", color=COLORS["blue"], markersize=0.5, alpha=0.8, label=r"$\mathrm{Re}(P)$")
-    ax.plot(l2_clean, data_clean.imag, ".", color=COLORS["blue"], markersize=0.5, alpha=0.8, label=r"$\mathrm{Im}(P)$")
-    ax.set_xlabel(r"$\lambda^2$ [m²]", fontsize=11)
-    ax.set_ylabel("Polarization [Jy]", fontsize=11)
-    ax.set_title(r"Clean: Polarization vs $\lambda^2$", fontsize=12, fontweight="bold")
-    ax.legend(loc="best", fontsize=9)
-    ax.grid(True, alpha=0.3)
+    # (1) Top-left: Clean polarization vs λ²
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax1.plot(l2_clean, np.abs(data_clean), ".", color=COLORS["blue"], markersize=0.6, alpha=0.9, label=r"$|P|$")
+    ax1.plot(l2_clean, data_clean.real, ".", color=COLORS["blue"], markersize=0.5, alpha=0.8, label=r"$\mathrm{Re}(P)$")
+    ax1.plot(l2_clean, data_clean.imag, ".", color=COLORS["blue"], markersize=0.5, alpha=0.8, label=r"$\mathrm{Im}(P)$")
+    ax1.set_xlabel(r"$\lambda^2$ [m²]", fontsize=11)
+    ax1.set_ylabel("Polarization [Jy]", fontsize=11)
+    ax1.set_title(r"Clean: Polarization vs $\lambda^2$", fontsize=12, fontweight="bold")
+    ax1.legend(loc="best", fontsize=9)
+    ax1.grid(True, alpha=0.3)
 
-    # Top right: Clean Faraday depth
-    ax = axes[0, 1]
-    ax.plot(phi_clean, np.abs(fd_clean), "-", color=COLORS["blue"], lw=2.0, alpha=0.95, label=r"$|F(\phi)|$")
-    ax.plot(phi_clean, fd_clean.real, "--", color=COLORS["cyan"], lw=1.5, alpha=0.85, label=r"$\mathrm{Re}(F(\phi))$")
-    ax.plot(phi_clean, fd_clean.imag, ":", color=COLORS["teal"], lw=1.5, alpha=0.85, label=r"$\mathrm{Im}(F(\phi))$")
-    ax.axhline(5.0 * sigma_clean, color=COLORS["gray"], linestyle="--", lw=0.8, alpha=0.7)
-    peak_idx = np.argmax(np.abs(fd_clean))
-    peak_phi = float(phi_clean[peak_idx])
-    ax.axvline(peak_phi, color=COLORS["blue"], linestyle="--", lw=1.5, alpha=0.6, label=rf"Peak $\phi$ = {peak_phi:.1f}")
-    ax.set_xlim(xlim_phi[0], xlim_phi[1])
-    ax.set_xlabel(r"$\phi$ [rad/m²]", fontsize=11)
-    ax.set_ylabel(r"Faraday Intensity [Jy/RMSF]", fontsize=11)
-    ax.set_title("Clean: Faraday Depth Spectrum", fontsize=12, fontweight="bold")
-    ax.legend(loc="best", fontsize=9)
-    ax.grid(True, alpha=0.3)
+    # (2) Top-right: double — FD (abs only, red peak transparent) + residuals
+    ax2_fd = fig.add_subplot(gs_right_top[0])
+    ax2_fd.plot(phi_clean, np.abs(fd_dirty_clean), "-", color=COLORS["teal"], lw=1.2, alpha=0.9, label=r"Dirty $|F(\phi)|$")
+    ax2_fd.plot(phi_clean, np.abs(fd_clean), "-", color=COLORS["black"], lw=1.5, alpha=0.9, label=r"Restored $|F(\phi)|$")
+    ax2_fd.axhline(5.0 * sigma_clean, color=COLORS["gray"], linestyle="--", lw=1, alpha=0.8, label=r"5$\sigma$")
+    peak_idx_c = np.argmax(np.abs(fd_clean))
+    peak_phi_c = float(phi_clean[peak_idx_c])
+    ax2_fd.axvline(peak_phi_c, color="red", linestyle="-", lw=1.2, alpha=0.45, label=rf"Peak $\phi$ = {peak_phi_c:.2f}")
+    ax2_fd.set_xlim(xlim_phi[0], xlim_phi[1])
+    ax2_fd.set_ylabel(r"$|F(\phi)|$ [Jy/RMSF]", fontsize=11)
+    ax2_fd.set_title("Clean: Faraday depth spectrum", fontsize=12, fontweight="bold")
+    ax2_fd.legend(loc="best", fontsize=9)
+    ax2_fd.grid(True, alpha=0.3)
+    ax2_fd.tick_params(axis="x", labelbottom=False)
+    ax2_res = fig.add_subplot(gs_right_top[1])
+    ax2_res.plot(phi_clean, np.abs(fd_res_clean), "-", color=COLORS["blue"], lw=1, alpha=0.9)
+    ax2_res.plot(phi_clean, fd_res_clean.real, "--", color=COLORS["blue"], lw=0.9, alpha=0.8)
+    ax2_res.plot(phi_clean, fd_res_clean.imag, ":", color=COLORS["blue"], lw=0.9, alpha=0.8)
+    for sig in [2, 3, 5]:
+        ax2_res.axhline(sig * sigma_res_clean, color=COLORS["gray"], linestyle="--", lw=0.8, alpha=0.7)
+        ax2_res.axhline(-sig * sigma_res_clean, color=COLORS["gray"], linestyle="--", lw=0.8, alpha=0.7)
+    ax2_res.axhline(0, color=COLORS["gray"], linestyle="-", lw=0.5, alpha=0.5)
+    ax2_res.axvline(peak_phi_c, color="red", linestyle="-", lw=1.2, alpha=0.45)
+    ax2_res.set_xlim(xlim_phi[0], xlim_phi[1])
+    ax2_res.set_xlabel(r"$\phi$ [rad/m²]", fontsize=11)
+    ax2_res.set_ylabel("Residuals", fontsize=11)
+    ax2_res.grid(True, alpha=0.3)
 
-    # Bottom left: Depolarized polarization vs λ²
-    ax = axes[1, 0]
-    ax.plot(l2_depol, np.abs(data_depol), ".", color=COLORS["orange"], markersize=0.6, alpha=0.9, label=r"$|P|$")
-    ax.plot(l2_depol, data_depol.real, ".", color=COLORS["orange"], markersize=0.5, alpha=0.8, label=r"$\mathrm{Re}(P)$")
-    ax.plot(l2_depol, data_depol.imag, ".", color=COLORS["orange"], markersize=0.5, alpha=0.8, label=r"$\mathrm{Im}(P)$")
-    ax.set_xlabel(r"$\lambda^2$ [m²]", fontsize=11)
-    ax.set_ylabel("Polarization [Jy]", fontsize=11)
-    ax.set_title(r"Depolarized: Polarization vs $\lambda^2$", fontsize=12, fontweight="bold")
-    ax.legend(loc="best", fontsize=9)
-    ax.grid(True, alpha=0.3)
+    # (3) Bottom-left: Depolarized polarization vs λ²
+    ax3 = fig.add_subplot(gs[1, 0])
+    ax3.plot(l2_depol, np.abs(data_depol), ".", color=COLORS["orange"], markersize=0.6, alpha=0.9, label=r"$|P|$")
+    ax3.plot(l2_depol, data_depol.real, ".", color=COLORS["orange"], markersize=0.5, alpha=0.8, label=r"$\mathrm{Re}(P)$")
+    ax3.plot(l2_depol, data_depol.imag, ".", color=COLORS["orange"], markersize=0.5, alpha=0.8, label=r"$\mathrm{Im}(P)$")
+    ax3.set_xlabel(r"$\lambda^2$ [m²]", fontsize=11)
+    ax3.set_ylabel("Polarization [Jy]", fontsize=11)
+    ax3.set_title(r"Depolarized: Polarization vs $\lambda^2$", fontsize=12, fontweight="bold")
+    ax3.legend(loc="best", fontsize=9)
+    ax3.grid(True, alpha=0.3)
 
-    # Bottom right: Depolarized Faraday depth
-    ax = axes[1, 1]
-    ax.plot(phi_depol, np.abs(fd_depol), "-", color=COLORS["orange"], lw=2.0, alpha=0.95, label=r"$|F(\phi)|$")
-    ax.plot(phi_depol, fd_depol.real, "--", color=COLORS["purple"], lw=1.5, alpha=0.85, label=r"$\mathrm{Re}(F(\phi))$")
-    ax.plot(phi_depol, fd_depol.imag, ":", color=COLORS["magenta"], lw=1.5, alpha=0.85, label=r"$\mathrm{Im}(F(\phi))$")
-    ax.axhline(5.0 * sigma_depol, color=COLORS["gray"], linestyle="--", lw=0.8, alpha=0.7)
-    peak_idx = np.argmax(np.abs(fd_depol))
-    peak_phi = float(phi_depol[peak_idx])
-    ax.axvline(peak_phi, color=COLORS["orange"], linestyle="--", lw=1.5, alpha=0.6, label=rf"Peak $\phi$ = {peak_phi:.1f}")
-    ax.set_xlim(xlim_phi[0], xlim_phi[1])
-    ax.set_xlabel(r"$\phi$ [rad/m²]", fontsize=11)
-    ax.set_ylabel(r"Faraday Intensity [Jy/RMSF]", fontsize=11)
-    ax.set_title("Depolarized: Faraday Depth Spectrum", fontsize=12, fontweight="bold")
-    ax.legend(loc="best", fontsize=9)
-    ax.grid(True, alpha=0.3)
+    # (4) Bottom-right: double — FD (abs only) + residuals
+    ax4_fd = fig.add_subplot(gs_right_bot[0])
+    ax4_fd.plot(phi_depol, np.abs(fd_dirty_depol), "-", color=COLORS["teal"], lw=1.2, alpha=0.9, label=r"Dirty $|F(\phi)|$")
+    ax4_fd.plot(phi_depol, np.abs(fd_depol), "-", color=COLORS["black"], lw=1.5, alpha=0.9, label=r"Restored $|F(\phi)|$")
+    ax4_fd.axhline(5.0 * sigma_depol, color=COLORS["gray"], linestyle="--", lw=1, alpha=0.8, label=r"5$\sigma$")
+    peak_idx_d = np.argmax(np.abs(fd_depol))
+    peak_phi_d = float(phi_depol[peak_idx_d])
+    ax4_fd.axvline(peak_phi_d, color="red", linestyle="-", lw=1.2, alpha=0.45, label=rf"Peak $\phi$ = {peak_phi_d:.2f}")
+    ax4_fd.set_xlim(xlim_phi[0], xlim_phi[1])
+    ax4_fd.set_ylabel(r"$|F(\phi)|$ [Jy/RMSF]", fontsize=11)
+    ax4_fd.set_title("Depolarized: Faraday depth spectrum", fontsize=12, fontweight="bold")
+    ax4_fd.legend(loc="best", fontsize=9)
+    ax4_fd.grid(True, alpha=0.3)
+    ax4_fd.tick_params(axis="x", labelbottom=False)
+    ax4_res = fig.add_subplot(gs_right_bot[1])
+    ax4_res.plot(phi_depol, np.abs(fd_res_depol), "-", color=COLORS["blue"], lw=1, alpha=0.9)
+    ax4_res.plot(phi_depol, fd_res_depol.real, "--", color=COLORS["blue"], lw=0.9, alpha=0.8)
+    ax4_res.plot(phi_depol, fd_res_depol.imag, ":", color=COLORS["blue"], lw=0.9, alpha=0.8)
+    for sig in [2, 3, 5]:
+        ax4_res.axhline(sig * sigma_res_depol, color=COLORS["gray"], linestyle="--", lw=0.8, alpha=0.7)
+        ax4_res.axhline(-sig * sigma_res_depol, color=COLORS["gray"], linestyle="--", lw=0.8, alpha=0.7)
+    ax4_res.axhline(0, color=COLORS["gray"], linestyle="-", lw=0.5, alpha=0.5)
+    ax4_res.axvline(peak_phi_d, color="red", linestyle="-", lw=1.2, alpha=0.45)
+    ax4_res.set_xlim(xlim_phi[0], xlim_phi[1])
+    ax4_res.set_xlabel(r"$\phi$ [rad/m²]", fontsize=11)
+    ax4_res.set_ylabel("Residuals", fontsize=11)
+    ax4_res.grid(True, alpha=0.3)
 
     plt.suptitle(f"{source_type} Source: Clean vs Depolarized ({band_label})", fontsize=14, fontweight="bold")
     plt.tight_layout()
