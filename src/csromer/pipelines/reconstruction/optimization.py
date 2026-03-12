@@ -80,6 +80,13 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
     gridding_kernel: str = "kaiser"  # "kaiser" or "box"
     gridding_kernel_half_width: float = 4.0
     gridding_kernel_beta: float = 2.5
+    # Optional adaptive-λ configuration (for experimental outer-loop lambda selection)
+    adaptive_lambda: bool = False
+    target_chi2: float = 1.0
+    lambda_update_gamma: float = 0.5
+    lambda_min: float = 0.0
+    lambda_max: float = np.inf
+    max_lambda_updates: int = 5
 
     coefficients: np.ndarray = field(init=False, default=None)
     fd_dirty: np.ndarray = field(init=False, default=None)

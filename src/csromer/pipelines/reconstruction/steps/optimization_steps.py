@@ -8,6 +8,7 @@ from __future__ import annotations
 import numpy as np
 
 from csromer.utils.array_utils import asnumpy
+from csromer.utils.utilities import calculate_noise
 
 from ..defaults import (
     build_measurement_operator,
@@ -156,13 +157,114 @@ class OptimizationStep:
     """Build objective, run optimizer, set fd_model and second_moment."""
 
     def run(self, ctx) -> None:
-        F_obj = ctx.objective_factory(ctx.measurement_operator, ctx.parameter)
-        opt = ctx.optimizer_factory(ctx.parameter, F_obj)
-        obj, X = opt.run()
+        # Build objective for current parameter / operator
+        objective_factory = ctx.objective_factory
+        optimizer_factory = ctx.optimizer_factory
+
+        def _run_single_lambda():
+            """
+            Run a single optimization with the current ctx.lambda_l_norm
+            as the value for the L1 regularization term.
+            """
+            # The DefaultObjectiveFactoryStep has already baked lambda_l_norm into objective_factory,
+            # so here we just instantiate and run the optimizer for the current configuration.
+            F_obj_local = objective_factory(ctx.measurement_operator, ctx.parameter)
+            # Ensure any non-differentiable term uses the provided lambda (if set on ctx).
+            lam_nondiff = F_obj_local.get_lambda_nondiff()
+            lambda_l_norm_ctx = getattr(ctx, "lambda_l_norm", None)
+            if lam_nondiff is not None and lambda_l_norm_ctx is not None:
+                F_obj_local.set_lambda_nondiff(lambda_l_norm_ctx)
+            opt_local = optimizer_factory(ctx.parameter, F_obj_local)
+            obj_val, X_local = opt_local.run()
+            return obj_val, X_local, F_obj_local
+
+        if getattr(ctx, "adaptive_lambda", False):
+            # Outer loop: adjust L1 λ to drive Chi-squared (differentiable part) toward target_chi2.
+            target_chi2 = float(getattr(ctx, "target_chi2", 1.0))
+            gamma = float(getattr(ctx, "lambda_update_gamma", 0.5))
+            lambda_min = float(getattr(ctx, "lambda_min", 0.0))
+            lambda_max = float(getattr(ctx, "lambda_max", np.inf))
+            max_updates = int(getattr(ctx, "max_lambda_updates", 5))
+
+            # Start from ctx.lambda_l_norm (already possibly scaled for gridding).
+            lam = float(getattr(ctx, "lambda_l_norm", 0.0))
+            best_X = None
+            best_obj = None
+            best_lambda = lam
+            for k in range(max_updates):
+                # Use current lam as the L1 regularization strength.
+                ctx.lambda_l_norm = lam
+                obj_val, X_k, F_obj_k = _run_single_lambda()
+                # Warm start next λ by using current solution as new initial guess.
+                ctx.parameter.data = X_k.data
+                # Evaluate differentiable-only part as Chi-squared surrogate
+                chi2_val = F_obj_k.calculate_function(X_k.data, differentiable_only=True)
+                if getattr(ctx, "verbose", True):
+                    print(
+                        "[adaptive-λ] step={}  lambda={:.6g}  chi2={:.6g}  target={:.6g}".format(
+                            k, lam, chi2_val, target_chi2
+                        )
+                    )
+                # If chi2 drops below the target, stop immediately and keep this λ.
+                if target_chi2 > 0.0 and chi2_val <= target_chi2:
+                    X = X_k
+                    ctx.lambda_l_norm = lam
+                    break
+
+                # Otherwise, keep track of the best (closest-to-target) chi2 in case we never get below.
+                if target_chi2 > 0.0:
+                    cur_err = abs(chi2_val - target_chi2)
+                    if best_X is None or cur_err < abs(best_obj - target_chi2):
+                        best_X = X_k
+                        best_obj = chi2_val
+                        best_lambda = lam
+                # Update λ multiplicatively (negative feedback toward target_chi2).
+                # When chi2_val > target_chi2 (under-regularized), ratio < 1 and λ decreases.
+                # When chi2_val < target_chi2 (over-regularized / overfitting), ratio > 1 and λ increases.
+                if chi2_val > 0.0 and target_chi2 > 0.0:
+                    ratio = target_chi2 / chi2_val
+                    lam = lam * (ratio ** gamma)
+                    lam = float(np.clip(lam, lambda_min, lambda_max))
+                else:
+                    # If chi2 is non-positive or target is invalid, stop updating
+                    # and fall back to the best solution seen so far (if any).
+                    if best_X is not None:
+                        X = best_X
+                        ctx.lambda_l_norm = best_lambda
+                    break
+            else:
+                # If loop ended without break, fall back to best seen solution (by chi2 closeness).
+                if best_X is not None:
+                    X = best_X
+                    ctx.lambda_l_norm = best_lambda
+        else:
+            # Standard single-run optimization with fixed λ.
+            obj, X, _ = _run_single_lambda()
+
         ctx.coefficients = X.data
         if getattr(ctx, "wavelet", None) is not None:
             X.data = ctx.wavelet.reconstruct_complex(X.data)
         ctx.fd_model = X.data
+
+        # DEBUG: check that dataset.model_data matches forward(fd_model)
+        try:
+            fd_model_np = np.asarray(asnumpy(ctx.fd_model))
+            forward_from_fd = np.asarray(
+                asnumpy(ctx.measurement_operator.forward(fd_model_np))
+            )
+            model_data_np = np.asarray(asnumpy(ctx.dataset.model_data))
+            diff = forward_from_fd - model_data_np
+            max_diff = float(np.max(np.abs(diff)))
+            max_model = float(np.max(np.abs(model_data_np))) if model_data_np.size else 0.0
+            max_forward = float(np.max(np.abs(forward_from_fd))) if forward_from_fd.size else 0.0
+            print(
+                "[model/dataset consistency] max|forward(fd_model)-model_data|=%.6e  "
+                "max|model_data|=%.6e  max|forward(fd_model)|=%.6e"
+                % (max_diff, max_model, max_forward)
+            )
+        except Exception as exc:
+            print("[model/dataset consistency] check failed:", repr(exc))
+
         ctx.rm_model = _get_rm(ctx, ctx.fd_model)
         ctx.second_moment = calculate_second_moment(ctx.parameter.phi, ctx.fd_model)
 
@@ -171,11 +273,31 @@ class RestorationStep:
     """Compute residual and restored map (CLEAN-style)."""
 
     def run(self, ctx) -> None:
+        # DEBUG: check consistency again at restoration time
+        try:
+            fd_model_np = np.asarray(asnumpy(ctx.fd_model))
+            forward_from_fd = np.asarray(
+                asnumpy(ctx.measurement_operator.forward(fd_model_np))
+            )
+            model_data_np = np.asarray(asnumpy(ctx.dataset.model_data))
+            diff = forward_from_fd - model_data_np
+            max_diff = float(np.max(np.abs(diff)))
+            print(
+                "[restore DEBUG] max|forward(fd_model)-model_data|=%.6e"
+                % (max_diff,)
+            )
+        except Exception as exc:
+            print("[restore DEBUG] model/dataset consistency check failed:", repr(exc))
+
         ctx.fd_residual = ctx.measurement_operator.dirty_spectrum(
             ctx.dataset.data - ctx.dataset.model_data
         )
         conv_model = ctx.parameter.convolve(x=ctx.fd_model)
-        pixels_per_rmtf = ctx.parameter.rmtf_fwhm / ctx.parameter.cellsize
+        # Keep fractional for correct Jy/phi -> Jy/rmtf scaling; do not round.
+        pixels_per_rmtf = float(ctx.parameter.rmtf_fwhm / ctx.parameter.cellsize)
+        # Cache for later reuse in RestoredStatsStep.
+        ctx.conv_model = conv_model
+        ctx.pixels_per_rmtf = pixels_per_rmtf
         ctx.fd_restored = conv_model * pixels_per_rmtf + ctx.fd_residual
 
 
@@ -189,8 +311,16 @@ class RestoredStatsStep:
         def _sumabs(a):
             return float(np.sum(np.abs(np.asarray(asnumpy(a)))))
 
-        pixels_per_rmtf = ctx.parameter.rmtf_fwhm / ctx.parameter.cellsize
-        conv_model = ctx.parameter.convolve(x=ctx.fd_model)
+        pixels_per_rmtf = getattr(
+            ctx,
+            "pixels_per_rmtf",
+            ctx.parameter.rmtf_fwhm / ctx.parameter.cellsize,
+        )
+        conv_model = getattr(
+            ctx,
+            "conv_model",
+            ctx.parameter.convolve(x=ctx.fd_model),
+        )
         conv_Jy_rmtf = conv_model * pixels_per_rmtf
         print("[restore DEBUG]")
         print(
@@ -216,6 +346,29 @@ class RestoredStatsStep:
                 pixels_per_rmtf,
             )
         )
+        # Channel-space (lambda^2) residual vs thermal noise
+        dataset_residual = getattr(ctx.dataset, "residual", None)
+        dataset_noise = getattr(ctx.dataset, "noise", None)
+        if dataset_residual is not None and dataset_noise is not None:
+            res_vis = np.asarray(asnumpy(dataset_residual))
+            rms_vis = float(np.sqrt(np.mean(np.abs(res_vis) ** 2)))
+            print(
+                "  vis-space: rms(residual)=%.6e  noise=%.6e  ratio=%.4f"
+                % (rms_vis, float(dataset_noise), rms_vis / (float(dataset_noise) + 1e-30))
+            )
+        # Faraday-depth residual noise level (MAD-based, robust to correlation/outliers).
+        fd_res = np.asarray(asnumpy(ctx.fd_residual))
+        # calculate_noise expects at least a 2D image (y, x). For a 1D Faraday spectrum,
+        # reshape to (n_phi, 1) so that indexing image[y0:yn, x0:xn] is valid.
+        fd_res_img = fd_res[:, np.newaxis]
+        mad_fd_res = float(
+            calculate_noise(
+                image=fd_res_img,
+                use_sigma_clipped_stats=True,
+                stdfunc="mad_std",
+            )
+        )
+        print("  fd-space: mad_std(fd_residual)=%.6e" % (mad_fd_res,))
         restored_noise = calculate_fd_signal_noise(
             ctx.fd_restored,
             ctx.parameter.phi,

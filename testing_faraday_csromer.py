@@ -20,6 +20,7 @@ from astropy.constants import c as C_LIGHT
 
 from csromer.pipelines import (
     CSROMERReconstructorWrapper,
+    ApplyNoiseStep,
     ApplyRFIStep,
     SimulateStep,
     make_cg_optimizer,
@@ -124,8 +125,34 @@ MIXED_CONFIG = [
         "spectral_idx": -0.7,
     },
 ]
+RFI_REMOVE_FRAC = 0.10  # legacy default (kept for reference; not used directly below)
 
-RFI_REMOVE_FRAC = 0.10  # 10% channels removed
+# Band-dependent RFI fractions (worst-case style scenarios).
+# These represent relatively pessimistic RFI occupancies, to stress–test the reconstruction:
+# - SKA-LOW: low-frequency, typically most RFI–affected  -> 30% of channels flagged
+# - SKA-MID B2: moderate RFI environment                 -> 20% of channels flagged
+# - SKA-MID B5a/B5b: higher frequency, generally cleaner -> 10% of channels flagged
+RFI_REMOVE_FRAC_PER_BAND = {
+    "SKA-LOW": 0.30,
+    "SKA-MID B2": 0.20,
+    "SKA-MID B5a": 0.10,
+    "SKA-MID B5b": 0.10,
+}
+
+# Worst-case noise (sigma in Jy) per band and source type for FISTA/adaptive-λ.
+# sigma = reference_intensity / target_SNR; band factor scales up noise for harder bands (LOW).
+# Thin/thick: s_nu=1.0 Jy → base sigma at SNR 25; mixed: s_nu=0.5 per component → conservative.
+TARGET_SNR_WORST = 25.0
+NOISE_BAND_FACTOR = {"SKA-LOW": 1.2, "SKA-MID B2": 1.0, "SKA-MID B5a": 0.9, "SKA-MID B5b": 0.9}
+
+
+def get_noise_sigma_jy(band_name: str, source_type: str) -> float:
+    """Noise sigma (Jy) for worst-case scenario in this band and config (thin/thick/mixed)."""
+    ref_intensity = 0.5 if source_type == "mixed" else 1.0  # THIN_PARAMS/THICK s_nu=1; MIXED s_nu=0.5
+    band_factor = NOISE_BAND_FACTOR.get(band_name, 1.0)
+    return (ref_intensity / TARGET_SNR_WORST) * band_factor
+
+
 DEPOL_SIGMA_RM_THIN = 5.0  # rad/m²
 DEPOL_SIGMA_RM_THICK = 3.0  # rad/m²
 
@@ -142,43 +169,83 @@ def simulate_sources_for_band(nu: np.ndarray, band_name: str):
     rng_thin_rfi = np.random.RandomState(42)
     rng_thick_rfi = np.random.RandomState(43)
     rng_mixed_rfi = np.random.RandomState(44)
+    sigma_thin = get_noise_sigma_jy(band_name, "thin")
+    rng_thin_clean_noise = np.random.RandomState(50)
+    rng_thin_rfi_noise = np.random.RandomState(51)
+    rng_thin_depol_noise = np.random.RandomState(52)
 
     # Thin clean
     thin_clean = FaradayThinSource(nu=nu, **THIN_PARAMS)
-    run_simulation(thin_clean, [SimulateStep()])
+    run_simulation(
+        thin_clean,
+        [SimulateStep(), ApplyNoiseStep(sigma_thin, random_state=rng_thin_clean_noise)],
+    )
 
     # Thin RFI
     thin_rfi = FaradayThinSource(nu=nu, **THIN_PARAMS)
     run_simulation(
         thin_rfi,
-        [SimulateStep(), ApplyRFIStep(remove_frac=RFI_REMOVE_FRAC, random_state=rng_thin_rfi)],
+        [
+            SimulateStep(),
+            ApplyRFIStep(
+                remove_frac=RFI_REMOVE_FRAC_PER_BAND[band_name],
+                random_state=rng_thin_rfi,
+            ),
+            ApplyNoiseStep(sigma_thin, random_state=rng_thin_rfi_noise),
+        ],
     )
 
     # Thin depolarized
     thin_depol = FaradayThinSource(nu=nu, **THIN_PARAMS)
     run_simulation(thin_depol, [SimulateStep()])
     thin_depol.add_external_faraday_depolarization(sigma_rm=DEPOL_SIGMA_RM_THIN)
+    run_simulation(
+        thin_depol,
+        [ApplyNoiseStep(sigma_thin, random_state=rng_thin_depol_noise)],
+    )
 
     thick_clean = thick_rfi = thick_depol = None
     mixed_clean = mixed_rfi = None
 
     # For SKA-LOW we only use thin sources (as in testing_faraday)
     if band_name != "SKA-LOW":
+        sigma_thick = get_noise_sigma_jy(band_name, "thick")
+        rng_thick_clean_noise = np.random.RandomState(60)
+        rng_thick_rfi_noise = np.random.RandomState(61)
+        rng_thick_depol_noise = np.random.RandomState(62)
+        sigma_mixed = get_noise_sigma_jy(band_name, "mixed")
+        rng_mixed_clean_noise = np.random.RandomState(70)
+        rng_mixed_rfi_noise = np.random.RandomState(71)
+
         # Thick clean
         thick_clean = FaradayThickSource(nu=nu, **THICK_PARAMS)
-        run_simulation(thick_clean, [SimulateStep()])
+        run_simulation(
+            thick_clean,
+            [SimulateStep(), ApplyNoiseStep(sigma_thick, random_state=rng_thick_clean_noise)],
+        )
 
         # Thick RFI
         thick_rfi = FaradayThickSource(nu=nu, **THICK_PARAMS)
         run_simulation(
             thick_rfi,
-            [SimulateStep(), ApplyRFIStep(remove_frac=RFI_REMOVE_FRAC, random_state=rng_thick_rfi)],
+            [
+                SimulateStep(),
+                ApplyRFIStep(
+                    remove_frac=RFI_REMOVE_FRAC_PER_BAND[band_name],
+                    random_state=rng_thick_rfi,
+                ),
+                ApplyNoiseStep(sigma_thick, random_state=rng_thick_rfi_noise),
+            ],
         )
 
         # Thick depolarized
         thick_depol = FaradayThickSource(nu=nu, **THICK_PARAMS)
         run_simulation(thick_depol, [SimulateStep()])
         thick_depol.add_external_faraday_depolarization(sigma_rm=DEPOL_SIGMA_RM_THICK)
+        run_simulation(
+            thick_depol,
+            [ApplyNoiseStep(sigma_thick, random_state=rng_thick_depol_noise)],
+        )
 
         # Mixed clean
         cfg_thin = {k: v for k, v in MIXED_CONFIG[0].items() if k != "type"}
@@ -189,6 +256,10 @@ def simulate_sources_for_band(nu: np.ndarray, band_name: str):
         mixed_clean_thick = FaradayThickSource(nu=nu, **cfg_thick)
         run_simulation(mixed_clean_thick, [SimulateStep()])
         mixed_clean = mixed_clean_thin + mixed_clean_thick
+        run_simulation(
+            mixed_clean,
+            [ApplyNoiseStep(sigma_mixed, random_state=rng_mixed_clean_noise)],
+        )
 
         # Mixed RFI
         mixed_rfi_thin = FaradayThinSource(nu=nu, **cfg_thin)
@@ -198,7 +269,13 @@ def simulate_sources_for_band(nu: np.ndarray, band_name: str):
         mixed_rfi = mixed_rfi_thin + mixed_rfi_thick
         run_simulation(
             mixed_rfi,
-            [ApplyRFIStep(remove_frac=RFI_REMOVE_FRAC, random_state=rng_mixed_rfi)],
+            [
+                ApplyRFIStep(
+                    remove_frac=RFI_REMOVE_FRAC_PER_BAND[band_name],
+                    random_state=rng_mixed_rfi,
+                ),
+                ApplyNoiseStep(sigma_mixed, random_state=rng_mixed_rfi_noise),
+            ],
         )
 
     return {
@@ -216,7 +293,7 @@ def simulate_sources_for_band(nu: np.ndarray, band_name: str):
 def run_csromer_reconstruction(
     source,
     oversampling: float = 4.0,
-    maxiter: int = 500,
+    maxiter: int = 100 ,
     reconstructor: str = "csromer",
 ):
     """Run reconstruction on a single csromer Dataset using the pipeline reconstructor.
@@ -240,7 +317,7 @@ def run_csromer_reconstruction(
             dataset=source,
             oversampling=oversampling,
             measurement_operator_kind="gridded",
-            lambda_l_norm=1e-6,
+            lambda_l_norm=1e-5,
             optimizer_factory=optimizer_factory,
         )
     else:
@@ -248,11 +325,16 @@ def run_csromer_reconstruction(
             dataset=source,
             oversampling=oversampling,
             measurement_operator_kind="gridded",
-            lambda_l_norm=1e-8,
+            lambda_l_norm=0.5,  # starting λ
+            adaptive_lambda=True,
+            target_chi2=1.0,
+            lambda_update_gamma=0.5,
+            max_lambda_updates=10,
             optimizer_factory=make_fista_optimizer(
                 maxiter=maxiter,
                 tol=1e-12,
                 verbose=True,
+                monotonic=True
             ),
         )
     recon.reconstruct()

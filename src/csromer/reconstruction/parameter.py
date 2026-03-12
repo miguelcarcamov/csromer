@@ -233,11 +233,11 @@ class Parameter:
 
     def convolve(self, x=None, rmtf_fwhm=None) -> np.ndarray:
         """
-        Convolve Faraday depth spectrum with Gaussian restore beam (max=1).
+        Convolve Faraday depth spectrum with Gaussian restore beam (max=1, peak-conserving).
 
         Convolves real and imaginary parts separately; multiple peaks stay
-        separated. Output is Jy/phi_pixel; caller multiplies by
-        (rmtf_fwhm / cellsize) to get Jy/rmtf for restoration.
+        separated. Output is Jy/phi; restored map is conv(model) + residual
+        (same units as dirty, so restored ≈ dirty when model fits).
 
         Args:
             x: Input array (default: self.data), Jy/phi_pixel

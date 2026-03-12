@@ -8,12 +8,15 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass
-from typing import Literal, Optional, Tuple
+from typing import TYPE_CHECKING, Literal, Optional, Tuple
 
 import numpy as np
 
 from ..optimizer import Optimizer
 from ..linesearch import FISTABacktracking
+
+if TYPE_CHECKING:
+    from csromer.reconstruction import Parameter
 
 
 def _f_value(F, x) -> float:
