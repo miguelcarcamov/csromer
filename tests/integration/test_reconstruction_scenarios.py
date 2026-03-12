@@ -23,7 +23,7 @@ from csromer.optimization import (
 )
 from csromer.simulation import FaradayThinSource
 from csromer.simulation.bands import SKA_MID_B2, SKA_MID_B5a, LOFAR_HIGH
-from csromer.wrappers.reconstructors import CGReconstructorWrapper
+from csromer.pipelines.reconstruction import CSROMERReconstructorWrapper, make_cg_optimizer
 
 
 # CG methods to test
@@ -96,13 +96,12 @@ def test_cg_methods_no_rfi(base_thin_source, l2_ref_name, l2_ref_value, descript
     results = {}
     
     for cg_method in CG_METHODS:
-        recon = CGReconstructorWrapper(
+        recon = CSROMERReconstructorWrapper(
             dataset=base_thin_source,
             oversampling=4.0,
-            cg_method=cg_method,
-            cg_maxiter=20,  # Small for fast tests
-            cg_tol=1e-4,
-            cg_verbose=False,
+            optimizer_factory=make_cg_optimizer(
+                method=cg_method, maxiter=20, tol=1e-4, verbose=False
+            ),
         )
         recon.reconstruct()
         
@@ -159,12 +158,10 @@ def test_different_frequency_setups(freq_name, freq_array, l2_ref_name, l2_ref_v
     if l2_ref_value is not None:
         source.l2_ref = l2_ref_value
     
-    recon = CGReconstructorWrapper(
+    recon = CSROMERReconstructorWrapper(
         dataset=source,
         oversampling=4.0,
-        cg_maxiter=15,
-        cg_tol=1e-4,
-        cg_verbose=False,
+        optimizer_factory=make_cg_optimizer(maxiter=15, tol=1e-4, verbose=False),
     )
     recon.reconstruct()
     
@@ -258,12 +255,10 @@ def test_rfi_flagging_scenarios(base_thin_source, rfi_name, remove_frac, descrip
             random_state=np.random.RandomState(42),
         )
     
-    recon = CGReconstructorWrapper(
+    recon = CSROMERReconstructorWrapper(
         dataset=source,
         oversampling=4.0,
-        cg_maxiter=20,
-        cg_tol=1e-4,
-        cg_verbose=False,
+        optimizer_factory=make_cg_optimizer(maxiter=20, tol=1e-4, verbose=False),
     )
     recon.reconstruct()
     
@@ -315,13 +310,12 @@ def test_cg_methods_with_rfi(base_thin_source, cg_method, rfi_name, remove_frac,
             random_state=np.random.RandomState(42),
         )
     
-    recon = CGReconstructorWrapper(
+    recon = CSROMERReconstructorWrapper(
         dataset=source,
         oversampling=4.0,
-        cg_method=cg_method,
-        cg_maxiter=15,
-        cg_tol=1e-4,
-        cg_verbose=False,
+        optimizer_factory=make_cg_optimizer(
+            method=cg_method, maxiter=15, tol=1e-4, verbose=False
+        ),
     )
     recon.reconstruct()
     
@@ -372,12 +366,10 @@ def test_frequency_rfi_combinations(freq_name, freq_array, rfi_name, remove_frac
             random_state=np.random.RandomState(42),
         )
     
-    recon = CGReconstructorWrapper(
+    recon = CSROMERReconstructorWrapper(
         dataset=source,
         oversampling=4.0,
-        cg_maxiter=15,
-        cg_tol=1e-4,
-        cg_verbose=False,
+        optimizer_factory=make_cg_optimizer(maxiter=15, tol=1e-4, verbose=False),
     )
     recon.reconstruct()
     
@@ -438,18 +430,17 @@ def test_reconstruction_convergence_different_cg_methods(base_thin_source, l2_re
     final_rms = {}
     
     for cg_method in CG_METHODS:
-        recon = CGReconstructorWrapper(
+        recon = CSROMERReconstructorWrapper(
             dataset=base_thin_source,
             oversampling=4.0,
-            cg_method=cg_method,
-            cg_maxiter=30,  # More iterations for convergence test
-            cg_tol=1e-5,
-            cg_verbose=False,
+            optimizer_factory=make_cg_optimizer(
+                method=cg_method, maxiter=30, tol=1e-5, verbose=False
+            ),
         )
         recon.reconstruct()
         
         # Compute final cost (chi-squared)
-        chi_squared = recon.nufft.forward(recon.fd_model) - recon.dataset.data
+        chi_squared = recon.measurement_operator.forward(recon.fd_model) - recon.dataset.data
         final_cost = np.sum(np.abs(chi_squared) ** 2)
         
         final_costs[cg_method.__name__] = final_cost
@@ -502,12 +493,10 @@ def test_reconstruction_with_clustered_rfi(base_thin_source, l2_ref_name, l2_ref
         chunksize=10,  # Larger chunks for clustering
     )
     
-    recon = CGReconstructorWrapper(
+    recon = CSROMERReconstructorWrapper(
         dataset=source,
         oversampling=4.0,
-        cg_maxiter=20,
-        cg_tol=1e-4,
-        cg_verbose=False,
+        optimizer_factory=make_cg_optimizer(maxiter=20, tol=1e-4, verbose=False),
     )
     recon.reconstruct()
     
@@ -569,12 +558,10 @@ def test_reconstruction_quality_metrics(base_thin_source, l2_ref_name, l2_ref_va
             f"got {actual_resolution:.6f}"
         )
     
-    recon = CGReconstructorWrapper(
+    recon = CSROMERReconstructorWrapper(
         dataset=base_thin_source,
         oversampling=4.0,
-        cg_maxiter=20,
-        cg_tol=1e-4,
-        cg_verbose=False,
+        optimizer_factory=make_cg_optimizer(maxiter=20, tol=1e-4, verbose=False),
     )
     recon.reconstruct()
     

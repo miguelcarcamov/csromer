@@ -7,9 +7,6 @@ from __future__ import annotations
 
 import numpy as np
 
-from ...utils.array_utils import maybe_compute
-
-
 def f1dim(objective_function, parameter):
     """
     Build 1D function f(alpha) = F(parameter.data - alpha * objective_function.dphi).

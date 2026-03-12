@@ -6,13 +6,12 @@ from typing import Optional
 
 import numpy as np
 
-from ....utils.array_utils import maybe_compute
 from .base import StepSizeSeeder
 
 
 def _vdot_real(a, b) -> float:
     out = np.real(np.vdot(np.ravel(a), np.ravel(b)))
-    return float(maybe_compute(out))
+    return float(out.compute()) if hasattr(out, "compute") else float(np.real(out))
 
 
 @dataclass(init=True, repr=True)
@@ -74,7 +73,7 @@ class CubicInterpolationSeeder(StepSizeSeeder):
         f_current = getattr(objective_function, "phi", None)
         if f_current is None:
             f_current = objective_function.evaluate(x)
-        f_current = float(maybe_compute(f_current))
+        f_current = float(f_current.compute()) if hasattr(f_current, "compute") else float(np.asarray(f_current).item())
         g0 = -_vdot_real(dphi, dphi)
         if self._prev_step is None or self._prev_f is None:
             step = self.init_step

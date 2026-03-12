@@ -6,7 +6,7 @@ from typing import Optional
 import numpy as np
 
 from ...base import Dataset
-from ...utils.array_utils import asnumpy, math_module, maybe_compute
+from ...utils.array_utils import asnumpy, math_module
 from .flagger import Flagger, median_absolute_deviation, moving_average
 
 
@@ -53,7 +53,8 @@ class HampelFlagger(Flagger):
 
         if self.imputation:
             self.dataset.sigma = xp.where(mask, sigma, rolling_median)
-            outlier_count = original_length - int(maybe_compute(xp.sum(mask)))
+            s = xp.sum(mask)
+            outlier_count = original_length - int(s.compute() if hasattr(s, "compute") else int(s))
             flagged_percentage = (outlier_count / original_length) * 100.0
             print("Imputing {0:.2f}% of the data".format(flagged_percentage))
             return None

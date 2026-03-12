@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 
 import numpy as np
 
-from ...utils.array_utils import math_module, maybe_compute
+from ...utils.array_utils import math_module
 
 if TYPE_CHECKING:
     from ...base import Dataset
@@ -195,14 +195,16 @@ class MeasurementOperator(metaclass=ABCMeta):
         # This is what the adjoint operator expects
         if s is not None:
             weighted = (w / s) * data
-            sum_w_over_s = maybe_compute(xp.sum(w / s))
+            sum_w_over_s = xp.sum(w / s)
+            sum_w_over_s = sum_w_over_s.compute() if hasattr(sum_w_over_s, "compute") else sum_w_over_s
             if sum_w_over_s is not None:
                 sum_w_over_s = float(sum_w_over_s)
                 if abs(sum_w_over_s) > 1e-10:  # Avoid division by very small numbers
                     weighted = weighted / sum_w_over_s
         else:
             weighted = w * data
-            sum_w = maybe_compute(xp.sum(w))
+            sum_w = xp.sum(w)
+            sum_w = sum_w.compute() if hasattr(sum_w, "compute") else sum_w
             if sum_w is not None:
                 sum_w = float(sum_w)
                 if abs(sum_w) > 1e-10:  # Avoid division by very small numbers
@@ -210,7 +212,22 @@ class MeasurementOperator(metaclass=ABCMeta):
         
         # Adjoint operator receives properly weighted and normalized data
         # No need to divide by k after, since normalization by sum(w) or sum(w/s) is equivalent
-        return self.adjoint(weighted)
+        raw = self.adjoint(weighted)
+        # When l2_ref > 0, apply nominal phase ramp exp(+2j*phi*l2_ref) so dirty/residual
+        # are in the same nominal convention. Use same backend as raw (dask or numpy).
+        l2_ref = getattr(self.dataset, "l2_ref", None) if self.dataset is not None else None
+        if (
+            self.parameter is not None
+            and l2_ref is not None
+            and abs(float(l2_ref)) >= 1e-10
+        ):
+            xp = math_module(raw)
+            phi = self.parameter.phi
+            l2 = float(l2_ref)
+            phi_same = xp.asarray(phi)
+            phase_ramp = xp.exp(2.0j * phi_same * l2).astype(np.complex64)
+            raw = raw * phase_ramp
+        return raw
 
     def configure(self) -> None:
         """

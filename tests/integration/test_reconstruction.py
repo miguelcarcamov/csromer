@@ -12,7 +12,11 @@ pytest.importorskip("pywt", reason="integration tests require PyWavelets (pip in
 pytestmark = pytest.mark.integration
 
 from csromer.simulation import FaradayThinSource
-from csromer.wrappers.reconstructors import CGReconstructorWrapper, CSROMERReconstructorWrapper
+from csromer.pipelines.reconstruction import (
+    CSROMERReconstructorWrapper,
+    make_cg_optimizer,
+    make_fista_optimizer,
+)
 
 
 @pytest.fixture
@@ -30,12 +34,11 @@ def small_thin_source():
 
 
 def test_cg_reconstruction_end_to_end(small_thin_source):
-    """CG reconstructor: simulate -> reconstruct -> check shapes and finite outputs."""
-    recon = CGReconstructorWrapper(
+    """CG path via CSROMER: simulate -> reconstruct -> check shapes and finite outputs."""
+    recon = CSROMERReconstructorWrapper(
         dataset=small_thin_source,
         oversampling=4.0,
-        cg_maxiter=5,
-        cg_verbose=False,
+        optimizer_factory=make_cg_optimizer(maxiter=5, verbose=False),
     )
     recon.reconstruct()
 
@@ -88,8 +91,7 @@ def test_fista_restored_amplitude_vs_dirty(small_thin_source):
         oversampling=4.0,
         wavelet=None,
         lambda_l_norm=0.0,
-        fista_maxiter=100,
-        fista_verbose=False,
+        optimizer_factory=make_fista_optimizer(maxiter=100, verbose=False),
     )
     recon.reconstruct()
 

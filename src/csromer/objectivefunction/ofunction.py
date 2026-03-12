@@ -16,7 +16,7 @@ try:
 except ImportError:
     da = None
 
-from ..utils.array_utils import maybe_compute, zeros_like
+from ..utils.array_utils import zeros_like
 from .fi import Fi
 
 
@@ -160,7 +160,7 @@ class OFunction:
             res = res.persist()
         self.dphi = res
         if out is not None:
-            out[:] = maybe_compute(res)
+            out[:] = np.asarray(res.compute()) if hasattr(res, "compute") else np.asarray(res)
         return res
 
     def calc_prox(self, x, nu: float = 0, _id: int = 0):
@@ -317,4 +317,4 @@ class OFunction:
             term._func_value = v
             value += term.reg * v
         self.phi = value
-        return float(maybe_compute(value))
+        return float(value.compute()) if hasattr(value, "compute") else float(np.asarray(value).item())

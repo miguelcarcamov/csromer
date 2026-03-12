@@ -10,7 +10,7 @@ from typing import Callable, Optional, Tuple
 
 import numpy as np
 
-from ...utils.array_utils import math_module, maybe_compute
+from ...utils.array_utils import math_module
 from ...reconstruction.parameter import Parameter
 from ..optimizer import Optimizer
 
@@ -29,7 +29,7 @@ def _inner(a, b) -> float:
         Inner product (float, real part)
     """
     out = np.vdot(np.ravel(a), np.ravel(b))
-    return float(np.real(maybe_compute(out)))
+    return float(np.real(out.compute())) if hasattr(out, "compute") else float(np.real(out))
 
 
 def _norm2(a) -> float:
@@ -45,7 +45,7 @@ def _norm2(a) -> float:
         Squared L2 norm (float)
     """
     out = np.vdot(np.ravel(a), np.ravel(a))
-    return float(np.real(maybe_compute(out)))
+    return float(np.real(out.compute())) if hasattr(out, "compute") else float(np.real(out))
 
 
 @dataclass(init=True, repr=True)
@@ -105,7 +105,7 @@ class GradientOptimizer(Optimizer):
         div = max(float(function_value), 1.0)
         condition = xp.abs(gradient) * xp.maximum(abs_param, 1.0) / div
         max_val = xp.max(condition)
-        return float(maybe_compute(max_val))
+        return float(max_val.compute()) if hasattr(max_val, "compute") else float(max_val)
 
     def _check_function_convergence(
         self, func_current: float, func_previous: float

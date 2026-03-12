@@ -8,7 +8,6 @@ from typing import Tuple
 
 import numpy as np
 
-from ...utils.array_utils import maybe_compute
 from ...reconstruction.parameter import Parameter
 from .linesearcher import LineSearcher
 
@@ -46,9 +45,9 @@ class FISTABacktracking(LineSearcher):
         """Q_L(x,y) = f(y) + <x-y, grad(y)> + (L/2)*||x-y||^2 + g(x)."""
         diff = x_k - y_k
         inner = np.real(np.vdot(np.ravel(diff), np.ravel(grad_y)))
-        inner = float(maybe_compute(inner))
+        inner = float(inner.compute()) if hasattr(inner, "compute") else float(np.real(inner))
         norm_sq = np.real(np.vdot(np.ravel(diff), np.ravel(diff)))
-        norm_sq = float(maybe_compute(norm_sq))
+        norm_sq = float(norm_sq.compute()) if hasattr(norm_sq, "compute") else float(np.real(norm_sq))
         q_smooth = f_y + inner + (L / 2.0) * norm_sq
         g_x = self._g_at(x_k)
         return q_smooth + g_x
@@ -56,14 +55,14 @@ class FISTABacktracking(LineSearcher):
     def search(self, x: Parameter, **kwargs) -> Tuple[float, float]:
         """y_k = x.data; find L, return (F(x_k), 1/L) where x_k = prox(y - (1/L)*grad)."""
         self._read_kwargs(**kwargs)
-        y_k = np.array(x.data, copy=True)
+        y_k = np.asarray(x.data.compute()) if hasattr(x.data, "compute") else np.array(x.data, copy=True)
         grad_f_y = self.objective_function.dphi
         if grad_f_y is None:
             raise ValueError("objective_function.dphi must be set (call calculate_gradient)")
-        grad_f_y = np.asarray(grad_f_y)
+        grad_f_y = np.asarray(grad_f_y.compute()) if hasattr(grad_f_y, "compute") else np.asarray(grad_f_y)
         f_y = self.objective_function.calculate_function(y_k, differentiable_only=True)
         F_y = self.objective_function.evaluate(y_k)
-        F_y = float(maybe_compute(F_y)) if hasattr(F_y, "compute") else float(np.asarray(F_y).item())
+        F_y = float(F_y.compute()) if hasattr(F_y, "compute") else float(np.asarray(F_y).item())
         prox = self._get_proximal()
         # Warm start (Pyralysis-style): try larger step (smaller L) than last time
         # First iteration: use initial_lipschitz only (e.g. 1.0) so we try full gradient step; backtracking increases L until bound holds
@@ -74,9 +73,9 @@ class FISTABacktracking(LineSearcher):
         for _ in range(self.max_iter):
             gradient_step = y_k - (1.0 / lipschitz_L) * grad_f_y
             x_k_candidate = prox(gradient_step, lipschitz_L)
-            x_k_candidate = np.asarray(x_k_candidate)
+            x_k_candidate = np.asarray(x_k_candidate.compute()) if hasattr(x_k_candidate, "compute") else np.asarray(x_k_candidate)
             full_F = self.objective_function.evaluate(x_k_candidate)
-            full_F = float(maybe_compute(full_F)) if hasattr(full_F, "compute") else float(np.asarray(full_F).item())
+            full_F = float(full_F.compute()) if hasattr(full_F, "compute") else float(np.asarray(full_F).item())
             Q_L = self._compute_Q_L(x_k_candidate, y_k, f_y, grad_f_y, lipschitz_L)
             # Require F <= Q_L (bound) and F(x) <= F(y) (monotone step for MFISTA)
             if np.isfinite(full_F) and full_F <= Q_L and full_F <= F_y:

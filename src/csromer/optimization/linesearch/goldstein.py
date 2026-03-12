@@ -6,7 +6,6 @@ from typing import Tuple
 
 import numpy as np
 
-from ...utils.array_utils import maybe_compute
 from ...reconstruction.parameter import Parameter
 from .f1dim import f1dim
 from .backtracking import BacktrackingArmijo
@@ -26,7 +25,7 @@ class Goldstein(BacktrackingArmijo):
         f = f1dim(self.objective_function, x)
         grad = self.objective_function.dphi
         grad_norm = np.real(np.vdot(np.ravel(grad), np.ravel(grad)))
-        grad_norm = float(maybe_compute(grad_norm))
+        grad_norm = float(grad_norm.compute()) if hasattr(grad_norm, "compute") else float(np.real(grad_norm))
         slope = -grad_norm
         step_size = self._get_initial_step_size(x)
         for _ in range(self.max_iter):

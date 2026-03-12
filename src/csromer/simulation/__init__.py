@@ -11,5 +11,11 @@ from .bands import (
 )
 from .faradaysource import *
 from .manualsource import *
+from csromer.pipelines.simulation import (
+    ApplyNoiseStep,
+    ApplyRFIStep,
+    SimulateStep,
+    run_simulation,
+)
 from .thicksource import *
 from .thinsource import *

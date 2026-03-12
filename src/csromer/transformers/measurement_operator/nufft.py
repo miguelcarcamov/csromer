@@ -20,7 +20,7 @@ import numpy as np
 from scipy.special import i0
 from scipy.sparse import csr_matrix
 
-from ...utils.array_utils import is_dask_array, math_module, maybe_compute
+from ...utils.array_utils import asnumpy, is_dask_array, math_module
 from .direct_fourier import DirectFourier1D
 
 try:
@@ -105,7 +105,8 @@ def _kaiser_forward_arrays(parameter, dataset, conv_size: int, kaiser_beta: floa
     """
     N = len(parameter.phi)
     d_phi = float(parameter.cellsize)
-    l2_np = np.asarray(maybe_compute(dataset.lambda2))
+    # One-time matrix build: need numpy lambda² (compute boundary for external lib).
+    l2_np = np.asarray(asnumpy(dataset.lambda2))
     n_ch = l2_np.size
 
     # Map lambda² to FFT k indices: k = N * d_phi * lambda² / π (no l2_ref)

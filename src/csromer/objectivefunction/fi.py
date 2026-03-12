@@ -212,9 +212,7 @@ class Fi(metaclass=ABCMeta):
             x = self.parameter.data
         if x is None:
             raise ValueError("Fi.prox() requires x or parameter.data")
-        rho_val = float(rho)
-        if da is not None and hasattr(rho_val, "compute"):
-            rho_val = float(rho_val.compute())
+        rho_val = float(rho.compute()) if hasattr(rho, "compute") else float(rho)
         result = self._prox_impl(x, rho_val)
         if self.persist_proximal and da is not None and isinstance(result, da.Array):
             result = result.persist()

@@ -12,7 +12,6 @@ from typing import Literal, Optional, Tuple
 
 import numpy as np
 
-from ...utils.array_utils import maybe_compute
 from ..optimizer import Optimizer
 from ..linesearch import FISTABacktracking
 
@@ -31,7 +30,7 @@ def _f_value(F, x) -> float:
         Function value (float)
     """
     v = F(x)
-    return float(maybe_compute(v)) if hasattr(v, "compute") else float(np.asarray(v).item())
+    return float(v.compute()) if hasattr(v, "compute") else float(np.asarray(v).item())
 
 
 def _inner_real(a, b) -> float:
@@ -48,7 +47,7 @@ def _inner_real(a, b) -> float:
         Real part of inner product (float)
     """
     out = np.real(np.vdot(np.ravel(a), np.ravel(b)))
-    return float(maybe_compute(out))
+    return float(out.compute()) if hasattr(out, "compute") else float(np.real(out))
 
 
 @dataclass(init=True, repr=True)
@@ -154,6 +153,8 @@ class FISTA(Optimizer):
         z = np.array(x, copy=True)
 
         f_prev = _f_value(F, x)
+        if verbose:
+            print("Initial function value = {:.6f}".format(f_prev))
         for it in range(0, max_iter):
             x_old = np.array(x, copy=True)
             y = np.array(z, copy=True)
@@ -169,7 +170,7 @@ class FISTA(Optimizer):
                 f_new = f_prev
                 progress = False
                 if verbose and it % 10 == 0:
-                    print("Iteration: {} (monotone reject) objective: {:.5f}".format(it, f_new))
+                    print("Iteration: {} (monotone reject) objective: {:.5f}".format(it + 1, f_new))
             else:
                 if adaptive_restart == "gradient":
                     inner = _inner_real(y - x, x - x_old)
@@ -186,7 +187,7 @@ class FISTA(Optimizer):
 
             f_prev = f_new
 
-            if verbose and it % 10 == 0 and progress:
-                print("Iteration: {}  objective: {:.5f}".format(it, f_new))
+            if verbose and (it + 1) % 10 == 0 and progress:
+                print("Iteration: {}  objective: {:.5f}".format(it + 1, f_new))
 
         return _f_value(F, x), x

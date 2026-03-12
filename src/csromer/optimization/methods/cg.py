@@ -12,7 +12,7 @@ from typing import Optional, Tuple, Union
 
 import numpy as np
 
-from ...utils.array_utils import math_module, maybe_compute
+from ...utils.array_utils import math_module
 from ...reconstruction.parameter import Parameter
 from ..optimizer import Optimizer
 from .gradient_optimizer import (
@@ -181,7 +181,7 @@ class ConjugateGradient(GradientOptimizer):
             norm2_grad=norm2_grad,
         )
         if hasattr(beta, "compute"):
-            beta = float(maybe_compute(beta))
+            beta = float(beta.compute())
         else:
             beta = float(np.asarray(beta).item())
         return beta, g_dot_g_prev, norm2_grad
@@ -229,9 +229,6 @@ class ConjugateGradient(GradientOptimizer):
         Returns:
             Tuple of (updated_param, new_f, current_gradient, new_search_direction, converged)
         """
-        if self.verbose:
-            print(f"Iteration {iteration + 1}")
-
         x = np.array(current_param.data, copy=False)
         f_x = self.F_obj.evaluate(x)
         if hasattr(f_x, "compute"):
@@ -251,6 +248,9 @@ class ConjugateGradient(GradientOptimizer):
             new_function_value = float(new_function_value.compute())
         else:
             new_function_value = float(np.asarray(new_function_value).item())
+
+        if self.verbose and (iteration + 1) % 10 == 0:
+            print(f"Iteration {iteration + 1}  objective: {new_function_value:.6f}")
 
         current_gradient = self._grad(x_new)
 

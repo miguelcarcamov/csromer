@@ -54,27 +54,6 @@ def is_dask_array(arr) -> bool:
     return isinstance(arr, da.Array)
 
 
-def maybe_compute(scalar_or_array):
-    """
-    Compute Dask array if needed, otherwise return as-is.
-    
-    Public utility function. If the argument is a Dask array (including 0-d),
-    returns the computed value. Otherwise returns as-is. Useful for scalars
-    that might be lazy dask arrays.
-    
-    Args:
-        scalar_or_array: Scalar or array (numpy, dask, or None)
-        
-    Returns:
-        Computed value or original (if not dask)
-    """
-    if scalar_or_array is None:
-        return None
-    if HAS_DASK and isinstance(scalar_or_array, da.Array):
-        return scalar_or_array.compute()
-    return scalar_or_array
-
-
 def length_of(arr) -> int:
     """
     Return length along first axis.

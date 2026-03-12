@@ -13,15 +13,26 @@ if TYPE_CHECKING:
     from ...transformers.measurement_operator import MeasurementOperator
 
 
+def _effective_n(dataset) -> float:
+    """Kish effective sample size from dataset weights; 1.0 if not available."""
+    if dataset is None:
+        return 1.0
+    n_eff = getattr(dataset, "effective_n", None)
+    if n_eff is None:
+        return 1.0
+    return float(n_eff)
+
+
 @dataclass(init=True, repr=True)
 class ChiSquared(Fi):
     """
-    Chi-squared data fidelity term: (1/2) * sum(w * |residual|^2).
-    
-    Differentiable term that measures the fit between model and data. Uses the
+    Chi-squared data fidelity term: (1/2) * sum(w * |residual|^2) / n_eff.
+
+    Normalized by Kish effective sample size n_eff = (sum w)^2 / sum(w^2) so the
+    data term is O(1) and L1 regularization lambda can be O(1). Uses the
     measurement operator's forward to compute residuals, and backward for gradient.
     No proximal operator (is_differentiable=True).
-    
+
     Attributes:
         measurement_operator: Measurement operator (forward/backward)
         is_differentiable: Always True (chi-squared is differentiable)
@@ -39,17 +50,16 @@ class ChiSquared(Fi):
 
     def evaluate(self, x):
         """
-        Evaluate chi-squared: (1/2) * sum(w * |residual|^2).
-        
-        Public method. Forward is unweighted: model_data = A(x). Residual
-        residual = data - model_data. Weights w are applied only to the
-        squared residuals (not to the forward operator).
-        
+        Evaluate chi-squared: (1/2) * sum(w * |residual|^2) / n_eff.
+
+        n_eff is Kish effective sample size from dataset.effective_n. Forward is
+        unweighted; weights w are applied only to the squared residuals.
+
         Args:
             x: Input array (Faraday depth or coefficients)
-            
+
         Returns:
-            Chi-squared value (scalar)
+            Chi-squared value (scalar), normalized by n_eff
         """
         op = self.measurement_operator
         model_data = op.forward(x)  # unweighted forward
@@ -57,30 +67,31 @@ class ChiSquared(Fi):
         res = op.dataset.residual  # data - model_data
         chi_squared_vector = op.dataset.w * (res.real**2 + res.imag**2)
         xp = math_module(chi_squared_vector)
-        result = 0.5 * xp.sum(chi_squared_vector)
+        raw = 0.5 * xp.sum(chi_squared_vector)
+        n_eff = _effective_n(op.dataset)
+        result = raw / n_eff
         self._func_value = result
         return result
 
     def calculate_gradient(self, x):
         """
-        Calculate gradient: -backward(weighted residual).
-        
-        F(x) = (1/2) sum(w * |residual|^2), residual = data - model_data.
-        Gradient dF/dx = -A^H (w * residual). We pass w*residual to backward
-        (adjoint); backward does not apply weights again. Sign: steepest
-        descent updates x -= alpha*grad, so we return -A^H(w*r).
-        
+        Calculate gradient of normalized chi-squared: (1/n_eff) * (-backward(weighted residual)).
+
+        F(x) = (1/2) sum(w * |residual|^2) / n_eff, so dF/dx = (1/n_eff) * (-A^H(w*r)).
+
         Args:
             x: Input array (Faraday depth or coefficients)
-            
+
         Returns:
-            Gradient array (same shape as x)
+            Gradient array (same shape as x), normalized by n_eff
         """
         op = self.measurement_operator
         model_data = op.forward(x)  # unweighted
         op.dataset.model_data = model_data
         weighted_res = op.dataset.w * op.dataset.residual  # w * (data - model_data)
-        result = -op.backward(weighted_res)  # -A^H(weighted_res); backward = raw adjoint
+        grad_raw = -op.backward(weighted_res)  # -A^H(weighted_res)
+        n_eff = _effective_n(op.dataset)
+        result = grad_raw / n_eff
         self._grad_value = result
         return result
 

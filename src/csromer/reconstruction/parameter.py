@@ -234,14 +234,15 @@ class Parameter:
     def convolve(self, x=None, rmtf_fwhm=None) -> np.ndarray:
         """
         Convolve Faraday depth spectrum with Gaussian restore beam (max=1).
-        
+
         Convolves real and imaginary parts separately; multiple peaks stay
-        separated. Caller scales by pixels_per_rmtf and peak_scale to get Jy/rmtf.
-        
+        separated. Output is Jy/phi_pixel; caller multiplies by
+        (rmtf_fwhm / cellsize) to get Jy/rmtf for restoration.
+
         Args:
             x: Input array (default: self.data), Jy/phi_pixel
             rmtf_fwhm: RMTF FWHM for kernel (default: self.rmtf_fwhm)
-            
+
         Returns:
             Convolved spectrum (complex), Jy/phi_pixel
         """
@@ -253,7 +254,6 @@ class Parameter:
         # Use float sigma so kernel FWHM in physical space equals rmtf_fwhm (integer rounding
         # would oversmooth and merge closely spaced components)
         sigma_x_pixels = max(1.0, sigma_x / self.cellsize)
-        rmtf_fwhm_pixels = rmtf_fwhm / self.cellsize
 
         print(
             "Convolving with Gaussian kernel where FWHM {0:2.3f} rad/m^2 - sigma {1:2.3f} rad/m^2 - sigma_pixels {2:.4f}"

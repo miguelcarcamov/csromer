@@ -7,13 +7,12 @@ from typing import Optional
 
 import numpy as np
 
-from .....utils.array_utils import maybe_compute
 from ..base import StepSizeSeeder
 
 
 def _vdot_real(a, b) -> float:
     out = np.real(np.vdot(np.ravel(a), np.ravel(b)))
-    return float(maybe_compute(out))
+    return float(out.compute()) if hasattr(out, "compute") else float(np.real(out))
 
 
 @dataclass(init=True, repr=True)

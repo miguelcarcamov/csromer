@@ -15,7 +15,7 @@ from typing import Any, Union
 
 import numpy as np
 
-from ...utils.array_utils import asnumpy, is_dask_array, maybe_compute
+from ...utils.array_utils import asnumpy, is_dask_array
 from .base import MeasurementOperator
 
 try:
@@ -159,7 +159,7 @@ class DirectFourier1D(MeasurementOperator):
             phi = asnumpy(phi)
         w = self.dataset.w
         s = self.dataset.s if self.dataset.s is not None else (da.ones_like(w) if (da and is_dask_array(w)) else np.ones_like(w))
-        k = float(maybe_compute(self.dataset.k)) if self.dataset.k is not None else 1.0
+        k = float(self.dataset.k.compute()) if self.dataset.k is not None and hasattr(self.dataset.k, "compute") else (float(self.dataset.k) if self.dataset.k is not None else 1.0)
         weights = w / s
         exp_adj = _exp_adjoint(l2, phi)
         if da is not None and (is_dask_array(weights) or is_dask_array(exp_adj)):

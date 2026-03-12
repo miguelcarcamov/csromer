@@ -18,7 +18,7 @@ import scipy.stats
 from scipy import special
 from scipy.constants import speed_of_light as c
 
-from ..utils.array_utils import asnumpy, is_dask_array, length_of, maybe_compute
+from ..utils.array_utils import asnumpy, is_dask_array, length_of
 
 if TYPE_CHECKING:
     from ..transformers.gridding import Gridding
@@ -335,7 +335,7 @@ class Dataset(metaclass=ABCMeta):
         self.__s = val
         if self.__s is not None:
             k_val = np.sum(self.w / self.__s)
-            self.k = maybe_compute(k_val) if k_val is not None else k_val
+            self.k = k_val.compute() if k_val is not None and hasattr(k_val, "compute") else k_val
 
     @property
     def nu_0(self) -> float:
@@ -357,7 +357,9 @@ class Dataset(metaclass=ABCMeta):
         """Set frequency array and compute lambda² and reference frequency."""
         self.__nu = val
         if val is not None:
-            mn, mx = maybe_compute(np.min(val)), maybe_compute(np.max(val))
+            mn_val, mx_val = np.min(val), np.max(val)
+            mn = mn_val.compute() if hasattr(mn_val, "compute") else mn_val
+            mx = mx_val.compute() if hasattr(mx_val, "compute") else mx_val
             self.__nu_0 = 0.5 * (float(mn) + float(mx))
             self._nu_to_l2()
 
@@ -387,8 +389,10 @@ class Dataset(metaclass=ABCMeta):
                 ch = getattr(val, "chunks", None)
                 chunks = ch[0] if isinstance(ch, tuple) else "auto"
                 self.__nu = da.from_array(self.__nu, chunks=chunks)
-            nu_min = maybe_compute(np.nanmin(self.__nu))
-            nu_max = maybe_compute(np.nanmax(self.__nu))
+            nu_min_val = np.nanmin(self.__nu)
+            nu_max_val = np.nanmax(self.__nu)
+            nu_min = nu_min_val.compute() if hasattr(nu_min_val, "compute") else nu_min_val
+            nu_max = nu_max_val.compute() if hasattr(nu_max_val, "compute") else nu_max_val
             if np.isfinite(nu_min) and np.isfinite(nu_max):
                 self.__nu_0 = 0.5 * (float(nu_min) + float(nu_max))
             else:
@@ -417,6 +421,28 @@ class Dataset(metaclass=ABCMeta):
     def k(self, val):
         """Set normalization factor."""
         self.__k = val
+
+    @property
+    def effective_n(self) -> Union[float, None]:
+        """
+        Kish effective sample size: (sum w)^2 / sum(w^2).
+
+        Computed from the current weights (e.g. after gridding, reflects the
+        gridded effective sample count). Used to normalize chi-squared by
+        effective number of samples so the data term scale is O(1) and L1
+        regularization lambda can be O(1).
+        Returns None if w is None; callers should treat None as no normalization (divide by 1).
+        """
+        if self.__w is None:
+            return None
+        w = self.__w
+        sum_w = np.sum(w)
+        sum_w = sum_w.compute() if hasattr(sum_w, "compute") else sum_w
+        sum_w2 = np.sum(w * w)
+        sum_w2 = sum_w2.compute() if hasattr(sum_w2, "compute") else sum_w2
+        if sum_w2 <= 0:
+            return 1.0
+        return float(sum_w * sum_w / sum_w2)
 
     @property
     def m(self) -> int:
@@ -465,10 +491,10 @@ class Dataset(metaclass=ABCMeta):
             self.__sigma = aux_copy
             if hasattr(self, "s") and self.__s is not None:
                 k_val = np.sum(val / self.__s)
-                self.k = maybe_compute(k_val) if hasattr(k_val, "compute") else k_val
+                self.k = k_val.compute() if hasattr(k_val, "compute") else k_val
             else:
                 k_val = np.sum(val)
-                self.k = maybe_compute(k_val) if hasattr(k_val, "compute") else k_val
+                self.k = k_val.compute() if hasattr(k_val, "compute") else k_val
             if self.__l2_ref is None:
                 self.__l2_ref = self.calculate_l2ref()
         self.__theo_noise = self._calculate_theo_noise()
@@ -499,10 +525,10 @@ class Dataset(metaclass=ABCMeta):
             self.__sigma = aux_copy
             if hasattr(self, "s") and self.__s is not None:
                 k_val = np.sum(self.__w / self.__s)
-                self.k = maybe_compute(k_val) if hasattr(k_val, "compute") else k_val
+                self.k = k_val.compute() if hasattr(k_val, "compute") else k_val
             else:
                 k_val = np.sum(self.__w)
-                self.k = maybe_compute(k_val) if hasattr(k_val, "compute") else k_val
+                self.k = k_val.compute() if hasattr(k_val, "compute") else k_val
             if self.__l2_ref is None:
                 self.__l2_ref = self._calculate_l2ref()
             self.__theo_noise = self._calculate_theo_noise()
@@ -533,10 +559,10 @@ class Dataset(metaclass=ABCMeta):
             self.__sigma = aux_copy
             if hasattr(self, "s") and self.__s is not None:
                 k_val = np.sum(self.__w / self.__s)
-                self.k = maybe_compute(k_val) if hasattr(k_val, "compute") else k_val
+                self.k = k_val.compute() if hasattr(k_val, "compute") else k_val
             else:
                 k_val = np.sum(self.__w)
-                self.k = maybe_compute(k_val) if hasattr(k_val, "compute") else k_val
+                self.k = k_val.compute() if hasattr(k_val, "compute") else k_val
             if self.__l2_ref is None:
                 self.__l2_ref = self._calculate_l2ref()
             self.__theo_noise = self._calculate_theo_noise()
@@ -694,8 +720,10 @@ class Dataset(metaclass=ABCMeta):
             Reference lambda² or None if lambda2 is not set
         """
         if self.lambda2 is not None:
-            sum_weights = maybe_compute(np.sum(self.w))
-            weighted_l2 = maybe_compute(np.sum(self.w * self.lambda2))
+            sum_weights = np.sum(self.w)
+            sum_weights = sum_weights.compute() if hasattr(sum_weights, "compute") else sum_weights
+            weighted_l2 = np.sum(self.w * self.lambda2)
+            weighted_l2 = weighted_l2.compute() if hasattr(weighted_l2, "compute") else weighted_l2
             return float(weighted_l2) / float(sum_weights) if sum_weights else None
         else:
             return None
@@ -821,7 +849,7 @@ class Dataset(metaclass=ABCMeta):
             return None
         else:
             w_sum = np.sum(self.w)
-            w_sum = maybe_compute(w_sum)
+            w_sum = w_sum.compute() if hasattr(w_sum, "compute") else w_sum
             if w_sum is None:
                 return None
             if float(w_sum) == float(self.m):  # all ones

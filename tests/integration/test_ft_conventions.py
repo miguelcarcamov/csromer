@@ -18,7 +18,7 @@ from csromer.transformers.measurement_operator import (
     GriddedFFT1D,
     NUFFT1D,
 )
-from csromer.utils.array_utils import maybe_compute
+from csromer.utils.array_utils import asnumpy
 
 pytestmark = pytest.mark.integration
 
@@ -34,7 +34,7 @@ def _find_peak_location(dirty_spectrum, phi_grid):
     Returns:
         Peak phi value (rad/m²)
     """
-    dirty_np = np.asarray(maybe_compute(dirty_spectrum))
+    dirty_np = np.asarray(asnumpy(dirty_spectrum))
     abs_dirty = np.abs(dirty_np)
     peak_idx = np.argmax(abs_dirty)
     return float(phi_grid[peak_idx])
@@ -42,7 +42,7 @@ def _find_peak_location(dirty_spectrum, phi_grid):
 
 def _is_uniformly_spaced(arr, rtol=1e-5):
     """Check if array is uniformly spaced."""
-    arr_np = np.asarray(maybe_compute(arr))
+    arr_np = np.asarray(asnumpy(arr))
     if len(arr_np) < 2:
         return False
     diff = np.diff(arr_np)
@@ -335,12 +335,11 @@ def test_all_operators_consistent_peak(uniform_frequency_grid):
 
 def test_lambda2_ref_phase_factor(uniform_frequency_grid):
     """
-    Test that lambda²_0 phase factor is correctly handled in GriddedFFT1D.
-    
-    Verifies that GriddedFFT1D correctly applies exp(+2j * phi * lambda²_0) in forward
-    and removes it (conjugate) in adjoint, so peak location is independent of lambda²_0.
-    
-    Tests with different lambda²_0 references to ensure phase factor handling is correct.
+    Test that GriddedFFT1D does not use lambda²_0 (l2_ref) in forward/adjoint.
+
+    Forward/adjoint use exp(±2j * phi * lambda²) only; l2_ref is not in the transform.
+    So peak location must be independent of l2_ref. We vary l2_ref on the dataset
+    while keeping the same parameter (phi grid); the operator ignores l2_ref.
     """
     from csromer.transformers.gridding import Gridding
     
@@ -405,7 +404,7 @@ def test_lambda2_ref_phase_factor(uniform_frequency_grid):
         # Set lambda² reference
         gridded_source.l2_ref = l2_ref
         
-        # Create GriddedFFT1D operator (will use l2_ref)
+        # GriddedFFT1D does not use l2_ref in forward/adjoint; param (phi grid) is fixed
         op = GriddedFFT1D(dataset=gridded_source, parameter=param)
         
         # Compute dirty spectrum: adjoint of forward operator
@@ -415,22 +414,20 @@ def test_lambda2_ref_phase_factor(uniform_frequency_grid):
         peak_phi = _find_peak_location(dirty, param.phi)
         peak_locations.append(peak_phi)
         
-        # Verify peak is near expected location regardless of l2_ref
-        # The phase factor should not affect peak location
+        # Peak must stay at phi_gal: operator does not use l2_ref in the transform
         tolerance = max(param.cellsize * 3.0, param.rmtf_fwhm * 2.0, 30.0)
         
         assert abs(peak_phi - phi_gal) < tolerance, (
             f"Peak at {peak_phi:.2f} rad/m², expected {phi_gal:.2f} rad/m² "
             f"with l2_ref={l2_ref:.6e} m² (tolerance: {tolerance:.2f} rad/m²). "
-            f"This indicates lambda²_0 phase factor is not correctly handled."
+            f"Operator must not use l2_ref in forward/adjoint."
         )
     
-    # Verify all peak locations are consistent (within tolerance of each other)
-    # This ensures that lambda²_0 choice doesn't affect peak location
+    # All peak locations must be consistent (same phi grid; l2_ref not in transform)
     peak_std = np.std(peak_locations)
     assert peak_std < param.cellsize * 2.0, (
         f"Peak locations vary too much with different l2_ref: "
         f"std={peak_std:.2f} rad/m², expected < {param.cellsize * 2.0:.2f} rad/m². "
         f"Peak locations: {peak_locations}. "
-        f"This indicates lambda²_0 phase factor handling is inconsistent."
+        f"Operator must not use l2_ref in the transform."
     )
