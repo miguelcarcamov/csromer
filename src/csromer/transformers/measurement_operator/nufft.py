@@ -17,8 +17,8 @@ from dataclasses import dataclass
 from typing import Any, Union
 
 import numpy as np
-from scipy.special import i0
 from scipy.sparse import csr_matrix
+from scipy.special import i0
 
 from ...utils.array_utils import asnumpy, is_dask_array, math_module
 from .direct_fourier import DirectFourier1D
@@ -37,14 +37,14 @@ except ImportError:
 def _kaiser_1d(u: float, half_width: int, beta: float) -> float:
     """
     Compute Kaiser kernel value at offset u.
-    
+
     Private helper function. Returns zero for |u| > half_width.
-    
+
     Args:
         u: Offset from center
         half_width: Half-width of kernel support
         beta: Kaiser beta parameter
-        
+
     Returns:
         Kernel value (float)
     """
@@ -63,18 +63,18 @@ def _build_kaiser_interp_matrix(
 ) -> np.ndarray:
     """
     Build (n_ch, n_phi) interpolation matrix A.
-    
+
     Private helper function. Matrix A interpolates X at continuous indices k_cont
     using Kaiser kernel. Returns float32 to save memory; only ~(2*half_width+1)
     nonzeros per row.
-    
+
     Args:
         n_ch: Number of channels
         n_phi: Number of phi grid points
         k_cont: Continuous k indices (n_ch,)
         half_width: Half-width of Kaiser kernel
         beta: Kaiser beta parameter
-        
+
     Returns:
         Interpolation matrix A (n_ch, n_phi, float32)
     """
@@ -171,13 +171,13 @@ class NUFFT1D(DirectFourier1D):
     def _forward_impl(self, x: Union[np.ndarray, Any]) -> Union[np.ndarray, Any]:
         """
         Forward operator implementation: phi -> P(lambda²) via NUFFT.
-        
+
         Protected method. Applies FFT, Kaiser interpolation, and phase correction.
         Uses cached sparse matrix when available (pydata/sparse or scipy.sparse).
-        
+
         Args:
             x: Complex Faraday depth spectrum (n_phi,)
-            
+
         Returns:
             Complex polarization P(lambda²) (n_channels,)
         """
@@ -198,7 +198,7 @@ class NUFFT1D(DirectFourier1D):
             x_shifted = da.fft.ifftshift(x)
         else:
             x_shifted = np.fft.ifftshift(x)
-        
+
         if self._nufft_pydata and self._nufft_A_sparse is not None:
             # Use ifft with norm="forward" for positive sign convention
             X = da.fft.ifft(x_shifted, norm="forward") if use_dask else xp.fft.ifft(x_shifted, norm="forward")
@@ -236,14 +236,14 @@ class NUFFT1D(DirectFourier1D):
     def _adjoint_impl(self, b: Union[np.ndarray, Any], **kwargs) -> Union[np.ndarray, Any]:
         """
         Adjoint operator implementation: P(lambda²) -> phi via NUFFT.
-        
+
         Protected method. Applies phase conjugation, Kaiser interpolation adjoint,
         and IFFT. Uses cached sparse matrix when available.
-        
+
         Args:
             b: Complex polarization P(lambda²) (n_channels,)
             **kwargs: Additional arguments (unused)
-            
+
         Returns:
             Complex Faraday depth spectrum (n_phi,)
         """
@@ -326,13 +326,13 @@ class NUFFT1D(DirectFourier1D):
     def RMTF(self, phi_x: float = 0.0):
         """
         Rotation Measure Transfer Function (RMTF).
-        
+
         Public method. Uses direct adjoint of ones (from base class) then normalizes
         by n_phi if normalize=True.
-        
+
         Args:
             phi_x: Faraday depth of point source (rad/m², default: 0.0)
-            
+
         Returns:
             RMTF array (n_phi,)
         """

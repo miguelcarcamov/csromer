@@ -22,11 +22,11 @@ except ImportError:
 class Fi(metaclass=ABCMeta):
     """
     Base class for objective function terms.
-    
+
     Supports both legacy API (evaluate, calculate_gradient, calculate_prox) and
     Pyralysis-style API (function, gradient, prox with rho). Terms can be differentiable
     (e.g. chi-squared) or non-differentiable (e.g. L1, TV) for FISTA-style methods.
-    
+
     Attributes:
         reg: Regularization/penalization factor (default: 1.0)
         norm_factor: Normalization factor (default: 1.0)
@@ -60,7 +60,7 @@ class Fi(metaclass=ABCMeta):
     def penalization_factor(self) -> float:
         """
         Penalization factor (alias for reg for Pyralysis-style API).
-        
+
         Public property.
         """
         return self.reg
@@ -69,7 +69,7 @@ class Fi(metaclass=ABCMeta):
     def penalization_factor(self, value: float):
         """
         Set penalization factor.
-        
+
         Args:
             value: Penalization factor
         """
@@ -79,7 +79,7 @@ class Fi(metaclass=ABCMeta):
     def func_value(self) -> float:
         """
         Result of the last function evaluation.
-        
+
         Public property (read-only).
         """
         return self._func_value
@@ -88,7 +88,7 @@ class Fi(metaclass=ABCMeta):
     def grad_value(self):
         """
         Result of the last gradient computation.
-        
+
         Public property (read-only).
         """
         return self._grad_value
@@ -98,12 +98,12 @@ class Fi(metaclass=ABCMeta):
     def evaluate(self, x):
         """
         Evaluate the term at x.
-        
+
         Abstract method: subclasses must implement. Legacy API.
-        
+
         Args:
             x: Input array (Faraday depth or coefficients)
-            
+
         Returns:
             Function value (scalar)
         """
@@ -113,13 +113,13 @@ class Fi(metaclass=ABCMeta):
     def calculate_gradient(self, x):
         """
         Compute gradient at x.
-        
+
         Abstract method: subclasses must implement. Legacy API.
         For non-differentiable terms, may return subgradient or raise NotImplementedError.
-        
+
         Args:
             x: Input array (Faraday depth or coefficients)
-            
+
         Returns:
             Gradient array (same shape as x)
         """
@@ -129,14 +129,14 @@ class Fi(metaclass=ABCMeta):
     def calculate_prox(self, x, nu):
         """
         Proximal operator at x with step nu.
-        
+
         Abstract method: subclasses must implement. Legacy API.
         For differentiable terms, may raise NotImplementedError.
-        
+
         Args:
             x: Input array (Faraday depth or coefficients)
             nu: Step size parameter
-            
+
         Returns:
             Proximal result (same shape as x)
         """
@@ -146,16 +146,16 @@ class Fi(metaclass=ABCMeta):
     def function(self, *, mask=None):
         """
         Compute the function value (Pyralysis-style API).
-        
+
         Public method. Uses parameter.data if parameter is set, otherwise the term
         must be used with evaluate(x) directly.
-        
+
         Args:
             mask: Optional mask (not currently used)
-            
+
         Returns:
             Function value (scalar)
-            
+
         Raises:
             ValueError: If parameter.data is not set
         """
@@ -170,16 +170,16 @@ class Fi(metaclass=ABCMeta):
     def gradient(self, iter: int = 1, *, mask=None):
         """
         Compute the gradient (Pyralysis-style API).
-        
+
         Public method. Uses parameter.data if parameter is set.
-        
+
         Args:
             iter: Iteration number (not currently used)
             mask: Optional mask (not currently used)
-            
+
         Returns:
             Gradient array (same shape as parameter.data)
-            
+
         Raises:
             ValueError: If parameter.data is not set
         """
@@ -194,17 +194,17 @@ class Fi(metaclass=ABCMeta):
     def prox(self, x=None, rho: float = 1.0):
         """
         Proximal operator with penalty parameter rho (Pyralysis-style API).
-        
+
         Public method. If x is None, uses parameter.data. Maps rho to nu for
         legacy calculate_prox.
-        
+
         Args:
             x: Input array (default: parameter.data)
             rho: Penalty parameter (default: 1.0)
-            
+
         Returns:
             Proximal result (same shape as x)
-            
+
         Raises:
             ValueError: If x is None and parameter.data is not set
         """
@@ -221,14 +221,14 @@ class Fi(metaclass=ABCMeta):
     def _prox_impl(self, x, rho: float = 1.0):
         """
         Implementation of the proximal operator.
-        
+
         Protected method: default delegates to calculate_prox(x, nu=rho).
         Subclasses can override to customize behavior.
-        
+
         Args:
             x: Input array
             rho: Penalty parameter
-            
+
         Returns:
             Proximal result
         """

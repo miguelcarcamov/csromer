@@ -18,10 +18,10 @@ from ..reconstruction.parameter import Parameter
 class Optimizer(metaclass=ABCMeta):
     """
     Base class for optimization algorithms.
-    
+
     Abstract interface that defines the contract for optimizers. Subclasses must
     implement run() to perform the optimization.
-    
+
     Attributes:
         guess_param: Initial parameter guess
         F_obj: Objective function (OFunction instance)
@@ -39,10 +39,10 @@ class Optimizer(metaclass=ABCMeta):
     def run(self):
         """
         Run optimization.
-        
+
         Abstract method: subclasses must implement. Performs optimization and
         returns optimized parameter.
-        
+
         Returns:
             Tuple of (final_cost, optimized_parameter)
         """

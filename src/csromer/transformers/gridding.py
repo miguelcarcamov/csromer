@@ -103,14 +103,14 @@ class Gridding:
             )
         m_grid = len(l2_grid)
         l2_chan = np.asarray(self.dataset.lambda2)
-        w_chan = np.asarray(self.dataset.w, dtype=np.float64)
-        data_chan = np.asarray(self.dataset.data, dtype=np.complex128)
-        model_chan = np.asarray(self.dataset.model_data, dtype=np.complex128)
+        w_chan = np.asarray(self.dataset.w, dtype=np.float32)
+        data_chan = np.asarray(self.dataset.data, dtype=np.complex64)
+        model_chan = np.asarray(self.dataset.model_data, dtype=np.complex64)
         n_chan = len(l2_chan)
 
-        gridded_data = np.zeros(m_grid, dtype=np.complex128)
-        gridded_model = np.zeros(m_grid, dtype=np.complex128)
-        gridded_w = np.zeros(m_grid, dtype=np.float64)
+        gridded_data = np.zeros(m_grid, dtype=np.complex64)
+        gridded_model = np.zeros(m_grid, dtype=np.complex64)
+        gridded_w = np.zeros(m_grid, dtype=np.float32)
 
         if self.kernel == "box":
             l2_grid_pos = np.floor(l2_chan / step).astype(int)

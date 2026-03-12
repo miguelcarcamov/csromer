@@ -4,7 +4,7 @@ import pytest
 
 pytest.importorskip("pywt")
 
-from csromer.optimization.linesearch.bracketing import mnbrak, GOLD, TINY
+from csromer.optimization.linesearch.bracketing import GOLD, TINY, mnbrak
 
 
 class TestMnbrak:

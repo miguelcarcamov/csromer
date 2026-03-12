@@ -100,12 +100,12 @@ class GriddedFFT1D(MeasurementOperator):
     def RMTF(self, phi_x: float = 0.0) -> Union[np.ndarray, Any]:
         """
         Rotation Measure Transfer Function (RMTF).
-        
+
         Public method. For gridded FFT, RMTF is uniform (all ones).
-        
+
         Args:
             phi_x: Faraday depth of point source (rad/m², unused for gridded FFT)
-            
+
         Returns:
             RMTF array (n_phi,) of ones
         """

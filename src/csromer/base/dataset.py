@@ -41,16 +41,16 @@ def _calculate_sigma(
 ):
     """
     Calculate noise sigma from image region or error parameters.
-    
+
     Private helper function for noise estimation.
-    
+
     Args:
         image: 2D image array
         x0, xn, y0, yn: Region bounds for variance calculation
         sigma_error: Per-pixel error
         residual_cal_error: Calibration error fraction
         nbeam: Number of beams
-        
+
     Returns:
         Estimated sigma value
     """
@@ -66,12 +66,12 @@ def _calculate_sigma(
 def _autocorr_gridded(x: np.ndarray) -> np.ndarray:
     """
     Compute autocorrelation of gridded 1D array.
-    
+
     Private helper for residual analysis.
-    
+
     Args:
         x: 1D numpy array
-        
+
     Returns:
         Autocorrelation function (normalized, non-negative lags only)
     """
@@ -85,17 +85,17 @@ def _autocorr_gridded(x: np.ndarray) -> np.ndarray:
 def boxpierce(x: np.ndarray = None, k: Union[List, int] = None, conf_level: float = 0.95) -> Tuple[np.ndarray, float]:
     """
     Box-Pierce test statistic for residual autocorrelation.
-    
+
     Public function for statistical analysis of residuals.
-    
+
     Args:
         x: Autocorrelation function (1D array)
         k: Lag(s) to test (int or list of ints)
         conf_level: Confidence level (default 0.95)
-        
+
     Returns:
         Tuple of (test statistic(s), chi2 critical value)
-        
+
     Raises:
         ValueError: If k < 1
     """
@@ -121,17 +121,17 @@ def boxpierce(x: np.ndarray = None, k: Union[List, int] = None, conf_level: floa
 def ljungbox(x: np.ndarray = None, k: Union[List, int] = None, conf_level: float = 0.95) -> Tuple[np.ndarray, float]:
     """
     Ljung-Box test statistic for residual autocorrelation.
-    
+
     Public function for statistical analysis of residuals (modified Box-Pierce).
-    
+
     Args:
         x: Autocorrelation function (1D array)
         k: Lag(s) to test (int or list of ints)
         conf_level: Confidence level (default 0.95)
-        
+
     Returns:
         Tuple of (test statistic(s), chi2 critical value)
-        
+
     Raises:
         ValueError: If k < 1
     """
@@ -157,13 +157,13 @@ def ljungbox(x: np.ndarray = None, k: Union[List, int] = None, conf_level: float
 def _harmonic_mean_w_p(w_q, w_u):
     """
     Compute polarization weight W_P = 2 / (1/W_Q + 1/W_U) element-wise.
-    
+
     Private helper function. Handles dask and numpy arrays.
-    
+
     Args:
         w_q: Stokes Q weights
         w_u: Stokes U weights
-        
+
     Returns:
         Harmonic mean weights (same type as inputs)
     """
@@ -181,11 +181,11 @@ def _harmonic_mean_w_p(w_q, w_u):
 class Dataset(metaclass=ABCMeta):
     """
     Base dataset class for polarization data in lambda² space.
-    
+
     Manages frequency/lambda² coordinates, complex polarization data (P = Q + iU),
     weights (w, w_q, w_u, w_p), spectral index correction, and residuals.
     Supports both numpy and dask arrays for lazy computation.
-    
+
     Attributes:
         nu: Frequency array (Hz)
         lambda2: Wavelength squared array (m²)
@@ -241,7 +241,7 @@ class Dataset(metaclass=ABCMeta):
     ):
         """
         Initialize Dataset.
-        
+
         Args:
             nu: Frequency array (Hz). If None, lambda2 must be provided.
             lambda2: Wavelength squared array (m²). If None, computed from nu.
@@ -372,7 +372,7 @@ class Dataset(metaclass=ABCMeta):
     def lambda2(self, val):
         """
         Set lambda² array, ensure ascending order, compute nu and reference frequency.
-        
+
         Also initializes default weights if not set.
         """
         self.__lambda2 = val
@@ -468,7 +468,7 @@ class Dataset(metaclass=ABCMeta):
     def w(self) -> Union[np.ndarray, "da.Array", None]:
         """
         Main weight used in chi² and transforms.
-        
+
         When w_q and w_u are set, this returns w_p (harmonic mean).
         """
         return self.__w
@@ -477,7 +477,7 @@ class Dataset(metaclass=ABCMeta):
     def w(self, val):
         """
         Set main weight array.
-        
+
         Clears w_q, w_u, w_p. Updates sigma, k, l2_ref, theo_noise.
         """
         self.__w = val
@@ -503,7 +503,7 @@ class Dataset(metaclass=ABCMeta):
     def w_q(self) -> Union[np.ndarray, "da.Array", None]:
         """
         Weights for Stokes Q.
-        
+
         When set with w_u, w_p is computed as harmonic mean and used as w.
         """
         return self.__w_q
@@ -512,7 +512,7 @@ class Dataset(metaclass=ABCMeta):
     def w_q(self, val):
         """
         Set Stokes Q weights.
-        
+
         If w_u is also set, computes w_p and updates w, sigma, k, l2_ref, theo_noise.
         """
         self.__w_q = val
@@ -537,7 +537,7 @@ class Dataset(metaclass=ABCMeta):
     def w_u(self) -> Union[np.ndarray, "da.Array", None]:
         """
         Weights for Stokes U.
-        
+
         When set with w_q, w_p is computed as harmonic mean and used as w.
         """
         return self.__w_u
@@ -546,7 +546,7 @@ class Dataset(metaclass=ABCMeta):
     def w_u(self, val):
         """
         Set Stokes U weights.
-        
+
         If w_q is also set, computes w_p and updates w, sigma, k, l2_ref, theo_noise.
         """
         self.__w_u = val
@@ -571,7 +571,7 @@ class Dataset(metaclass=ABCMeta):
     def w_p(self) -> Union[np.ndarray, "da.Array", None]:
         """
         Polarization weight (harmonic mean of w_q and w_u when both are set).
-        
+
         Read-only when derived from w_q, w_u.
         """
         return self.__w_p
@@ -607,7 +607,7 @@ class Dataset(metaclass=ABCMeta):
     def data(self, val):
         """
         Set polarization data.
-        
+
         Validates size matches m. Initializes model_data if needed.
         """
         if val is not None:
@@ -636,9 +636,9 @@ class Dataset(metaclass=ABCMeta):
     def model_data(self, val):
         """
         Set model prediction.
-        
+
         Validates size matches m. Automatically computes residuals if data is set.
-        
+
         Raises:
             ValueError: If size doesn't match m
         """
@@ -655,7 +655,7 @@ class Dataset(metaclass=ABCMeta):
     def _nu_to_l2(self):
         """
         Convert frequency to lambda² and set lambda2 property.
-        
+
         Private method: called automatically when nu is set.
         """
         lambda2 = (c / self.nu)**2
@@ -664,13 +664,13 @@ class Dataset(metaclass=ABCMeta):
     def calculate_amplitude(self, column: str = "data") -> np.ndarray:
         """
         Calculate amplitude |P| from complex polarization data.
-        
+
         Args:
             column: Column name to use (default: "data")
-            
+
         Returns:
             Amplitude array
-            
+
         Raises:
             TypeError: If data is not complex
             ValueError: If column doesn't exist
@@ -688,13 +688,13 @@ class Dataset(metaclass=ABCMeta):
     def calculate_polangle(self, column: str = "data") -> u.Quantity:
         """
         Calculate polarization angle from complex data.
-        
+
         Args:
             column: Column name to use (default: "data")
-            
+
         Returns:
             Polarization angle in radians (astropy Quantity)
-            
+
         Raises:
             TypeError: If data is not complex
             ValueError: If column doesn't exist
@@ -712,10 +712,10 @@ class Dataset(metaclass=ABCMeta):
     def calculate_l2ref(self) -> float:
         """
         Calculate reference lambda² as weighted mean.
-        
+
         Public method: can be called to recompute l2_ref. Also called automatically
         when weights are set (via private _calculate_l2ref).
-        
+
         Returns:
             Reference lambda² or None if lambda2 is not set
         """
@@ -731,7 +731,7 @@ class Dataset(metaclass=ABCMeta):
     def _calculate_l2ref(self) -> float:
         """
         Internal wrapper for calculate_l2ref (for use in setters).
-        
+
         Private method: called automatically when weights are set.
         """
         return self.calculate_l2ref()
@@ -739,7 +739,7 @@ class Dataset(metaclass=ABCMeta):
     def _calculate_l2_cellsize(self):
         """
         Calculate lambda² cell size statistics (min, mean, max).
-        
+
         Private method: called automatically when lambda2 is set.
         Updates delta_l2_min, delta_l2_max, delta_l2_mean.
         """
@@ -762,14 +762,14 @@ class Dataset(metaclass=ABCMeta):
     def delta_phi_full(self) -> float:
         """
         Full resolution (rad/m²): 2 / (lambda²_max + lambda²_min).
-        
+
         Used when lambda²_0 = 0. This is the FWHM of the real beam peak
         for full resolution Faraday synthesis (Rudnick & Cotton 2023, Eq. 9).
-        
+
         References:
             Rudnick & Cotton (2023), MNRAS, Eq. (9):
             Φ_full ≈ 2 / (λ²_max + λ²_min)
-        
+
         Returns:
             Full resolution in rad/m², or None if lambda2 is not set
         """
@@ -791,10 +791,10 @@ class Dataset(metaclass=ABCMeta):
     def delta_phi_nom(self) -> float:
         """
         Nominal resolution (rad/m²): 2 * sqrt(3) / (lambda²_max - lambda²_min).
-        
+
         Used when lambda²_0 > 0. This is the FWHM of the RMTF (Rotation Measure
         Transfer Function), also known as the nominal resolution.
-        
+
         Returns:
             Nominal resolution in rad/m², or None if lambda2 is not set
         """
@@ -819,11 +819,11 @@ class Dataset(metaclass=ABCMeta):
     def delta_phi(self) -> float:
         """
         Resolution (rad/m²): full resolution if lambda²_0 = 0, nominal resolution if lambda²_0 > 0.
-        
+
         Used by Parameter.calculate_cellsize for the phi grid. With l2_ref > 0 the grid is
         coarser (nominal), so the peak of the dirty/restored Faraday spectrum can be higher
         than with l2_ref = 0 (full resolution); integrated flux is consistent.
-        
+
         Returns:
             Full resolution if l2_ref == 0, nominal resolution if l2_ref > 0,
             or None if lambda2 is not set
@@ -839,9 +839,9 @@ class Dataset(metaclass=ABCMeta):
     def _calculate_theo_noise(self) -> float:
         """
         Calculate theoretical noise: 1/sqrt(sum(w)).
-        
+
         Private method: called automatically when weights are set.
-        
+
         Returns:
             Theoretical noise or None if w is None or all weights are 1
         """
@@ -859,7 +859,7 @@ class Dataset(metaclass=ABCMeta):
     def _calculate_residuals(self):
         """
         Calculate residuals: data - model_data.
-        
+
         Private method: called automatically when model_data is set.
         """
         self.residual = self.data - self.model_data
@@ -867,9 +867,9 @@ class Dataset(metaclass=ABCMeta):
     def subtract_galacticrm(self, phi_gal: float):
         """
         Subtract Galactic rotation measure from data.
-        
+
         Multiplies data by exp(-2j * phi_gal * lambda²) to remove Galactic RM.
-        
+
         Args:
             phi_gal: Galactic rotation measure (rad/m²)
         """
@@ -881,14 +881,14 @@ class Dataset(metaclass=ABCMeta):
     def assess_residuals(self, gridding_object: "Gridding" = None, confidence_interval: float = 0.95) -> Tuple:
         """
         Assess residual autocorrelation for quality control.
-        
+
         Computes autocorrelation of residuals (and squared residuals) and checks
         if values fall within confidence bounds (Ljung-Box style).
-        
+
         Args:
             gridding_object: Gridding transformer (required if not gridded)
             confidence_interval: Confidence level (default: 0.95)
-            
+
         Returns:
             Tuple of (lags, autocorr_res, autocorr_res_sq, bound,
                      percentage_real_in, percentage_imag_in,
@@ -943,7 +943,7 @@ class Dataset(metaclass=ABCMeta):
     def histogram_residuals(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
         Compute histograms of residual real and imaginary parts.
-        
+
         Returns:
             Tuple of (hist_real, bins_real, hist_imag, bins_imag)
         """

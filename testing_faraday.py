@@ -11,12 +11,12 @@ src_path = Path(__file__).parent / "src"
 sys.path.insert(0, str(src_path))
 
 import dask.array as da
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from astropy.constants import c
 
 from csromer.base import Dataset
-from csromer.simulation import FaradayThinSource, FaradayThickSource
+from csromer.simulation import FaradayThickSource, FaradayThinSource
 
 # Configure matplotlib for LaTeX and colorblind-friendly colors
 # Note: LaTeX rendering can be slow and may require LaTeX installation
@@ -65,19 +65,19 @@ def calculate_faraday_depth_parameters(freq):
     wavelength_squared_max = wavelength_squared.max()
     Delta_wavelength_squared = wavelength_squared_max - wavelength_squared_min
     delta_wavelength = da.diff(wavelength_squared).mean()
-    
+
     delta_phi_nom = 2 * np.sqrt(3) / Delta_wavelength_squared
     delta_phi_full = 2 / (wavelength_squared_max + wavelength_squared_min)
     max_scale = np.pi / wavelength_squared_min
     phi_max = da.abs(np.sqrt(3) / delta_wavelength)
-    
+
     return delta_phi_nom.compute(), delta_phi_full.compute(), max_scale.compute(), phi_max.compute()
 
 
 def simulate_thin_source_dask(freq_array, phi_gal=10.0, s_nu=1.0, spectral_idx=0.0, dchi=0.0):
     """
     Simulate a thin Faraday source using dask arrays throughout.
-    
+
     Parameters:
     -----------
     freq_array : dask.array
@@ -99,7 +99,7 @@ def simulate_thin_source_dask(freq_array, phi_gal=10.0, s_nu=1.0, spectral_idx=0
     is_descending = da.all(lambda2_diff < 0).compute()
     if is_descending:
         lambda2 = lambda2[::-1]
-    
+
     # Create source with dask lambda2 array
     # The Dataset lambda2 setter will:
     # - Compute nu from lambda2 (dask operation, stays dask)
@@ -112,29 +112,29 @@ def simulate_thin_source_dask(freq_array, phi_gal=10.0, s_nu=1.0, spectral_idx=0
         spectral_idx=spectral_idx,
         dchi=dchi
     )
-    
+
     # Replace w with dask array to keep everything lazy
     if hasattr(source, 'w') and source.w is not None:
         # Create dask array of ones with same shape
         source.w = da.ones_like(lambda2)
         # Update sigma accordingly
         source.sigma = da.ones_like(lambda2)
-    
+
     # Ensure nu is set (it should be set by lambda2 setter, but verify)
     if source.nu is None:
         source.nu = c / da.sqrt(lambda2)
-    
+
     # Now simulate - this will use dask arrays
     # The simulate method uses numpy operations, but they work with dask arrays
     source.simulate()
-    
+
     return source
 
 
 def simulate_thick_source_dask(freq_array, phi_fg=5.0, phi_center=0.0, s_nu=1.0, spectral_idx=0.0):
     """
     Simulate a thick Faraday source using dask arrays throughout.
-    
+
     Parameters:
     -----------
     freq_array : dask.array
@@ -155,7 +155,7 @@ def simulate_thick_source_dask(freq_array, phi_fg=5.0, phi_center=0.0, s_nu=1.0,
     is_descending = da.all(lambda2_diff < 0).compute()
     if is_descending:
         lambda2 = lambda2[::-1]
-    
+
     # Create source with dask lambda2 array
     source = FaradayThickSource(
         lambda2=lambda2,
@@ -164,26 +164,26 @@ def simulate_thick_source_dask(freq_array, phi_fg=5.0, phi_center=0.0, s_nu=1.0,
         s_nu=s_nu,
         spectral_idx=spectral_idx
     )
-    
+
     # Replace w with dask array to keep everything lazy
     if hasattr(source, '_Dataset__w') and source._Dataset__w is not None:
         source._Dataset__w = da.ones_like(lambda2)
         source._Dataset__sigma = da.ones_like(lambda2)
-    
+
     # Ensure nu is set
     if source.nu is None:
         source._Dataset__nu = c / da.sqrt(lambda2)
-    
+
     # Simulate using dask arrays
     source.simulate()
-    
+
     return source
 
 
 def simulate_mixed_sources_dask(freq_array, sources_config):
     """
     Simulate multiple sources and combine them using dask arrays.
-    
+
     Parameters:
     -----------
     freq_array : dask.array
@@ -199,32 +199,32 @@ def simulate_mixed_sources_dask(freq_array, sources_config):
     is_descending = da.all(lambda2_diff < 0).compute()
     if is_descending:
         lambda2 = lambda2[::-1]
-    
+
     combined_source = None
-    
+
     for i, config in enumerate(sources_config):
         # Make a copy of config to avoid modifying the original
         config = config.copy()
         source_type = config.pop('type')
-        
+
         if source_type == 'thin':
             source = FaradayThinSource(lambda2=lambda2, **config)
         elif source_type == 'thick':
             source = FaradayThickSource(lambda2=lambda2, **config)
         else:
             raise ValueError(f"Unknown source type: {source_type}")
-        
+
         # Replace w with dask array to keep everything lazy
         if hasattr(source, '_Dataset__w') and source._Dataset__w is not None:
             source._Dataset__w = da.ones_like(lambda2)
             source._Dataset__sigma = da.ones_like(lambda2)
-        
+
         # Ensure nu is set
         if source.nu is None:
             source._Dataset__nu = c / da.sqrt(lambda2)
-        
+
         source.simulate()
-        
+
         if combined_source is None:
             combined_source = source
         else:
@@ -234,10 +234,10 @@ def simulate_mixed_sources_dask(freq_array, sources_config):
             # it might return a boolean. Let's ensure nu is a dask array for both
             if combined_source.nu is None:
                 combined_source._Dataset__nu = c / da.sqrt(lambda2)
-            
+
             # The comparison will work with dask arrays
             combined_source = combined_source + source
-    
+
     return combined_source
 
 
@@ -250,7 +250,7 @@ simulate_mixed_sources = simulate_mixed_sources_dask
 def dask_forward_ft(dataset, phi_array, l2_ref=None, normalize=True):
     """
     Dask-aware forward Fourier transform to compute Faraday depth spectrum.
-    
+
     Parameters:
     -----------
     dataset : Dataset
@@ -261,7 +261,7 @@ def dask_forward_ft(dataset, phi_array, l2_ref=None, normalize=True):
         Reference lambda² value. If None, uses dataset.l2_ref
     normalize : bool
         If True, normalize to get proper Jy/RMSF units. If False, returns unnormalized spectrum.
-        
+
     Returns:
     --------
     fd_spectrum : dask.array
@@ -276,16 +276,16 @@ def dask_forward_ft(dataset, phi_array, l2_ref=None, normalize=True):
                 l2_ref = da.mean(dataset.lambda2).compute()
             else:
                 l2_ref = np.mean(dataset.lambda2)
-    
+
     # Ensure phi_array is numpy (it's typically small)
     if hasattr(phi_array, 'compute'):
         phi_array = phi_array.compute()
     phi_array = np.asarray(phi_array)
-    
+
     # Get lambda2, data, weights, and spectral index from dataset
     lambda2 = dataset.lambda2
     data = dataset.data
-    
+
     # Get weights from dataset
     if hasattr(dataset, 'w') and dataset.w is not None:
         w = dataset.w
@@ -295,7 +295,7 @@ def dask_forward_ft(dataset, phi_array, l2_ref=None, normalize=True):
             w = da.ones_like(lambda2)
         else:
             w = np.ones_like(lambda2)
-    
+
     # Get spectral index factor s
     if hasattr(dataset, 's') and dataset.s is not None:
         s = dataset.s
@@ -305,29 +305,29 @@ def dask_forward_ft(dataset, phi_array, l2_ref=None, normalize=True):
             s = da.ones_like(lambda2)
         else:
             s = np.ones_like(lambda2)
-    
+
     # Compute l2 - l2_ref
     # For dask arrays, we need to handle this carefully
     if hasattr(lambda2, 'compute'):
         l2_diff = lambda2 - l2_ref
     else:
         l2_diff = lambda2 - l2_ref
-    
+
     # Compute exp(2j * phi * (lambda2 - l2_ref))
     # phi_array[:, np.newaxis] * l2_diff[np.newaxis, :] creates a 2D array
     # Shape: (n_phi, n_channels)
     phi_2d = da.asarray(phi_array)[:, np.newaxis] if hasattr(lambda2, 'compute') else phi_array[:, np.newaxis]
     l2_diff_2d = l2_diff[np.newaxis, :] if hasattr(lambda2, 'compute') else l2_diff[np.newaxis, :]
-    
+
     exp_factor = da.exp(2.0j * phi_2d * l2_diff_2d) if hasattr(lambda2, 'compute') else np.exp(2.0j * phi_2d * l2_diff_2d)
-    
+
     # Normalize to get proper Jy/RMSF units:
     # 1. Weight the data: weighted_data = data * (w / s)
     # 2. Transform: F(φ) = Σ[weighted_data * exp(2j*φ*(λ²-λ²_ref))]
     # 3. Normalize: F(φ) = (s_mean / n_phi) * transform
     if normalize:
         n_phi = len(phi_array)
-        
+
         # Compute weighted data: data * (w / s)
         # This accounts for both weights and spectral index
         if hasattr(data, 'compute'):
@@ -340,7 +340,7 @@ def dask_forward_ft(dataset, phi_array, l2_ref=None, normalize=True):
             if hasattr(s, 'compute'):
                 s = s.compute()
             weighted_data = data * (w / s)
-        
+
         # Matrix multiplication: sum over channels with weighted data
         # weighted_data shape: (n_channels,)
         # exp_factor shape: (n_phi, n_channels)
@@ -351,7 +351,7 @@ def dask_forward_ft(dataset, phi_array, l2_ref=None, normalize=True):
             fd_spectrum = da.einsum('ij,j->i', exp_factor, weighted_data)
         else:
             fd_spectrum = np.dot(exp_factor, weighted_data)
-        
+
         # Get mean spectral index factor for final normalization
         if hasattr(s, 'mean'):
             if hasattr(s, 'compute'):
@@ -360,7 +360,7 @@ def dask_forward_ft(dataset, phi_array, l2_ref=None, normalize=True):
                 s_mean = s.mean()
         else:
             s_mean = np.mean(s) if not hasattr(s, 'compute') else s.compute().mean()
-        
+
         # Final normalization: F(φ) = (s_mean / n_phi) * transform
         # This gives proper Jy/RMSF units
         if hasattr(fd_spectrum, '__truediv__'):
@@ -374,14 +374,14 @@ def dask_forward_ft(dataset, phi_array, l2_ref=None, normalize=True):
             fd_spectrum = da.einsum('ij,j->i', exp_factor, data)
         else:
             fd_spectrum = np.dot(exp_factor, data)
-    
+
     return fd_spectrum
 
 
 def calculate_faraday_depth_spectrum(source, phi_max=None, n_phi=None, oversampling=8, band_phi_max=None, cellsize=None):
     """
     Calculate Faraday depth spectrum for a source.
-    
+
     Parameters:
     -----------
     source : FaradaySource
@@ -396,7 +396,7 @@ def calculate_faraday_depth_spectrum(source, phi_max=None, n_phi=None, oversampl
         Maximum phi for the band (from statistics). If provided, uses this.
     cellsize : float, optional
         Desired cellsize in phi-space (rad/m²). If provided, n_phi is calculated from this.
-        
+
     Returns:
     --------
     phi : array
@@ -413,11 +413,11 @@ def calculate_faraday_depth_spectrum(source, phi_max=None, n_phi=None, oversampl
         l2_min = np.min(source.lambda2)
         l2_max = np.max(source.lambda2)
         delta_l2 = l2_max - l2_min
-    
+
     # Calculate theoretical resolution
     delta_phi_fwhm = 2.0 * np.sqrt(3.0) / delta_l2
     delta_phi_theo = np.pi / l2_min
-    
+
     # Determine phi_max
     # If phi_max is explicitly provided, use it (for specific ranges like -1000 to 1000)
     if phi_max is not None:
@@ -429,7 +429,7 @@ def calculate_faraday_depth_spectrum(source, phi_max=None, n_phi=None, oversampl
         # Calculate from data
         theoretical_max = np.sqrt(3) / (delta_l2 / len(source.lambda2)) * 10.0
         phi_max_actual = theoretical_max
-    
+
     # Determine cellsize and n_phi
     if cellsize is not None:
         # Use provided cellsize
@@ -446,17 +446,17 @@ def calculate_faraday_depth_spectrum(source, phi_max=None, n_phi=None, oversampl
         # Ensure n_phi is even for symmetry
         if n_phi % 2 == 1:
             n_phi += 1
-    
+
     # Create phi array
     phi = np.linspace(-phi_max_actual, phi_max_actual, n_phi)
-    
+
     # Compute Faraday depth spectrum
     fd_spectrum = dask_forward_ft(source, phi)
-    
+
     # Compute if it's a dask array
     if hasattr(fd_spectrum, 'compute'):
         fd_spectrum = fd_spectrum.compute()
-    
+
     return phi, fd_spectrum
 
 
@@ -464,7 +464,7 @@ def print_source_info(source, name="Source"):
     """Print information about a simulated source (handles both numpy and dask arrays)."""
     print(f"\n{name}:")
     print(f"  Number of channels: {source.m}")
-    
+
     # Handle dask arrays for min/max
     # Check if nu exists and is not None
     if source.nu is not None:
@@ -477,7 +477,7 @@ def print_source_info(source, name="Source"):
         print(f"  Frequency range: {nu_min:.2f} - {nu_max:.2f} MHz")
     else:
         print(f"  Frequency range: N/A (nu not set)")
-    
+
     # Lambda2 should always be set
     if hasattr(source.lambda2, 'compute'):
         l2_min = da.min(source.lambda2).compute()
@@ -486,7 +486,7 @@ def print_source_info(source, name="Source"):
         l2_min = np.min(source.lambda2)
         l2_max = np.max(source.lambda2)
     print(f"  Lambda² range: {l2_min:.6e} - {l2_max:.6e} m²")
-    
+
     # Check if data is dask array
     if source.data is not None:
         if hasattr(source.data, 'compute'):
@@ -501,15 +501,15 @@ def print_source_info(source, name="Source"):
         print(f"  Polarization amplitude range: {data_min:.6e} - {data_max:.6e}")
     else:
         print(f"  Data: Not simulated yet")
-    
+
     print(f"  Spectral index: {source.spectral_idx}")
 
 
-def plot_2x2_clean_vs_rfi(clean_source, rfi_source, phi_clean, fd_clean, phi_rfi, fd_rfi, 
+def plot_2x2_clean_vs_rfi(clean_source, rfi_source, phi_clean, fd_clean, phi_rfi, fd_rfi,
                           band_name, source_type, figsize=(18, 12)):
     """
     Create a 2x2 plot comparing clean source vs source with RFI.
-    
+
     Layout:
     - Top left: Clean polarization vs lambda²
     - Top right: Clean Faraday depth spectrum
@@ -517,7 +517,7 @@ def plot_2x2_clean_vs_rfi(clean_source, rfi_source, phi_clean, fd_clean, phi_rfi
     - Bottom right: RFI Faraday depth spectrum
     """
     fig, axes = plt.subplots(2, 2, figsize=figsize)
-    
+
     # Get data for clean source
     if hasattr(clean_source.lambda2, 'compute'):
         l2_clean = clean_source.lambda2.compute()
@@ -525,7 +525,7 @@ def plot_2x2_clean_vs_rfi(clean_source, rfi_source, phi_clean, fd_clean, phi_rfi
     else:
         l2_clean = clean_source.lambda2
         data_clean = clean_source.data
-    
+
     # Get data for RFI source
     if hasattr(rfi_source.lambda2, 'compute'):
         l2_rfi = rfi_source.lambda2.compute()
@@ -533,7 +533,7 @@ def plot_2x2_clean_vs_rfi(clean_source, rfi_source, phi_clean, fd_clean, phi_rfi
     else:
         l2_rfi = rfi_source.lambda2
         data_rfi = rfi_source.data
-    
+
     # Top left: Clean polarization - use markers only (no lines) to show potential gaps
     ax = axes[0, 0]
     ax.plot(l2_clean, np.abs(data_clean), '.', color=COLORS['blue'], markersize=0.6, alpha=0.9, label=r'$|P|$')
@@ -544,7 +544,7 @@ def plot_2x2_clean_vs_rfi(clean_source, rfi_source, phi_clean, fd_clean, phi_rfi
     ax.set_title(r'Clean: Polarization vs $\lambda^2$', fontsize=12, fontweight='bold')
     ax.legend(loc='best', fontsize=9)
     ax.grid(True, alpha=0.3)
-    
+
     # Top right: Clean Faraday depth
     ax = axes[0, 1]
     fd_abs_clean = np.abs(fd_clean)
@@ -553,7 +553,7 @@ def plot_2x2_clean_vs_rfi(clean_source, rfi_source, phi_clean, fd_clean, phi_rfi
     ax.plot(phi_clean, fd_clean.imag, '-', color=COLORS['orange'], linewidth=1.2, alpha=0.8, label=r'$\mathrm{Im}(F(\phi))$')
     peak_idx = np.argmax(fd_abs_clean)
     peak_phi = phi_clean[peak_idx]
-    ax.axvline(peak_phi, color=COLORS['blue'], linestyle='--', linewidth=1.5, alpha=0.6, 
+    ax.axvline(peak_phi, color=COLORS['blue'], linestyle='--', linewidth=1.5, alpha=0.6,
                label=r'$\mathrm{Peak}$ at $\phi=' + f'{peak_phi:.1f}' + r'$ rad/m²')
     ax.set_xlabel(r'$\phi$ [rad/m²]', fontsize=11)
     ax.set_ylabel(r'Faraday Intensity [Jy/RMSF]', fontsize=11)
@@ -561,7 +561,7 @@ def plot_2x2_clean_vs_rfi(clean_source, rfi_source, phi_clean, fd_clean, phi_rfi
     ax.legend(loc='best', fontsize=9)
     ax.grid(True, alpha=0.3)
     ax.set_xlim(-1000, 1000)
-    
+
     # Bottom left: RFI polarization - markers only to show gaps
     ax = axes[1, 0]
     ax.plot(l2_rfi, np.abs(data_rfi), '.', color=COLORS['blue'], markersize=0.6, alpha=0.9, label=r'$|P|$')
@@ -572,7 +572,7 @@ def plot_2x2_clean_vs_rfi(clean_source, rfi_source, phi_clean, fd_clean, phi_rfi
     ax.set_title(r'With RFI: Polarization vs $\lambda^2$', fontsize=12, fontweight='bold')
     ax.legend(loc='best', fontsize=9)
     ax.grid(True, alpha=0.3)
-    
+
     # Bottom right: RFI Faraday depth
     ax = axes[1, 1]
     fd_abs_rfi = np.abs(fd_rfi)
@@ -589,7 +589,7 @@ def plot_2x2_clean_vs_rfi(clean_source, rfi_source, phi_clean, fd_clean, phi_rfi
     ax.legend(loc='best', fontsize=9)
     ax.grid(True, alpha=0.3)
     ax.set_xlim(-1000, 1000)
-    
+
     plt.suptitle(f'{source_type} Source: Clean vs RFI ({band_name})', fontsize=14, fontweight='bold')
     plt.tight_layout()
     return fig
@@ -599,7 +599,7 @@ def plot_2x2_depolarization(clean_source, depol_source, phi_clean, fd_clean, phi
                             band_name, source_type, figsize=(18, 12)):
     """
     Create a 2x2 plot comparing clean source vs source with depolarization.
-    
+
     Layout:
     - Top left: Clean polarization vs lambda²
     - Top right: Clean Faraday depth spectrum
@@ -607,7 +607,7 @@ def plot_2x2_depolarization(clean_source, depol_source, phi_clean, fd_clean, phi
     - Bottom right: Depolarized Faraday depth spectrum
     """
     fig, axes = plt.subplots(2, 2, figsize=figsize)
-    
+
     # Get data for clean source
     if hasattr(clean_source.lambda2, 'compute'):
         l2_clean = clean_source.lambda2.compute()
@@ -615,7 +615,7 @@ def plot_2x2_depolarization(clean_source, depol_source, phi_clean, fd_clean, phi
     else:
         l2_clean = clean_source.lambda2
         data_clean = clean_source.data
-    
+
     # Get data for depolarized source
     if hasattr(depol_source.lambda2, 'compute'):
         l2_depol = depol_source.lambda2.compute()
@@ -623,7 +623,7 @@ def plot_2x2_depolarization(clean_source, depol_source, phi_clean, fd_clean, phi
     else:
         l2_depol = depol_source.lambda2
         data_depol = depol_source.data
-    
+
     # Top left: Clean polarization - use markers only (no lines) to show potential gaps
     ax = axes[0, 0]
     ax.plot(l2_clean, np.abs(data_clean), '.', color=COLORS['blue'], markersize=0.6, alpha=0.9, label=r'$|P|$')
@@ -634,7 +634,7 @@ def plot_2x2_depolarization(clean_source, depol_source, phi_clean, fd_clean, phi
     ax.set_title(r'Clean: Polarization vs $\lambda^2$', fontsize=12, fontweight='bold')
     ax.legend(loc='best', fontsize=9)
     ax.grid(True, alpha=0.3)
-    
+
     # Top right: Clean Faraday depth
     ax = axes[0, 1]
     fd_abs_clean = np.abs(fd_clean)
@@ -651,7 +651,7 @@ def plot_2x2_depolarization(clean_source, depol_source, phi_clean, fd_clean, phi
     ax.legend(loc='best', fontsize=9)
     ax.grid(True, alpha=0.3)
     ax.set_xlim(-1000, 1000)
-    
+
     # Bottom left: Depolarized polarization - markers only to show gaps
     ax = axes[1, 0]
     ax.plot(l2_depol, np.abs(data_depol), '.', color=COLORS['orange'], markersize=0.6, alpha=0.9, label=r'$|P|$')
@@ -662,7 +662,7 @@ def plot_2x2_depolarization(clean_source, depol_source, phi_clean, fd_clean, phi
     ax.set_title(r'Depolarized: Polarization vs $\lambda^2$', fontsize=12, fontweight='bold')
     ax.legend(loc='best', fontsize=9)
     ax.grid(True, alpha=0.3)
-    
+
     # Bottom right: Depolarized Faraday depth
     ax = axes[1, 1]
     fd_abs_depol = np.abs(fd_depol)
@@ -679,7 +679,7 @@ def plot_2x2_depolarization(clean_source, depol_source, phi_clean, fd_clean, phi
     ax.legend(loc='best', fontsize=9)
     ax.grid(True, alpha=0.3)
     ax.set_xlim(-1000, 1000)
-    
+
     plt.suptitle(f'{source_type} Source: Clean vs Depolarized ({band_name})', fontsize=14, fontweight='bold')
     plt.tight_layout()
     return fig
@@ -688,25 +688,25 @@ def plot_2x2_depolarization(clean_source, depol_source, phi_clean, fd_clean, phi
 def plot_2x1_delta_comparison(band_configs, figsize=(16, 6)):
     """
     Create a 2x1 plot comparing nominal delta vs full resolution delta for all bands.
-    
+
     Parameters:
     -----------
     band_configs : dict
         Dictionary with band names as keys and tuples (delta_nom, delta_full, band_name) as values
     """
     fig, axes = plt.subplots(1, 2, figsize=figsize)
-    
+
     band_names = list(band_configs.keys())
     delta_nom_values = [band_configs[b][0] for b in band_names]
     delta_full_values = [band_configs[b][1] for b in band_names]
-    
+
     # Left: Bar plot comparison
     ax = axes[0]
     x = np.arange(len(band_names))
     width = 0.35
-    ax.bar(x - width/2, delta_nom_values, width, label=r'$\Delta\phi_{\mathrm{nom}}$', 
+    ax.bar(x - width/2, delta_nom_values, width, label=r'$\Delta\phi_{\mathrm{nom}}$',
            color=COLORS['blue'], alpha=0.8)
-    ax.bar(x + width/2, delta_full_values, width, label=r'$\Delta\phi_{\mathrm{full}}$', 
+    ax.bar(x + width/2, delta_full_values, width, label=r'$\Delta\phi_{\mathrm{full}}$',
            color=COLORS['orange'], alpha=0.8)
     ax.set_xlabel('Band', fontsize=12)
     ax.set_ylabel(r'$\Delta\phi$ [rad/m²]', fontsize=12)
@@ -716,12 +716,12 @@ def plot_2x1_delta_comparison(band_configs, figsize=(16, 6)):
     ax.legend(fontsize=10)
     ax.grid(True, alpha=0.3, axis='y')
     ax.set_yscale('log')
-    
+
     # Right: Ratio plot
     ax = axes[1]
     ratios = [dn / df for dn, df in zip(delta_nom_values, delta_full_values)]
     ax.bar(band_names, ratios, color=COLORS['purple'], alpha=0.8)
-    ax.axhline(1.0, color=COLORS['black'], linestyle='--', linewidth=1.5, alpha=0.6, 
+    ax.axhline(1.0, color=COLORS['black'], linestyle='--', linewidth=1.5, alpha=0.6,
                label='Equal resolution')
     ax.set_xlabel('Band', fontsize=12)
     ax.set_ylabel(r'$\Delta\phi_{\mathrm{nom}} / \Delta\phi_{\mathrm{full}}$', fontsize=12)
@@ -729,7 +729,7 @@ def plot_2x1_delta_comparison(band_configs, figsize=(16, 6)):
     ax.set_xticklabels(band_names, rotation=45, ha='right')
     ax.legend(fontsize=10)
     ax.grid(True, alpha=0.3, axis='y')
-    
+
     plt.suptitle('Faraday Depth Resolution Comparison Across SKA Bands', fontsize=14, fontweight='bold')
     plt.tight_layout()
     return fig
@@ -739,7 +739,7 @@ if __name__ == "__main__":
     print("=" * 80)
     print("Faraday Source Simulation Test - Comprehensive Plotting")
     print("=" * 80)
-    
+
     # Define SKA band configurations
     SKA_BANDS = {
         'SKA-LOW': {
@@ -763,15 +763,15 @@ if __name__ == "__main__":
             'short': 'B5b'
         }
     }
-    
+
     # Calculate and print Faraday depth parameters
     print("\nFaraday Depth Parameters:")
     print(f"{'Band':<12} {'Δφ_nom [rad/m²]':>20} {'Δφ_full [rad/m²]':>20} {'Max Scale [rad/m²]':>20} {'|φ|max [rad/m²]':>20}")
     print("-" * 92)
-    
+
     band_params = {}
     band_delta_configs = {}
-    
+
     for band_name, band_info in SKA_BANDS.items():
         delta_nom, delta_full, max_scale, phi_max = calculate_faraday_depth_parameters(band_info['freq'])
         band_params[band_name] = {
@@ -782,7 +782,7 @@ if __name__ == "__main__":
         }
         band_delta_configs[band_name] = (delta_nom, delta_full, band_info['name'])
         print(f"{band_name:<12} {delta_nom:>20.3e} {delta_full:>20.3e} {max_scale:>20.3e} {phi_max:>20.3e}")
-    
+
     # ========================================================================
     # Simulation Parameters
     # ========================================================================
@@ -793,14 +793,14 @@ if __name__ == "__main__":
         'spectral_idx': -0.7,
         'dchi': 0.0
     }
-    
+
     THICK_PARAMS = {
         'phi_fg': 10.0,  # rad/m²
         'phi_center': 20.0,  # rad/m²
         's_nu': 1.0,
         'spectral_idx': -0.7
     }
-    
+
     MIXED_CONFIG = [
         {
             'type': 'thin',
@@ -817,32 +817,32 @@ if __name__ == "__main__":
             'spectral_idx': -0.7
         }
     ]
-    
+
     # Effects parameters
     RFI_REMOVE_FRAC = 0.1  # 10% channels removed
     DEPOL_SIGMA_RM_THIN = 5.0  # rad/m² for thin sources
     DEPOL_SIGMA_RM_THICK = 3.0  # rad/m² for thick sources
-    
+
     # ========================================================================
     # Generate Plots for All Bands
     # ========================================================================
     print("\n" + "=" * 80)
     print("Generating Comprehensive Plots for All SKA Bands...")
     print("=" * 80)
-    
+
     # ========================================================================
     # Generate Plots for Each Band (process and plot immediately)
     # ========================================================================
     phi_max = 1000  # Fixed range for all plots
     cellsize = 0.5
-    
+
     for band_idx, (band_name, band_info) in enumerate(SKA_BANDS.items(), 1):
         print(f"\n{'='*80}")
         print(f"Processing Band {band_idx}/{len(SKA_BANDS)}: {band_name}")
         print(f"{'='*80}")
         freq = band_info['freq']
         phi_max_band = band_params[band_name]['phi_max']
-        
+
         # Simulate sources for this band
         print(f"  Simulating sources...")
         # Thin source (clean)
@@ -856,7 +856,7 @@ if __name__ == "__main__":
         print(f"    - Thin source (depolarized)...")
         thin_depol = simulate_thin_source(freq, **THIN_PARAMS)
         thin_depol.add_external_faraday_depolarization(sigma_rm=DEPOL_SIGMA_RM_THIN)
-        
+
         # Thick source (clean) - skip for SKA-LOW
         if band_name != 'SKA-LOW':
             print(f"    - Thick source (clean)...")
@@ -869,7 +869,7 @@ if __name__ == "__main__":
             print(f"    - Thick source (depolarized)...")
             thick_depol = simulate_thick_source(freq, **THICK_PARAMS)
             thick_depol.add_external_faraday_depolarization(sigma_rm=DEPOL_SIGMA_RM_THICK)
-            
+
             # Mixed source (clean)
             print(f"    - Mixed source (clean)...")
             mixed_clean = simulate_mixed_sources(freq, MIXED_CONFIG)
@@ -884,7 +884,7 @@ if __name__ == "__main__":
             thick_depol = None
             mixed_clean = None
             mixed_rfi = None
-        
+
         # Calculate Faraday depth spectra
         print(f"  Calculating Faraday depth spectra...")
         # Thin sources
@@ -897,7 +897,7 @@ if __name__ == "__main__":
         print(f"    - Thin depolarized...")
         phi_thin_depol, fd_thin_depol = calculate_faraday_depth_spectrum(
             thin_depol, phi_max=phi_max, cellsize=cellsize, band_phi_max=phi_max_band)
-        
+
         # Thick sources - skip for SKA-LOW
         if band_name != 'SKA-LOW':
             print(f"    - Thick clean...")
@@ -909,7 +909,7 @@ if __name__ == "__main__":
             print(f"    - Thick depolarized...")
             phi_thick_depol, fd_thick_depol = calculate_faraday_depth_spectrum(
                 thick_depol, phi_max=phi_max, cellsize=cellsize, band_phi_max=phi_max_band)
-            
+
             # Mixed sources
             print(f"    - Mixed clean...")
             phi_mixed_clean, fd_mixed_clean = calculate_faraday_depth_spectrum(
@@ -929,10 +929,10 @@ if __name__ == "__main__":
             fd_mixed_clean = None
             phi_mixed_rfi = None
             fd_mixed_rfi = None
-        
+
         # Generate plots immediately for this band
         print(f"  Generating plots for {band_name}...")
-        
+
         # Plot 1: 2x2 Thin source clean vs RFI
         print(f"    - Plot 1: Thin clean vs RFI...")
         fig = plot_2x2_clean_vs_rfi(
@@ -945,9 +945,8 @@ if __name__ == "__main__":
         plt.savefig(filename, dpi=150, bbox_inches='tight')
         plt.close()
         print(f"      Saved: {filename}")
-        # Free memory - keep thin_clean and its spectra for plot 4a
         del phi_thin_rfi, fd_thin_rfi, thin_rfi
-        
+
         # Plot 2: 2x2 Thick source clean vs RFI - skip for SKA-LOW
         if band_name != 'SKA-LOW':
             print(f"    - Plot 2: Thick clean vs RFI...")
@@ -961,9 +960,8 @@ if __name__ == "__main__":
             plt.savefig(filename, dpi=150, bbox_inches='tight')
             plt.close()
             print(f"      Saved: {filename}")
-            # Free memory - keep thick_clean and its spectra for plot 4b
             del phi_thick_rfi, fd_thick_rfi, thick_rfi
-            
+
             # Plot 3: 2x2 Mixed source clean vs RFI
             print(f"    - Plot 3: Mixed clean vs RFI...")
             fig = plot_2x2_clean_vs_rfi(
@@ -976,12 +974,11 @@ if __name__ == "__main__":
             plt.savefig(filename, dpi=150, bbox_inches='tight')
             plt.close()
             print(f"      Saved: {filename}")
-            # Free memory - mixed sources are done
             del phi_mixed_clean, fd_mixed_clean, phi_mixed_rfi, fd_mixed_rfi
             del mixed_clean, mixed_rfi
-        
-        # Plot 4a: 2x2 Thin depolarization
-        print(f"    - Plot 4a: Thin depolarization...")
+
+        # Plot 4a: 2x2 Thin depolarization (clean vs depol)
+        print(f"    - Plot 4a: Thin clean vs depolarized...")
         fig = plot_2x2_depolarization(
             thin_clean, thin_depol,
             phi_thin_clean, fd_thin_clean,
@@ -992,13 +989,12 @@ if __name__ == "__main__":
         plt.savefig(filename, dpi=150, bbox_inches='tight')
         plt.close()
         print(f"      Saved: {filename}")
-        # Free memory - all thin sources are done
         del phi_thin_clean, fd_thin_clean, phi_thin_depol, fd_thin_depol
         del thin_clean, thin_depol
-        
-        # Plot 4b: 2x2 Thick depolarization - skip for SKA-LOW
+
+        # Plot 4b: 2x2 Thick depolarization (clean vs depol) - skip for SKA-LOW
         if band_name != 'SKA-LOW':
-            print(f"    - Plot 4b: Thick depolarization...")
+            print(f"    - Plot 4b: Thick clean vs depolarized...")
             fig = plot_2x2_depolarization(
                 thick_clean, thick_depol,
                 phi_thick_clean, fd_thick_clean,
@@ -1009,12 +1005,11 @@ if __name__ == "__main__":
             plt.savefig(filename, dpi=150, bbox_inches='tight')
             plt.close()
             print(f"      Saved: {filename}")
-            # Free memory - all thick sources are done
             del phi_thick_clean, fd_thick_clean, phi_thick_depol, fd_thick_depol
             del thick_clean, thick_depol
-        
+
         print(f"  Completed {band_name}!")
-    
+
     # Plot 5: 2x1 Delta comparison (nominal vs full resolution) - only needs band params
     print(f"\n{'='*80}")
     print("Generating final plot: Delta comparison...")
@@ -1023,8 +1018,7 @@ if __name__ == "__main__":
     plt.savefig('delta_comparison_all_bands.png', dpi=150, bbox_inches='tight')
     plt.close()
     print("  Saved: delta_comparison_all_bands.png")
-    
+
     print("\n" + "=" * 80)
     print("All plots generated successfully!")
     print("=" * 80)
-

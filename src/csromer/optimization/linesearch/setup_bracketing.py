@@ -4,8 +4,8 @@ from __future__ import annotations
 from typing import Callable, Tuple
 
 from ...reconstruction.parameter import Parameter
-from .f1dim import f1dim
 from .bracketing import mnbrak
+from .f1dim import f1dim
 
 
 def setup_bracketing(

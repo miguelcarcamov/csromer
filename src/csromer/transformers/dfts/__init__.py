@@ -1,10 +1,5 @@
 # Backward compatibility: re-export from measurement_operator
-from ..measurement_operator import (
-    DirectFourier1D,
-    GriddedFFT1D,
-    MeasurementOperator,
-    NUFFT1D,
-)
+from ..measurement_operator import NUFFT1D, DirectFourier1D, GriddedFFT1D, MeasurementOperator
 
 FT = MeasurementOperator
 NDFT1D = DirectFourier1D

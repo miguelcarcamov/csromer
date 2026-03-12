@@ -7,6 +7,7 @@ from typing import Tuple
 import numpy as np
 
 from ...reconstruction.parameter import Parameter
+from ...utils.array_utils import maybe_compute
 from .f1dim import f1dim
 from .linesearcher import LineSearcher
 

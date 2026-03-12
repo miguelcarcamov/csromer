@@ -1,13 +1,6 @@
 import numpy as np
 
-from csromer.simulation import (
-    ALL_BANDS,
-    LOFAR_HIGH,
-    LOFAR_LOW,
-    SKA_LOW,
-    SKA_MID_B2,
-    get_band,
-)
+from csromer.simulation import ALL_BANDS, LOFAR_HIGH, LOFAR_LOW, SKA_LOW, SKA_MID_B2, get_band
 
 
 def test_ska_low_freq_range():

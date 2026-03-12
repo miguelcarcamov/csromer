@@ -235,6 +235,9 @@ class ConjugateGradient(GradientOptimizer):
             f_x = float(f_x.compute())
         else:
             f_x = float(np.asarray(f_x).item())
+
+        if self.verbose and iteration % 10 == 0:
+            print(f"Iteration {iteration + 1}  objective = {f_x}")
         grad_x = self._grad(x)
 
         alpha = self._line_search(x, prev_search_direction, f_x, grad_x)
@@ -248,9 +251,6 @@ class ConjugateGradient(GradientOptimizer):
             new_function_value = float(new_function_value.compute())
         else:
             new_function_value = float(np.asarray(new_function_value).item())
-
-        if self.verbose and (iteration + 1) % 10 == 0:
-            print(f"Iteration {iteration + 1}  objective: {new_function_value:.6f}")
 
         current_gradient = self._grad(x_new)
 

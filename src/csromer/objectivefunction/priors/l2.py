@@ -13,12 +13,12 @@ from ..fi import Fi
 def _l2_norm(x: np.ndarray) -> float:
     """
     Compute L2 norm: sqrt(sum(x^2)).
-    
+
     Private helper function.
-    
+
     Args:
         x: Input array
-        
+
     Returns:
         L2 norm (scalar)
     """
@@ -28,13 +28,13 @@ def _l2_norm(x: np.ndarray) -> float:
 def _approx_l2_norm(x: np.ndarray, epsilon: float) -> float:
     """
     Approximate L2 norm with epsilon smoothing.
-    
+
     Private helper function.
-    
+
     Args:
         x: Input array
         epsilon: Small value for numerical stability
-        
+
     Returns:
         Approximate L2 norm (scalar)
     """
@@ -45,10 +45,10 @@ def _approx_l2_norm(x: np.ndarray, epsilon: float) -> float:
 class L2(Fi):
     """
     L2 regularization term: ||x||_2.
-    
+
     Differentiable term that promotes smoothness. Uses epsilon smoothing for
     numerical stability in gradients.
-    
+
     Attributes:
         is_differentiable: Always True (L2 is differentiable)
     """
@@ -62,13 +62,13 @@ class L2(Fi):
     def evaluate(self, x, epsilon: float = np.finfo(np.float32).tiny) -> float:
         """
         Evaluate L2 norm: ||x||_2.
-        
+
         Public method. Uses epsilon smoothing for numerical stability.
-        
+
         Args:
             x: Input array
             epsilon: Small value for numerical stability (default: float32 tiny)
-            
+
         Returns:
             L2 norm (scalar)
         """
@@ -78,13 +78,13 @@ class L2(Fi):
     def calculate_gradient(self, x, epsilon: float = np.finfo(np.float32).tiny) -> np.ndarray:
         """
         Calculate gradient: x / ||x||_2.
-        
+
         Public method. Uses epsilon smoothing to avoid division by zero.
-        
+
         Args:
             x: Input array
             epsilon: Small value for numerical stability (default: float32 tiny)
-            
+
         Returns:
             Gradient array (same shape as x)
         """
@@ -95,13 +95,13 @@ class L2(Fi):
     def calculate_prox(self, x, nu: float = 0) -> np.ndarray:
         """
         Proximal operator: soft-thresholding on L2 norm.
-        
+
         Public method. Projects onto L2 ball when threshold > 0.
-        
+
         Args:
             x: Input array
             nu: Step size parameter (not used, threshold is self.reg)
-            
+
         Returns:
             Proximal result (same shape as x)
         """

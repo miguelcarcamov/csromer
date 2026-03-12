@@ -19,11 +19,11 @@ from ..base.dataset import Dataset
 class FaradaySource(Dataset):
     """
     Base class for simulated Faraday sources.
-    
+
     Extends Dataset with simulation capabilities. Subclasses implement different
     source models (thin, thick, manual). Supports source addition, channel removal,
     and noise application.
-    
+
     Attributes:
         s_nu: Flux density at reference frequency (Jy)
     """
@@ -32,7 +32,7 @@ class FaradaySource(Dataset):
     def __init__(self, s_nu=None, **kwargs):
         """
         Initialize Faraday source.
-        
+
         Args:
             s_nu: Flux density at reference frequency (Jy)
             **kwargs: Additional arguments passed to Dataset
@@ -45,16 +45,16 @@ class FaradaySource(Dataset):
     def __add__(self, other):
         """
         Add two sources (operator overloading).
-        
+
         Public method. Combines two sources by summing data and computing
         weighted average of spectral indices.
-        
+
         Args:
             other: Another FaradaySource instance
-            
+
         Returns:
             New FaradaySource with combined data
-            
+
         Raises:
             TypeError: If sources are incompatible or data is None
         """
@@ -76,15 +76,15 @@ class FaradaySource(Dataset):
     def __iadd__(self, other):
         """
         In-place addition of sources (operator overloading).
-        
+
         Public method. Modifies self by adding other source's data.
-        
+
         Args:
             other: Another FaradaySource instance
-            
+
         Returns:
             Modified self
-            
+
         Raises:
             TypeError: If sources are incompatible or data is None
         """
@@ -107,7 +107,7 @@ class FaradaySource(Dataset):
     def simulate(self):
         """
         Simulate polarization data.
-        
+
         Abstract method: subclasses must implement. Generates synthetic polarization
         data P(lambda²) based on source model.
         """
@@ -116,10 +116,10 @@ class FaradaySource(Dataset):
     def add_external_faraday_depolarization(self, sigma_rm: float = None):
         """
         Add external Faraday depolarization (Burn law).
-        
+
         Public method. Multiplies data by exp(-2 * sigma_rm^2 * lambda²^2) to
         simulate external depolarization.
-        
+
         Args:
             sigma_rm: RMS rotation measure (rad/m², default: 0.0)
         """
@@ -131,10 +131,10 @@ class FaradaySource(Dataset):
     def remove_channels(self, remove_frac: float = None, random_state=None, chunksize: int = None):
         """
         Remove random channels (for testing incomplete coverage).
-        
+
         Public method. Removes a fraction of channels in random chunks to simulate
         incomplete frequency coverage.
-        
+
         Args:
             remove_frac: Fraction of channels to remove (0.0-1.0)
             random_state: Random state for reproducibility (optional)
@@ -191,13 +191,13 @@ class FaradaySource(Dataset):
     def apply_noise(self, noise=None, random_state=None):
         """
         Apply Gaussian noise to polarization data.
-        
+
         Public method. Adds independent Gaussian noise to Q and U components.
-        
+
         Args:
             noise: Noise level (float for same Q/U, or complex for different)
             random_state: Random state for reproducibility (optional)
-            
+
         Raises:
             TypeError: If noise is not float or complex
         """

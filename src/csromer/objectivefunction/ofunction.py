@@ -7,7 +7,7 @@ and Pyralysis-style filtering (differentiable_only / nondifferentiable_only).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Union, Any
+from typing import Any, List, Optional, Union
 
 import numpy as np
 
@@ -24,11 +24,11 @@ from .fi import Fi
 class OFunction:
     """
     Objective function F = sum_i penalization_factor_i * term_i(x).
-    
+
     Manages a list of objective function terms (Fi instances). Supports filtering
     by differentiable / non-differentiable terms for FISTA-style methods. Persists
     last objective (phi) and gradient (dphi) like Pyralysis.
-    
+
     Attributes:
         F: List of objective function terms (Fi instances)
         persist_gradient: If True, persist gradient in dask (default: False)
@@ -65,7 +65,7 @@ class OFunction:
     def getProxFunctions(self) -> List[Fi]:
         """
         Legacy API: get list of terms with proximal operators.
-        
+
         Returns:
             List of Fi instances (same as F)
         """
@@ -74,7 +74,7 @@ class OFunction:
     def getValues(self) -> np.ndarray:
         """
         Legacy API: get per-term objective values from last evaluate.
-        
+
         Returns:
             Array of term values
         """
@@ -83,10 +83,10 @@ class OFunction:
     def getLambda(self, _id: int = 0) -> float:
         """
         Legacy API: get regularization factor for term _id.
-        
+
         Args:
             _id: Term index (default: 0)
-            
+
         Returns:
             Regularization factor (reg)
         """
@@ -95,7 +95,7 @@ class OFunction:
     def setLambda(self, reg: float = 0.0, _id: int = 0):
         """
         Legacy API: set regularization factor for term _id.
-        
+
         Args:
             reg: Regularization factor
             _id: Term index (default: 0)
@@ -105,12 +105,12 @@ class OFunction:
     def evaluate(self, x) -> float:
         """
         Legacy API: evaluate full objective value at x.
-        
+
         Persists phi and each term's _func_value (lazy when dask).
-        
+
         Args:
             x: Input array (Faraday depth or coefficients)
-            
+
         Returns:
             Objective value (float)
         """
@@ -133,18 +133,18 @@ class OFunction:
     ):
         """
         Calculate gradient at x.
-        
+
         Public method. If differentiable_only is True, only differentiable terms
         are included. Sets self.dphi (and each term's _grad_value) and returns it.
         Keeps dask when x is dask.
-        
+
         Args:
             x: Input array (Faraday depth or coefficients)
             iteration: Iteration number (passed to terms)
             out: Optional output array (will be filled with computed gradient)
             mask: Optional mask (not currently used)
             differentiable_only: If True, skip non-differentiable terms
-            
+
         Returns:
             Gradient array (same shape/type as x)
         """
@@ -166,12 +166,12 @@ class OFunction:
     def calc_prox(self, x, nu: float = 0, _id: int = 0):
         """
         Legacy API: proximal step (single term or composition).
-        
+
         Args:
             x: Input array
             nu: Step size parameter
             _id: Term index (if single term)
-            
+
         Returns:
             Proximal result
         """
@@ -190,7 +190,7 @@ class OFunction:
     def terms(self) -> List[Fi]:
         """
         List of objective function terms (same as F).
-        
+
         Public property for Pyralysis-style API.
         """
         return getattr(self, "F", [])
@@ -198,9 +198,9 @@ class OFunction:
     def terms_parameter(self, parameter):
         """
         Set parameter on every term.
-        
+
         Public method for Pyralysis-style API.
-        
+
         Args:
             parameter: Parameter object to set on all terms
         """
@@ -211,12 +211,12 @@ class OFunction:
     def terms_penalization(self, penalization: Union[float, list, np.ndarray]):
         """
         Set penalization factor (reg) on every term.
-        
+
         Public method for Pyralysis-style API. If list/array, length must match terms.
-        
+
         Args:
             penalization: Penalization factor(s). Scalar for all terms, or list/array per term.
-            
+
         Raises:
             ValueError: If array length doesn't match number of terms
         """
@@ -232,9 +232,9 @@ class OFunction:
     def _nondiff_terms(self) -> List[Fi]:
         """
         Get terms with is_differentiable=False (for FISTA proximal step).
-        
+
         Private method: used internally by FISTA-style methods.
-        
+
         Returns:
             List of non-differentiable terms
         """
@@ -243,14 +243,14 @@ class OFunction:
     def apply_prox_nondiff(self, x, nu: float = 0):
         """
         Apply proximal of all non-differentiable terms in sequence.
-        
+
         Public method for FISTA-style optimizers. Expects one non-differentiable term
         (typically L1 or TV).
-        
+
         Args:
             x: Input array
             nu: Step size parameter
-            
+
         Returns:
             Result after applying all non-differentiable proximals
         """
@@ -262,9 +262,9 @@ class OFunction:
     def get_lambda_nondiff(self) -> Optional[float]:
         """
         Get reg of first non-differentiable term.
-        
+
         Public method for FISTA-style optimizers.
-        
+
         Returns:
             Regularization factor or None if no non-differentiable terms
         """
@@ -274,9 +274,9 @@ class OFunction:
     def set_lambda_nondiff(self, reg: float):
         """
         Set reg of first non-differentiable term (e.g. for FISTA cooling).
-        
+
         Public method for FISTA-style optimizers.
-        
+
         Args:
             reg: Regularization factor
         """
@@ -294,16 +294,16 @@ class OFunction:
     ) -> float:
         """
         Evaluate the objective (or only differentiable / only non-differentiable terms).
-        
+
         Public method for Pyralysis-style API. Persists phi (lazy when dask).
         Returns computed float for callers that need a scalar.
-        
+
         Args:
             x: Input array (Faraday depth or coefficients)
             mask: Optional mask (not currently used)
             differentiable_only: If True, only evaluate differentiable terms
             nondifferentiable_only: If True, only evaluate non-differentiable terms
-            
+
         Returns:
             Objective value (float)
         """

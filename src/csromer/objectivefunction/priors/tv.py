@@ -15,10 +15,10 @@ from ..fi import Fi
 class TV(Fi):
     """
     Total Variation (TV) regularization: sum(|x[i+1] - x[i]|).
-    
+
     Non-differentiable term that promotes piecewise-constant solutions. Uses prox_tv
     library for efficient proximal operator.
-    
+
     Attributes:
         is_differentiable: Always False (TV is non-differentiable)
         nu: Internal array (unused, kept for compatibility)
@@ -35,12 +35,12 @@ class TV(Fi):
     def evaluate(self, x) -> float:
         """
         Evaluate TV norm: sum(|x[i+1] - x[i]|).
-        
+
         Public method. Computes sum of absolute differences between adjacent elements.
-        
+
         Args:
             x: Input array (1D)
-            
+
         Returns:
             TV norm (scalar)
         """
@@ -53,13 +53,13 @@ class TV(Fi):
     def calculate_gradient(self, x) -> np.ndarray:
         """
         Calculate subgradient of TV.
-        
+
         Public method. Returns subgradient (not true gradient since TV is non-differentiable).
         Computes sign differences at interior points.
-        
+
         Args:
             x: Input array (1D)
-            
+
         Returns:
             Subgradient array (same shape as x)
         """
@@ -72,13 +72,13 @@ class TV(Fi):
     def calculate_prox(self, x, nu: float = 0.0) -> np.ndarray:
         """
         Proximal operator: TV denoising via prox_tv.
-        
+
         Public method. Uses prox_tv library for efficient TV proximal operator.
-        
+
         Args:
             x: Input array (1D)
             nu: Step size parameter (not used, threshold is self.reg)
-            
+
         Returns:
             TV-denoised array (same shape as x)
         """
