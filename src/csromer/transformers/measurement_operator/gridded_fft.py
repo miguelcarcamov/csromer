@@ -5,8 +5,9 @@ when inputs are dask arrays.
 Implements the Faraday depth Fourier transform (Burn 1966):
 P(lambda²) = ∫ F(phi) * exp(+2j * phi * lambda²) dphi
 
-No l2_ref in the transform; gridded lambda² should be 0, d_l2, 2*d_l2, ...
-so FFT bins align with physical channels.
+Gridded lambda² is l2_0, l2_0+d_l2, ..., l2_0+(n-1)*d_l2 (with l2_0 = dataset.l2_min > 0).
+The FFT implements the kernel at these physical λ²; the phase exp(2j φ l2_0) is applied
+so that when l2_0 = 0 (full resolution, grid at 0) the phase is 1.
 """
 from __future__ import annotations
 
@@ -32,8 +33,9 @@ class GriddedFFT1D(MeasurementOperator):
     Implements the Faraday depth Fourier transform (Burn 1966):
     P(lambda²) = ∫ F(phi) * exp(+2j * phi * lambda²) dphi
 
-    No l2_ref in forward/adjoint. Expects lambda² grid 0, d_l2, ..., (n-1)*d_l2.
-    Uses da.fft.fft/ifft for dask arrays to maintain lazy computation.
+    Expects gridded lambda² = l2_0, l2_0+d_l2, ... (l2_0 = first channel, typically > 0).
+    Applies phase exp(2j φ l2_0) so the kernel is correct for physical λ²; when l2_0=0
+    (e.g. full resolution with grid at 0) the phase is 1.
     """
 
     def __post_init__(self):
@@ -44,13 +46,15 @@ class GriddedFFT1D(MeasurementOperator):
 
     def configure(self) -> None:
         """
-        Configure operator (no phase factor; transform does not use l2_ref).
+        Set phase from first gridded λ² (l2_0). Kernel is exp(2j φ λ²_k) with
+        λ²_k = l2_0 + k*d_l2, so we phase F by exp(2j φ l2_0) before the FFT.
         """
         if self.dataset is None or self.parameter is None:
             return
         phi = asnumpy(self.parameter.phi)
-        # No l2_ref in transform: phase = 1
-        self._l2_ref_phase = np.ones(phi.shape[0], dtype=np.complex64)
+        l2_grid = asnumpy(self.dataset.lambda2)
+        l2_0 = float(l2_grid[0])
+        self._l2_ref_phase = np.exp(2j * phi * l2_0).astype(np.complex64)
 
     def _forward_impl(self, x: Union[np.ndarray, Any]) -> Union[np.ndarray, Any]:
         """
@@ -82,7 +86,7 @@ class GriddedFFT1D(MeasurementOperator):
             x_fft = np.fft.fftshift(x_fft).astype(np.complex64)
         if not hasattr(self, '_l2_ref_phase') or self._l2_ref_phase is None:
             self.configure()
-        phase_conj = np.conj(self._l2_ref_phase)  # = 1, no l2_ref
+        phase_conj = np.conj(self._l2_ref_phase)
         if da is not None and is_dask_array(x_fft):
             return (x_fft * phase_conj).astype(np.complex64)
         return (x_fft * phase_conj).astype(np.complex64)

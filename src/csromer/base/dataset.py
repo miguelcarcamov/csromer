@@ -355,6 +355,12 @@ class Dataset(metaclass=ABCMeta):
     @nu.setter
     def nu(self, val):
         """Set frequency array and compute lambda² and reference frequency."""
+        if val is not None:
+            # Ensure nu is float32 while preserving numpy vs dask
+            if da is not None and is_dask_array(val):
+                val = val.astype(np.float32)
+            else:
+                val = np.asarray(val, dtype=np.float32)
         self.__nu = val
         if val is not None:
             mn_val, mx_val = np.min(val), np.max(val)
@@ -377,18 +383,32 @@ class Dataset(metaclass=ABCMeta):
         """
         self.__lambda2 = val
         if val is not None:
-            val_np = asnumpy(val) if is_dask_array(val) else np.asarray(val)
+            # Cast lambda2 to float32 while preserving numpy vs dask
+            if da is not None and is_dask_array(val):
+                val = val.astype(np.float32)
+            else:
+                val = np.asarray(val, dtype=np.float32)
+            val_np = asnumpy(val)
+            # Ensure ascending order in lambda²
             if np.all(np.diff(val_np) < 0):
-                val = val[::-1]
+                if da is not None and is_dask_array(val):
+                    val = val[::-1]
+                else:
+                    val = val[::-1].astype(np.float32)
+                self.__lambda2 = val
+                val_np = asnumpy(val)
+            else:
                 self.__lambda2 = val
             self.__m = length_of(val)
             # Avoid divide-by-zero: nu = c/sqrt(lambda²) is invalid for lambda² <= 0
             val_np_safe = np.where(val_np > 0, val_np, np.nan)
-            self.__nu = np.asarray(c / np.sqrt(val_np_safe), dtype=np.float64)
+            nu_np = (c / np.sqrt(val_np_safe)).astype(np.float32)
             if da is not None and is_dask_array(val):
                 ch = getattr(val, "chunks", None)
                 chunks = ch[0] if isinstance(ch, tuple) else "auto"
-                self.__nu = da.from_array(self.__nu, chunks=chunks)
+                self.__nu = da.from_array(nu_np, chunks=chunks)
+            else:
+                self.__nu = nu_np
             nu_min_val = np.nanmin(self.__nu)
             nu_max_val = np.nanmax(self.__nu)
             nu_min = nu_min_val.compute() if hasattr(nu_min_val, "compute") else nu_min_val
@@ -401,15 +421,15 @@ class Dataset(metaclass=ABCMeta):
                 # Only compute s where nu is finite; otherwise use 1.0 (no spectral correction)
                 with np.errstate(invalid="ignore"):
                     s_vals = (self.__nu / self.__nu_0) ** self.__spectral_idx
-                self.__s = np.where(np.isfinite(self.__nu), s_vals, 1.0)
+                self.__s = np.where(np.isfinite(self.__nu), s_vals, 1.0).astype(np.float32)
             elif hasattr(self, "spectral_idx") and self.__spectral_idx is not None:
-                self.__s = np.ones_like(self.__nu)
+                self.__s = np.ones_like(self.__nu, dtype=np.float32)
             if da is not None and is_dask_array(val):
                 ch = getattr(val, "chunks", None)
                 chunks = ch[0] if isinstance(ch, tuple) else "auto"
-                self.w = da.ones(self.__m, dtype=np.float64, chunks=chunks)
+                self.w = da.ones(self.__m, dtype=np.float32, chunks=chunks)
             else:
-                self.w = np.ones(self.__m)
+                self.w = np.ones(self.__m, dtype=np.float32)
             self._calculate_l2_cellsize()
 
     @property
@@ -611,6 +631,11 @@ class Dataset(metaclass=ABCMeta):
         Validates size matches m. Initializes model_data if needed.
         """
         if val is not None:
+            # Ensure complex64 for polarization data while preserving numpy vs dask
+            if da is not None and is_dask_array(val):
+                val = val.astype(np.complex64)
+            else:
+                val = np.asarray(val, dtype=np.complex64)
             n = length_of(val)
             if n == self.m:
                 self.__data = val
@@ -619,7 +644,7 @@ class Dataset(metaclass=ABCMeta):
                 self.__data = val
             if hasattr(self, "model_data"):
                 if self.__model_data is None:
-                    dt = getattr(val, "dtype", np.complex64)
+                    dt = np.complex64
                     if is_dask_array(val):
                         self.__model_data = da.zeros_like(val, dtype=dt)
                     else:
@@ -814,6 +839,36 @@ class Dataset(metaclass=ABCMeta):
         if delta_l2 <= 0:
             return None
         return 2.0 * np.sqrt(3.0) / delta_l2
+
+    @property
+    def l2_min(self) -> Union[float, None]:
+        """Minimum lambda² in the data (where w > 0), or None if lambda2 is not set."""
+        if self.lambda2 is None:
+            return None
+        l2_np = asnumpy(self.lambda2)
+        if self.w is not None:
+            w_np = asnumpy(self.w)
+            l2_nonzero = l2_np[w_np > 0.0]
+            if len(l2_nonzero) == 0:
+                l2_nonzero = l2_np
+        else:
+            l2_nonzero = l2_np
+        return float(np.min(l2_nonzero))
+
+    @property
+    def l2_max(self) -> Union[float, None]:
+        """Maximum lambda² in the data (where w > 0), or None if lambda2 is not set."""
+        if self.lambda2 is None:
+            return None
+        l2_np = asnumpy(self.lambda2)
+        if self.w is not None:
+            w_np = asnumpy(self.w)
+            l2_nonzero = l2_np[w_np > 0.0]
+            if len(l2_nonzero) == 0:
+                l2_nonzero = l2_np
+        else:
+            l2_nonzero = l2_np
+        return float(np.max(l2_nonzero))
 
     @property
     def delta_phi(self) -> float:

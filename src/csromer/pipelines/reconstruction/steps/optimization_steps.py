@@ -269,22 +269,6 @@ class RestorationStep:
     """Compute residual and restored map (CLEAN-style)."""
 
     def run(self, ctx) -> None:
-        # DEBUG: check consistency again at restoration time
-        try:
-            fd_model_np = np.asarray(asnumpy(ctx.fd_model))
-            forward_from_fd = np.asarray(
-                asnumpy(ctx.measurement_operator.forward(fd_model_np))
-            )
-            model_data_np = np.asarray(asnumpy(ctx.dataset.model_data))
-            diff = forward_from_fd - model_data_np
-            max_diff = float(np.max(np.abs(diff)))
-            print(
-                "[restore DEBUG] max|forward(fd_model)-model_data|=%.6e"
-                % (max_diff,)
-            )
-        except Exception as exc:
-            print("[restore DEBUG] model/dataset consistency check failed:", repr(exc))
-
         ctx.fd_residual = ctx.measurement_operator.dirty_spectrum(
             ctx.dataset.data - ctx.dataset.model_data
         )
@@ -295,9 +279,7 @@ class RestorationStep:
         ctx.conv_model = conv_model
         ctx.pixels_per_rmtf = pixels_per_rmtf
         # Original scaling to Jy/RMSF:
-        # ctx.fd_restored = conv_model * pixels_per_rmtf + ctx.fd_residual
-        # Use Jy / phi-bin units instead (no pixels_per_rmtf scaling).
-        ctx.fd_restored = conv_model + ctx.fd_residual
+        ctx.fd_restored = conv_model * pixels_per_rmtf + ctx.fd_residual
 
 
 class RestoredStatsStep:

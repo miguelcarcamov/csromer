@@ -76,6 +76,13 @@ def build_measurement_operator(
             gridding_kernel_beta=gridding_kernel_beta,
         )
         dataset = gridding.run()
+        # After gridding, update RMTF FWHM from the gridded dataset so that
+        # downstream steps (e.g. restoration kernel, RM error estimates) use
+        # the RMTF associated with the actual operator in use.
+        if parameter is not None and getattr(dataset, "delta_phi", None) is not None:
+            delta_phi_fwhm = dataset.delta_phi
+            if delta_phi_fwhm is not None:
+                parameter.rmtf_fwhm = float(delta_phi_fwhm)
         op = GriddedFFT1D(dataset=dataset, parameter=parameter)
         return op, dataset
     raise ValueError(

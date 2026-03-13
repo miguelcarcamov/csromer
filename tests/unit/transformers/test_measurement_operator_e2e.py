@@ -162,7 +162,8 @@ class TestGriddedFFT1DE2E:
         np.testing.assert_allclose(peak, expected_peak, rtol=1e-5)
 
     def test_rmtf_peak(self, dataset_gridded_fft, parameter_gridded_fft):
-        """GriddedFFT RMTF is ones, so peak = 1."""
+        """GriddedFFT RMTF peak amplitude is 1."""
         op = GriddedFFT1D(dataset=dataset_gridded_fft, parameter=parameter_gridded_fft)
         rmtf = np.asarray(asnumpy(op.RMTF()))
-        np.testing.assert_allclose(np.abs(rmtf), 1.0, rtol=1e-5)
+        peak = np.abs(rmtf).max()
+        np.testing.assert_allclose(peak, 1.0, rtol=1e-5)

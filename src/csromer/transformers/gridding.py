@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import copy
-from typing import TYPE_CHECKING, Literal
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Literal, Optional
 
 import numpy as np
 from scipy.special import i0
+
+from ..utils.array_utils import asnumpy
 
 if TYPE_CHECKING:
     from ..base import Dataset
@@ -37,72 +40,76 @@ def complex_bincount(x: np.ndarray = None, complex_array: np.ndarray = None):
         raise TypeError("Array must be complex and not None")
 
 
+@dataclass
 class Gridding:
     """
     Grid non-uniform lambda² data onto a uniform lambda² grid.
-    
+
     When d_lambda2 is provided (e.g. from Nyquist: π/(n_phi * d_phi)), the grid
-    uses that spacing. If n is also provided, the grid has exactly n points so
-    that GriddedFFT1D can use the same phi grid (same length and resolution) as
-    other methods. Otherwise uses dataset.delta_l2_mean.
-    
-    kernel: "box" = nearest-neighbor (current behavior); "kaiser" = Kaiser window
-    for smoother gridding and better peak preservation in Faraday depth space.
+    uses that spacing. The grid starts at dataset.l2_min (λ² > 0), not 0.
+    If n is also provided, the grid has exactly n points
+    (l2_min, l2_min+d_l2, ..., l2_min+(n-1)*d_l2). If n is not provided, n is
+    computed from the dataset (phi_max, delta_phi, oversampling) to match
+    max_faraday_depth.
+
+    kernel: "box" = nearest-neighbor; "kaiser" = Kaiser window for smoother
+    gridding and better peak preservation in Faraday depth space.
     """
 
-    def __init__(
-        self,
-        dataset: Dataset = None,
-        d_lambda2: float = None,
-        n: int = None,
-        kernel: Literal["box", "kaiser"] = "kaiser",
-        gridding_kernel_half_width: float = 4.0,
-        gridding_kernel_beta: float = 2.5,
-    ):
-        """
-        Args:
-            dataset: Dataset with non-uniform (or uniform) lambda².
-            d_lambda2: Optional uniform lambda² step (m²). If given, used for the
-                gridded axis so that the result is compatible with a phi grid
-                satisfying Nyquist d_phi * d_lambda2 = π/N. If None, uses
-                dataset.delta_l2_mean.
-            n: Optional number of grid points. When given with d_lambda2, the
-                gridded grid has exactly n points (0, d_lambda2, ..., (n-1)*d_lambda2)
-                so that the same param (same length and resolution) can be used
-                for GriddedFFT1D as for DirectFourier1D/NUFFT1D.
-            kernel: "box" (nearest-neighbor) or "kaiser" (Kaiser window).
-            gridding_kernel_half_width: Half-width in grid units for Kaiser (ignored for box).
-            gridding_kernel_beta: Kaiser shape parameter (ignored for box).
-        """
-        self.dataset = dataset
-        self.d_lambda2 = d_lambda2
-        self.n = n
-        self.kernel = (kernel or "kaiser").strip().lower()
+    dataset: Optional["Dataset"] = None
+    d_lambda2: Optional[float] = None
+    n: Optional[int] = None
+    kernel: Literal["box", "kaiser"] = "kaiser"
+    gridding_kernel_half_width: float = 4.0
+    gridding_kernel_beta: float = 2.5
+    oversampling: float = 8.0
+
+    def __post_init__(self) -> None:
+        self.kernel = (self.kernel or "kaiser").strip().lower()
         if self.kernel not in ("box", "kaiser"):
             self.kernel = "kaiser"
-        self.gridding_kernel_half_width = gridding_kernel_half_width
-        self.gridding_kernel_beta = gridding_kernel_beta
 
-    def run(self):
+    def run(self) -> "Dataset":
+        if self.dataset is None:
+            raise ValueError("Gridding requires dataset")
         gridded_dataset = copy.deepcopy(self.dataset)
         gridded_dataset.gridded = True
+
+        l2_min = self.dataset.l2_min
+        l2_max = self.dataset.l2_max
+        if l2_min is None or l2_max is None:
+            raise ValueError("Dataset must have lambda2 set for gridding")
+
         step = (
             float(self.d_lambda2)
             if self.d_lambda2 is not None
             else self.dataset.delta_l2_mean
         )
-        if self.n is not None:
-            # Fixed length grid: 0, d_l2, ..., (n-1)*d_l2 for GriddedFFT1D (no l2_ref in transform).
-            # Dataset handles lambda²=0 defensively (nu/weights set without divide-by-zero).
-            l2_grid = np.arange(0.0, self.n * step, step, dtype=np.float64)[: self.n]
-        else:
-            l2_grid = np.arange(
-                start=0.0 + EPSILON,
-                stop=np.max(self.dataset.lambda2),
-                step=step,
-            )
+        if step is None or step <= 0:
+            raise ValueError("Gridding requires d_lambda2 or dataset.delta_l2_mean")
+
+        n = self.n
+        if n is None:
+            # Compute n from dataset (same logic as Parameter.calculate_cellsize)
+            delta_phi_fwhm = self.dataset.delta_phi
+            if delta_phi_fwhm is None:
+                delta_phi_fwhm = (
+                    2.0 * np.sqrt(3.0) / (l2_max - l2_min)
+                    if l2_max > l2_min
+                    else 2.0 / (l2_max + l2_min)
+                )
+            phi_max = np.sqrt(3) / float(self.dataset.delta_l2_mean or 1e-20)
+            phi_max = max(phi_max, float(delta_phi_fwhm) * 10.0)
+            phi_r = float(delta_phi_fwhm) / self.oversampling
+            temp = np.floor(2.0 * phi_max / phi_r)
+            n = int(temp - np.mod(temp, 32))
+            n = max(n, 32)
+
+        # Grid starts at l2_min (λ² > 0), same step; Nyquist d_l2 unchanged
+        l2_grid = l2_min + np.arange(n, dtype=np.float64) * step
         m_grid = len(l2_grid)
-        l2_chan = np.asarray(self.dataset.lambda2)
+
+        l2_chan = np.asarray(asnumpy(self.dataset.lambda2))
         w_chan = np.asarray(self.dataset.w, dtype=np.float32)
         data_chan = np.asarray(self.dataset.data, dtype=np.complex64)
         model_chan = np.asarray(self.dataset.model_data, dtype=np.complex64)
@@ -113,9 +120,9 @@ class Gridding:
         gridded_w = np.zeros(m_grid, dtype=np.float32)
 
         if self.kernel == "box":
-            l2_grid_pos = np.floor(l2_chan / step).astype(int)
-            if self.n is not None:
-                l2_grid_pos = np.clip(l2_grid_pos, 0, self.n - 1)
+            # Bin index: (l2_chan - l2_min) / step
+            l2_grid_pos = np.floor((l2_chan - l2_min) / step).astype(int)
+            l2_grid_pos = np.clip(l2_grid_pos, 0, m_grid - 1)
             bincount_data = complex_bincount(l2_grid_pos, w_chan * data_chan)
             bincount_model = complex_bincount(l2_grid_pos, w_chan * model_chan)
             bincount_weights = np.bincount(l2_grid_pos, w_chan, minlength=m_grid)
@@ -127,12 +134,11 @@ class Gridding:
             gridded_model[unique_idx] = bincount_model[unique_idx]
             gridded_w[unique_idx] = bincount_weights[unique_idx]
         else:
-            # Kaiser (or other window): spread each channel to nearby grid points
             half_w = float(self.gridding_kernel_half_width)
             beta = float(self.gridding_kernel_beta)
             for i in range(n_chan):
                 l2_i = l2_chan[i]
-                j_center = l2_i / step
+                j_center = (l2_i - l2_min) / step
                 j_lo = max(0, int(np.ceil(j_center - half_w)))
                 j_hi = min(m_grid - 1, int(np.floor(j_center + half_w)))
                 for j in range(j_lo, j_hi + 1):
@@ -148,11 +154,9 @@ class Gridding:
         gridded_data[valid_idx] /= gridded_w[valid_idx]
         gridded_model[valid_idx] /= gridded_w[valid_idx]
 
-        gridded_dataset.lambda2 = l2_grid  # updates m to m_grid
+        gridded_dataset.lambda2 = l2_grid
         gridded_dataset.w = gridded_w.astype(np.float32)
         gridded_dataset.data = gridded_data.astype(np.complex64)
         gridded_dataset.model_data = gridded_model.astype(np.complex64)
-        # effective_n (Kish: (sum w)^2 / sum(w^2)) is a property computed from w, so it
-        # automatically reflects the gridded effective sample count when the objective uses it.
 
         return gridded_dataset
