@@ -229,6 +229,40 @@ class MeasurementOperator(metaclass=ABCMeta):
             raw = raw * phase_ramp
         return raw
 
+    def _adjoint_normalized_weights(self) -> Union[np.ndarray, Any]:
+        """
+        Adjoint of (weights / sum(weights)), with l2_ref phase applied.
+        Used by subclasses to implement RMTF without going through forward.
+        """
+        if self.dataset is None:
+            raise RuntimeError("dataset is required for RMTF")
+        w = self.dataset.w
+        s = getattr(self.dataset, "s", None)
+        xp = math_module(w)
+        if s is not None:
+            weights = w / s
+        else:
+            weights = w
+        sum_w = xp.sum(weights)
+        sum_w = sum_w.compute() if hasattr(sum_w, "compute") else sum_w
+        sum_w = float(sum_w) if sum_w is not None else 1.0
+        if abs(sum_w) < 1e-10:
+            sum_w = 1.0
+        normalized = weights / sum_w
+        raw = self.adjoint(normalized)
+        l2_ref = getattr(self.dataset, "l2_ref", None)
+        if (
+            self.parameter is not None
+            and l2_ref is not None
+            and abs(float(l2_ref)) >= 1e-10
+        ):
+            xp = math_module(raw)
+            phi = self.parameter.phi
+            phi_same = xp.asarray(phi)
+            phase_ramp = xp.exp(2.0j * phi_same * float(l2_ref)).astype(np.complex64)
+            raw = raw * phase_ramp
+        return raw
+
     def configure(self) -> None:
         """
         Configure operator (e.g. NUFFT plan, precompute matrices).

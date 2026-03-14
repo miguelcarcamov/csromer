@@ -41,29 +41,34 @@ PHI_MAX = 1000.0   # rad/m²
 # ---------------------------------------------------------------------------
 
 def _ska_low_freq():
-    return da.arange(50e6, 350e6, 3.9e3, dtype=np.float64)
+    return da.arange(50e6, 350e6, 3.9e3, dtype=np.float32)
+
+def _ska_mid_b1_freq():
+    return da.arange(350e6, 1050e6, 13.44e3, dtype=np.float32)
 
 def _ska_mid_b2_freq():
-    return da.arange(950e6, 1760e6, 13.44e3, dtype=np.float64)
+    return da.arange(950e6, 1760e6, 13.44e3, dtype=np.float32)
 
 def _ska_mid_b5a_freq():
-    return da.arange(4.6e9, 8.5e9, 13.44e3, dtype=np.float64)
+    return da.arange(4.6e9, 8.5e9, 13.44e3, dtype=np.float32)
 
 def _ska_mid_b5b_freq():
-    return da.arange(8.3e9, 15.4e9, 13.44e3, dtype=np.float64)
+    return da.arange(8.3e9, 15.4e9, 13.44e3, dtype=np.float32)
 
 
 # Internal band id (used in code) -> config
 SKA_BANDS = {
     "SKA-LOW":      {"freq": _ska_low_freq,   "short": "LOW"},
+    "SKA-MID B1":   {"freq": _ska_mid_b1_freq, "short": "B1"},
     "SKA-MID B2":   {"freq": _ska_mid_b2_freq, "short": "B2"},
     "SKA-MID B5a":  {"freq": _ska_mid_b5a_freq, "short": "B5a"},
     "SKA-MID B5b":  {"freq": _ska_mid_b5b_freq, "short": "B5b"},
 }
 
-# CLI band choices: low, mid-b2, mid-b5a, mid-b5b -> internal name
+# CLI band choices: low, mid-b1, mid-b2, mid-b5a, mid-b5b -> internal name
 BAND_CLI_TO_INTERNAL = {
     "low": "SKA-LOW",
+    "mid-b1": "SKA-MID B1",
     "mid-b2": "SKA-MID B2",
     "mid-b5a": "SKA-MID B5a",
     "mid-b5b": "SKA-MID B5b",
@@ -115,6 +120,7 @@ MIXED_CONFIG = [
 
 RFI_REMOVE_FRAC_PER_BAND = {
     "SKA-LOW": 0.30,
+    "SKA-MID B1": 0.20,
     "SKA-MID B2": 0.20,
     "SKA-MID B5a": 0.10,
     "SKA-MID B5b": 0.10,
@@ -123,6 +129,7 @@ RFI_REMOVE_FRAC_PER_BAND = {
 TARGET_SNR_WORST = 10
 NOISE_BAND_FACTOR = {
     "SKA-LOW": 1.2,
+    "SKA-MID B1": 1.0,
     "SKA-MID B2": 1.0,
     "SKA-MID B5a": 0.9,
     "SKA-MID B5b": 0.9,
@@ -133,7 +140,8 @@ DEPOL_SIGMA_RM_THICK = 3.0  # rad/m²
 
 
 # ---------------------------------------------------------------------------
-# Reconstructor default
+# Reconstructor default and choices
 # ---------------------------------------------------------------------------
 
-RECONSTRUCTOR_DEFAULT = "cg"
+RECONSTRUCTOR_CHOICES = ("csromer", "cg", "clean")
+RECONSTRUCTOR_DEFAULT = "csromer"

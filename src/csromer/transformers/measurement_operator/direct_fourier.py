@@ -144,25 +144,13 @@ class DirectFourier1D(MeasurementOperator):
         """
         Rotation Measure Transfer Function (RMTF).
 
-        Public method. Computes response to a point source at phi_x. Uses weighted
-        adjoint of ones.
+        Adjoint of (weights / sum(weights)), with l2_ref applied. Same convention
+        as the dirty map beam; no n_chan factor (direct operator).
 
         Args:
-            phi_x: Faraday depth of point source (rad/m², default: 0.0)
+            phi_x: Faraday depth of point source (rad/m², unused for direct)
 
         Returns:
             RMTF array (n_phi,)
         """
-        l2 = self.dataset.lambda2
-        phi = self.parameter.phi
-        if da is not None and is_dask_array(phi):
-            phi = asnumpy(phi)
-        w = self.dataset.w
-        s = self.dataset.s if self.dataset.s is not None else (da.ones_like(w) if (da and is_dask_array(w)) else np.ones_like(w))
-        k = float(self.dataset.k.compute()) if self.dataset.k is not None and hasattr(self.dataset.k, "compute") else (float(self.dataset.k) if self.dataset.k is not None else 1.0)
-        weights = w / s
-        exp_adj = _exp_adjoint(l2, phi)
-        if da is not None and (is_dask_array(weights) or is_dask_array(exp_adj)):
-            x = da.einsum("j,ji->i", weights, exp_adj)
-            return (x / k).astype(np.complex64)
-        return (np.dot(np.asarray(weights), np.asarray(exp_adj)) / k).astype(np.complex64)
+        return self._adjoint_normalized_weights()

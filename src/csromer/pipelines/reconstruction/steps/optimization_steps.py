@@ -14,17 +14,11 @@ from ..defaults import build_measurement_operator, build_parameter, default_obje
 from ..optimizer_factories import make_fista_optimizer
 from ..reconstruction_stats import (
     calculate_fd_signal_noise,
+    calculate_ricean_peak,
     calculate_second_moment,
     calculate_sigma_phi_peak,
     estimate_peak_quadratic_interpolation,
 )
-
-
-def _get_rm(ctx, fd_data: np.ndarray) -> float:
-    fd_abs = np.asarray(asnumpy(np.abs(fd_data)))
-    idx = int(np.argmax(fd_abs))
-    phi = np.asarray(asnumpy(ctx.parameter.phi))
-    return float(phi[idx])
 
 
 class L2ZeroStep:
@@ -130,7 +124,7 @@ class DirtyStatsStep:
             ctx.parameter.phi,
             ctx.parameter.max_faraday_depth,
         )
-        ctx.rm_dirty = _get_rm(ctx, ctx.fd_dirty)
+        ctx.rm_dirty = ctx.get_rm(ctx.fd_dirty)
         ctx.rm_dirty_error = calculate_sigma_phi_peak(
             ctx.parameter.rmtf_fwhm,
             float(np.max(np.abs(ctx.fd_dirty))),
@@ -201,8 +195,10 @@ class OptimizationStep:
                             k, lam, chi2_val, target_chi2
                         )
                     )
-                # If chi2 drops below the target, stop immediately and keep this λ.
-                if target_chi2 > 0.0 and chi2_val <= target_chi2:
+                # If chi2 is at or below target (within relative tolerance), stop and keep this λ.
+                chi2_rel_tol = float(getattr(ctx, "chi2_target_rel_tol", 0.05))
+                chi2_accept = target_chi2 * (1.0 + chi2_rel_tol)
+                if target_chi2 > 0.0 and chi2_val <= chi2_accept:
                     X = X_k
                     ctx.lambda_l_norm = lam
                     break
@@ -242,26 +238,7 @@ class OptimizationStep:
             X.data = ctx.wavelet.reconstruct_complex(X.data)
         ctx.fd_model = X.data
 
-        # DEBUG: check that dataset.model_data matches forward(fd_model)
-        try:
-            fd_model_np = np.asarray(asnumpy(ctx.fd_model))
-            forward_from_fd = np.asarray(
-                asnumpy(ctx.measurement_operator.forward(fd_model_np))
-            )
-            model_data_np = np.asarray(asnumpy(ctx.dataset.model_data))
-            diff = forward_from_fd - model_data_np
-            max_diff = float(np.max(np.abs(diff)))
-            max_model = float(np.max(np.abs(model_data_np))) if model_data_np.size else 0.0
-            max_forward = float(np.max(np.abs(forward_from_fd))) if forward_from_fd.size else 0.0
-            print(
-                "[model/dataset consistency] max|forward(fd_model)-model_data|=%.6e  "
-                "max|model_data|=%.6e  max|forward(fd_model)|=%.6e"
-                % (max_diff, max_model, max_forward)
-            )
-        except Exception as exc:
-            print("[model/dataset consistency] check failed:", repr(exc))
-
-        ctx.rm_model = _get_rm(ctx, ctx.fd_model)
+        ctx.rm_model = ctx.get_rm(ctx.fd_model)
         ctx.second_moment = calculate_second_moment(ctx.parameter.phi, ctx.fd_model)
 
 
@@ -272,14 +249,15 @@ class RestorationStep:
         ctx.fd_residual = ctx.measurement_operator.dirty_spectrum(
             ctx.dataset.data - ctx.dataset.model_data
         )
-        conv_model = ctx.parameter.convolve(x=ctx.fd_model)
-        # Keep fractional for correct Jy/phi -> Jy/rmtf scaling; do not round.
-        pixels_per_rmtf = float(ctx.parameter.rmtf_fwhm / ctx.parameter.cellsize)
+        # Convolve complex Faraday spectrum and its amplitude with the clean beam.
+        conv_model, conv_abs_model = ctx.parameter.convolve(x=ctx.fd_model)
         # Cache for later reuse in RestoredStatsStep.
         ctx.conv_model = conv_model
-        ctx.pixels_per_rmtf = pixels_per_rmtf
-        # Original scaling to Jy/RMSF:
-        ctx.fd_restored = conv_model * pixels_per_rmtf + ctx.fd_residual
+        ctx.conv_abs_model = conv_abs_model
+        # Restored complex spectrum: CLEAN-style model + residual (same units as dirty).
+        ctx.fd_restored = conv_model + ctx.fd_residual
+        # Restored amplitude: |model| restored + |residual|.
+        ctx.fd_restored_abs = conv_abs_model + np.abs(ctx.fd_residual)
 
 
 class RestoredStatsStep:
@@ -297,14 +275,15 @@ class RestoredStatsStep:
             "pixels_per_rmtf",
             ctx.parameter.rmtf_fwhm / ctx.parameter.cellsize,
         )
-        conv_model = getattr(
+        # Complex model convolved with clean beam (from RestorationStep).
+        conv_model = getattr(ctx, "conv_model", ctx.parameter.convolve(x=ctx.fd_model)[0])
+        # Amplitude |F| convolved with clean beam (if available).
+        conv_abs_model = getattr(
             ctx,
-            "conv_model",
-            ctx.parameter.convolve(x=ctx.fd_model),
+            "conv_abs_model",
+            ctx.parameter.convolve(x=ctx.fd_model)[1],
         )
-        # Original Jy/RMSF scaling:
-        # conv_Jy_rmtf = conv_model * pixels_per_rmtf
-        conv_Jy_rmtf = conv_model
+
         print("[restore DEBUG]")
         print(
             "  cellsize=%.6f  rmtf_fwhm=%.6f  pixels_per_rmtf=%.4f"
@@ -315,12 +294,17 @@ class RestoredStatsStep:
             % (_peak(ctx.fd_dirty), _peak(ctx.fd_model), _peak(ctx.fd_residual))
         )
         print(
-            "  peak:  conv_model(Jy/phi)=%.6e  conv*ppr(Jy/rmtf)=%.6e  restored=%.6e"
-            % (_peak(conv_model), _peak(conv_Jy_rmtf), _peak(ctx.fd_restored))
+            "  peak:  conv_model(Jy/rmtf)=%.6e restored=%.6e"
+            % (_peak(conv_model), _peak(ctx.fd_restored))
         )
         print(
             "  sum|model|=%.6e  sum|conv_model|=%.6e"
             % (_sumabs(ctx.fd_model), _sumabs(conv_model))
+        )
+        # Optional diagnostic for amplitude-restored spectrum.
+        print(
+            "  peak:  conv_abs_model=%.6e (amp-restored)"
+            % (_peak(conv_abs_model),)
         )
         print(
             "  ratio dirty_peak/model_peak=%.4f  (expect ~pixels_per_rmtf=%.4f)"
@@ -369,20 +353,25 @@ class RestoredStatsStep:
             "  fd-space: mad_std(fd_residual)=%.6e  rms(|fd_residual|)=%.6e  rms(|fd_restored|)=%.6e"
             % (mad_fd_res, rms_fd_res, rms_fd_rest)
         )
-        ctx.rm_restored = _get_rm(ctx, ctx.fd_restored)
-        ctx.rm_restored_error = calculate_sigma_phi_peak(
-            ctx.parameter.rmtf_fwhm,
-            float(np.max(np.abs(ctx.fd_restored))),
-            restored_noise,
-        )
+        # RM at the peak from the model (grid-based; kept for diagnostics).
+        ctx.rm_peak = ctx.get_rm(ctx.fd_model)
+        # Peak amplitude from fd_restored_abs at model peak, Rician-corrected; use residual noise for error.
+        fd_restored_abs = np.asarray(asnumpy(ctx.fd_restored_abs))
+        peak_idx = int(np.argmax(np.abs(np.asarray(asnumpy(ctx.fd_model)))))
+        peak_restored_abs = float(fd_restored_abs[peak_idx])
+        peak_restored_abs_corrected = calculate_ricean_peak(peak_restored_abs, restored_noise)
         (
             ctx.rm_restored_quadratic_interpolation,
             ctx.restored_peak_quadratic_interpolation,
         ) = estimate_peak_quadratic_interpolation(
             ctx.fd_restored, ctx.parameter.cellsize
         )
+        # Use the Ricean-corrected peak and residual noise for the quadratic-interp RM error,
+        # and adopt the quadratic-interpolated RM and its error as the canonical restored values.
         ctx.rm_restored_quadratic_interpolation_error = calculate_sigma_phi_peak(
             ctx.parameter.rmtf_fwhm,
-            ctx.restored_peak_quadratic_interpolation,
+            peak_restored_abs_corrected,
             restored_noise,
         )
+        ctx.rm_restored = ctx.rm_restored_quadratic_interpolation
+        ctx.rm_restored_error = ctx.rm_restored_quadratic_interpolation_error

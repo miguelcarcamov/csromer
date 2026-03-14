@@ -11,9 +11,8 @@ from typing import TYPE_CHECKING, Union
 
 import numpy as np
 from astropy.convolution import Gaussian1DKernel
-from scipy import signal as sci_signal
 
-from ..utils import complex_to_real, next_power_2, real_to_complex
+from ..utils import complex_to_real, convolve as convolve_real, convolve_complex, next_power_2, real_to_complex
 from ..utils.array_utils import asnumpy, is_dask_array, length_of
 
 if TYPE_CHECKING:
@@ -231,6 +230,53 @@ class Parameter:
         else:
             raise ValueError("Parameter data is not real")
 
+    def _clean_beam_kernel(self, rmtf_fwhm: float):
+        """Build peak-normalized Gaussian clean beam kernel (max=1) from RMTF FWHM."""
+        val_fwhm = 2.0 * np.sqrt(2.0 * np.log(2.0))
+        sigma_x = rmtf_fwhm / val_fwhm
+        sigma_x_pixels = max(1.0, sigma_x / self.cellsize)
+        clean_beam = Gaussian1DKernel(stddev=sigma_x_pixels)
+        kernel = np.asarray(clean_beam.array, dtype=np.float32).ravel()
+        kernel /= kernel.max()
+        return kernel
+
+    def convolve_fd(
+        self, x=None, rmtf_fwhm=None
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Convolve Faraday depth spectrum with Gaussian restore beam (max=1, peak-conserving).
+
+        Convolves real and imaginary parts separately (complex restored) and also
+        convolves the amplitude |F(φ)| (abs restored). Returns both products.
+
+        Args:
+            x: Input array (default: self.data), Jy/phi_pixel
+            rmtf_fwhm: RMTF FWHM for kernel (default: self.rmtf_fwhm)
+
+        Returns:
+            (complex_restored, abs_restored): complex FD convolved (real+imag each convolved),
+            and real array of convolved amplitude.
+        """
+        if rmtf_fwhm is None:
+            rmtf_fwhm = self.rmtf_fwhm
+        kernel = self._clean_beam_kernel(rmtf_fwhm)
+        val_fwhm = 2.0 * np.sqrt(2.0 * np.log(2.0))
+        sigma_x = rmtf_fwhm / val_fwhm
+        sigma_x_pixels = max(1.0, sigma_x / self.cellsize)
+        print(
+            "Convolving with Gaussian kernel where FWHM {0:2.3f} rad/m^2 - sigma {1:2.3f} rad/m^2 - sigma_pixels {2:.4f}"
+            .format(rmtf_fwhm, sigma_x, sigma_x_pixels)
+        )
+        print(
+            "  [convolve_fd] kernel len=%d sum=%.6f max=%.6f (peak=1)"
+            % (len(kernel), float(kernel.sum()), 1.0)
+        )
+        data_src = x if x is not None else self.data
+        data_np = np.asarray(asnumpy(data_src), dtype=np.complex64)
+        complex_restored = convolve_complex(data_np, kernel, mode="same")
+        abs_restored = convolve_real(np.abs(data_np), kernel, mode="same")
+        return complex_restored, abs_restored
+
     def convolve(self, x=None, rmtf_fwhm=None) -> np.ndarray:
         """
         Convolve Faraday depth spectrum with Gaussian restore beam (max=1, peak-conserving).
@@ -246,36 +292,5 @@ class Parameter:
         Returns:
             Convolved spectrum (complex), Jy/phi_pixel
         """
-        if rmtf_fwhm is None:
-            rmtf_fwhm = self.rmtf_fwhm
-
-        val_fwhm = 2.0 * np.sqrt(2.0 * np.log(2.0))
-        sigma_x = rmtf_fwhm / val_fwhm
-        # Use float sigma so kernel FWHM in physical space equals rmtf_fwhm (integer rounding
-        # would oversmooth and merge closely spaced components)
-        sigma_x_pixels = max(1.0, sigma_x / self.cellsize)
-
-        print(
-            "Convolving with Gaussian kernel where FWHM {0:2.3f} rad/m^2 - sigma {1:2.3f} rad/m^2 - sigma_pixels {2:.4f}"
-            .format(rmtf_fwhm, sigma_x, sigma_x_pixels)
-        )
-
-        clean_beam = Gaussian1DKernel(stddev=sigma_x_pixels)
-        clean_beam_array = np.asarray(clean_beam.array, dtype=np.float64).ravel()
-        # Normalize so max=1: conserves peak (flux) so conv_model peak ≈ model peak
-        k_max = float(np.max(clean_beam_array))
-        if k_max > 0:
-            clean_beam_array = clean_beam_array / k_max
-        print("  [convolve] kernel len=%d sum=%.6f max=%.6f (max=1, peak-conserving)" % (
-            len(clean_beam_array), float(np.sum(clean_beam_array)), float(np.max(clean_beam_array))))
-
-        data_src = x if x is not None else self.data
-        data_np = np.asarray(asnumpy(data_src), dtype=np.complex128)
-        print("  [convolve] input x is None=%s  peak|data_np|=%.6e  sum|data_np|=%.6e" % (
-            x is None, float(np.max(np.abs(data_np))), float(np.sum(np.abs(data_np)))))
-
-        # Convolve real and imaginary parts separately (keeps multiple peaks separated)
-        q_stokes = sci_signal.convolve(data_np.real, clean_beam_array, mode="same", method="fft")
-        u_stokes = sci_signal.convolve(data_np.imag, clean_beam_array, mode="same", method="fft")
-        p_stokes = (q_stokes + 1j * u_stokes).astype(data_np.dtype)
-        return p_stokes
+        complex_restored, abs_restored = self.convolve_fd(x=x, rmtf_fwhm=rmtf_fwhm)
+        return complex_restored, abs_restored

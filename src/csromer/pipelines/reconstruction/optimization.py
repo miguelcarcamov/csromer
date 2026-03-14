@@ -19,14 +19,13 @@ import numpy as np
 from csromer.dictionaries import Wavelet
 from csromer.reconstruction import Parameter
 from csromer.transformers.flaggers.flagger import Flagger
-from csromer.utils.array_utils import asnumpy
 
-from .base import FaradayReconstructorWrapper
+from .base import PipelineFaradayReconstructor
 from .optimizer_factories import make_cg_optimizer, make_fista_optimizer
-from .reconstruction_stats import calculate_second_moment
 from .steps import (
     BuildMeasurementOperatorStep,
     BuildParameterStep,
+    Clean1DStep,
     DefaultObjectiveFactoryStep,
     DefaultOptimizerFactoryStep,
     DirtyMapStep,
@@ -43,7 +42,7 @@ if TYPE_CHECKING:
 
 
 @dataclass(init=True, repr=True)
-class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
+class CSROMERReconstructorWrapper(PipelineFaradayReconstructor):
     """
     Pipeline-based reconstructor: inject parameter, measurement operator, objective, optimizer.
 
@@ -62,6 +61,8 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
         oversampling (7.0), measurement_operator_kind ("direct"), lambda_l_norm (0.0),
         wavelet (None), calculate_l2_zero (False). When kind is "gridded": gridding_kernel
         ("kaiser" or "box"), gridding_kernel_half_width (4.0), gridding_kernel_beta (2.5).
+        When adaptive_lambda is True: target_chi2 (1.0), chi2_target_rel_tol (0.1),
+        lambda_update_gamma (0.5), max_lambda_updates (5).
 
     After reconstruct(): fd_dirty, fd_model, fd_residual, fd_restored, rm_dirty,
         rm_model, rm_restored, second_moment, and error/quadratic-interp attributes.
@@ -83,28 +84,11 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
     # Optional adaptive-λ configuration (for experimental outer-loop lambda selection)
     adaptive_lambda: bool = False
     target_chi2: float = 1.0
+    chi2_target_rel_tol: float = 0.05  # accept when chi2 <= target_chi2 * (1 + this)
     lambda_update_gamma: float = 0.5
     lambda_min: float = 0.0
     lambda_max: float = np.inf
     max_lambda_updates: int = 5
-
-    coefficients: np.ndarray = field(init=False, default=None)
-    fd_dirty: np.ndarray = field(init=False, default=None)
-    rm_dirty: float = field(init=False, default=None)
-    rm_dirty_error: float = field(init=False, default=None)
-    rm_dirty_quadratic_interpolation: float = field(init=False, default=None)
-    dirty_peak_quadratic_interpolation: float = field(init=False, default=None)
-    rm_dirty_quadratic_interpolation_error: float = field(init=False, default=None)
-    fd_model: np.ndarray = field(init=False, default=None)
-    rm_model: float = field(init=False, default=None)
-    fd_residual: np.ndarray = field(init=False, default=None)
-    fd_restored: np.ndarray = field(init=False, default=None)
-    rm_restored: float = field(init=False, default=None)
-    rm_restored_error: float = field(init=False, default=None)
-    rm_restored_quadratic_interpolation: float = field(init=False, default=None)
-    restored_peak_quadratic_interpolation: float = field(init=False, default=None)
-    rm_restored_quadratic_interpolation_error: float = field(init=False, default=None)
-    second_moment: float = field(init=False, default=None)
 
     def get_steps(self):
         return [
@@ -121,33 +105,45 @@ class CSROMERReconstructorWrapper(FaradayReconstructorWrapper):
             RestoredStatsStep(),
         ]
 
-    def config_fd_space(self, cellsize: float = None, oversampling: float = None):
-        if cellsize is not None and oversampling is not None:
-            self.parameter.calculate_cellsize(dataset=self.dataset, cellsize=cellsize)
-        elif oversampling is not None:
-            self.parameter.calculate_cellsize(dataset=self.dataset, oversampling=oversampling)
-        elif cellsize is not None:
-            self.parameter.calculate_cellsize(dataset=self.dataset, cellsize=cellsize)
-        else:
-            raise ValueError("Provide cellsize or oversampling")
 
-    def flag_dataset(self, flagger: Flagger = None) -> tuple:
-        f = flagger if flagger is not None else self.flagger
-        return f.run()
+@dataclass(init=True, repr=True)
+class CLEANReconstructorWrapper(PipelineFaradayReconstructor):
+    """
+    Pipeline-based reconstructor using 1D CLEAN from the dirty map (no optimization).
 
-    def get_dirty_faraday_depth(self) -> np.ndarray:
-        return self.measurement_operator.dirty_spectrum(self.dataset.data)
+    Steps: L2Zero → BuildParameter → BuildMeasurementOperator → Flag →
+    DirtyMap → DirtyStats → Clean1DStep → Restoration → RestoredStats.
 
-    def get_rmtf(self) -> np.ndarray:
-        return self.measurement_operator.RMTF()
+    Same result attributes as CSROMERReconstructorWrapper (fd_dirty, fd_model,
+    fd_restored, fd_residual, rm_*, second_moment, etc.).
+    """
+    parameter: Parameter = None
+    measurement_operator: "MeasurementOperator" = None
+    flagger: Flagger = None
+    oversampling: float = 7.0
+    measurement_operator_kind: str = "direct"
+    gridding_kernel: str = "kaiser"
+    gridding_kernel_half_width: float = 4.0
+    gridding_kernel_beta: float = 2.5
+    clean_gain: float = 0.2
+    clean_maxiter: int = 500
+    clean_threshold: float | None = None
+    clean_n_sigma: float | None = None
 
-    def get_rm(self, fd_data: np.ndarray) -> float:
-        fd_abs = np.asarray(asnumpy(np.abs(fd_data)))
-        idx = int(np.argmax(fd_abs))
-        phi = np.asarray(asnumpy(self.parameter.phi))
-        return float(phi[idx])
-
-    def calculate_second_moment(self) -> float:
-        if self.fd_model is None:
-            return 0.0
-        return calculate_second_moment(self.parameter.phi, self.fd_model)
+    def get_steps(self):
+        return [
+            L2ZeroStep(),
+            BuildParameterStep(),
+            BuildMeasurementOperatorStep(),
+            FlagDataStep(),
+            DirtyMapStep(),
+            DirtyStatsStep(),
+            Clean1DStep(
+                gain=self.clean_gain,
+                maxiter=self.clean_maxiter,
+                threshold=self.clean_threshold,
+                n_sigma=self.clean_n_sigma,
+            ),
+            RestorationStep(),
+            RestoredStatsStep(),
+        ]

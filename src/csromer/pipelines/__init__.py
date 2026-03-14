@@ -6,6 +6,7 @@ Pipelines: simulation and reconstruction.
 """
 from csromer.pipelines.core import Step, run_pipeline
 from csromer.pipelines.reconstruction import (
+    CLEANReconstructorWrapper,
     CSROMERReconstructorWrapper,
     FaradayReconstructorWrapper,
     PolAngleGradientReconstructorWrapper,
@@ -31,6 +32,7 @@ __all__ = [
     "ApplyNoiseStep",
     "ApplyRFIStep",
     "FaradayReconstructorWrapper",
+    "CLEANReconstructorWrapper",
     "CSROMERReconstructorWrapper",
     "PolAngleGradientReconstructorWrapper",
     "QUFittingReconstructorWrapper",

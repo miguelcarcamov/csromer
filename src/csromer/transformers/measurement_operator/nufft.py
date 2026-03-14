@@ -327,8 +327,8 @@ class NUFFT1D(DirectFourier1D):
         """
         Rotation Measure Transfer Function (RMTF).
 
-        Public method. Uses direct adjoint of ones (from base class) then normalizes
-        by n_phi if normalize=True.
+        Adjoint of (weights / sum(weights)), then multiplied by n_phi so the
+        RMTF matches this operator's dirty map convention (same as _dirty_spectrum_impl).
 
         Args:
             phi_x: Faraday depth of point source (rad/m², default: 0.0)
@@ -337,9 +337,5 @@ class NUFFT1D(DirectFourier1D):
             RMTF array (n_phi,)
         """
         rmtf = super().RMTF(phi_x)
-        # Note: With norm="forward" in FFT/IFFT, the scaling is already handled correctly
-        # Multiplying by N here would cause incorrect scaling
-        # The normalize parameter is kept for backward compatibility but does nothing
-        # if self.normalize:
-        #     rmtf = rmtf * len(self.parameter.phi)
-        return rmtf
+        n_phi = len(self.parameter.phi)
+        return (rmtf * n_phi).astype(np.complex64)

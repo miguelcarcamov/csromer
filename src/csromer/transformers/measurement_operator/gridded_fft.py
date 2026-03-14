@@ -16,7 +16,7 @@ from typing import Any, Union
 
 import numpy as np
 
-from ...utils.array_utils import asnumpy, is_dask_array
+from ...utils.array_utils import asnumpy, is_dask_array, math_module
 from .base import MeasurementOperator
 
 try:
@@ -105,15 +105,39 @@ class GriddedFFT1D(MeasurementOperator):
         """
         Rotation Measure Transfer Function (RMTF).
 
-        Public method. For gridded FFT, RMTF is uniform (all ones).
+        Adjoint of (weights / sum(weights)), then multiplied by n_chan. Uses
+        this class's adjoint (IFFT-based) so the gridded transform is used.
 
         Args:
-            phi_x: Faraday depth of point source (rad/m², unused for gridded FFT)
+            phi_x: Faraday depth of point source (rad/m², unused)
 
         Returns:
-            RMTF array (n_phi,) of ones
+            RMTF array (n_phi,), same units as dirty map.
         """
-        n = self.parameter.phi.shape[0]
-        if da is not None:
-            return da.ones(n, dtype=np.complex64, chunks=(n,))
-        return np.ones(n, dtype=np.complex64)
+        if self.dataset is None:
+            raise RuntimeError("dataset is required for RMTF")
+        w = self.dataset.w
+        s = getattr(self.dataset, "s", None)
+        xp = math_module(w)
+        weights = (w / s) if s is not None else w
+        sum_w = xp.sum(weights)
+        sum_w = sum_w.compute() if hasattr(sum_w, "compute") else sum_w
+        sum_w = float(sum_w) if sum_w is not None else 1.0
+        if abs(sum_w) < 1e-10:
+            sum_w = 1.0
+        normalized = weights / sum_w
+        # Use this class's adjoint (IFFT path), not the base helper
+        raw = self.adjoint(normalized)
+        l2_ref = getattr(self.dataset, "l2_ref", None)
+        if (
+            self.parameter is not None
+            and l2_ref is not None
+            and abs(float(l2_ref)) >= 1e-10
+        ):
+            xp = math_module(raw)
+            phi = self.parameter.phi
+            phi_same = xp.asarray(phi)
+            phase_ramp = xp.exp(2.0j * phi_same * float(l2_ref)).astype(np.complex64)
+            raw = raw * phase_ramp
+        n_chan = self.dataset.m
+        return (raw * n_chan).astype(np.complex64)

@@ -13,6 +13,7 @@ pytestmark = pytest.mark.integration
 
 from csromer.simulation import FaradayThinSource
 from csromer.pipelines.reconstruction import (
+    CLEANReconstructorWrapper,
     CSROMERReconstructorWrapper,
     make_cg_optimizer,
     make_fista_optimizer,
@@ -52,6 +53,31 @@ def test_cg_reconstruction_end_to_end(small_thin_source):
     assert recon.fd_residual.shape == (n_phi,)
     assert np.all(np.isfinite(recon.fd_residual))
 
+    assert np.isfinite(recon.rm_dirty)
+    assert np.isfinite(recon.rm_model)
+    assert np.isfinite(recon.rm_restored)
+    assert np.isfinite(recon.second_moment)
+
+
+def test_clean_reconstruction_end_to_end(small_thin_source):
+    """CLEAN reconstructor: simulate -> reconstruct -> check shapes and finite outputs."""
+    recon = CLEANReconstructorWrapper(
+        dataset=small_thin_source,
+        oversampling=4.0,
+        clean_maxiter=50,
+        clean_gain=0.2,
+    )
+    recon.reconstruct()
+
+    n_phi = recon.parameter.phi.shape[0]
+    assert recon.fd_dirty.shape == (n_phi,)
+    assert np.all(np.isfinite(recon.fd_dirty))
+    assert recon.fd_model.shape == (n_phi,)
+    assert np.all(np.isfinite(recon.fd_model))
+    assert recon.fd_restored.shape == (n_phi,)
+    assert np.all(np.isfinite(recon.fd_restored))
+    assert recon.fd_residual.shape == (n_phi,)
+    assert np.all(np.isfinite(recon.fd_residual))
     assert np.isfinite(recon.rm_dirty)
     assert np.isfinite(recon.rm_model)
     assert np.isfinite(recon.rm_restored)

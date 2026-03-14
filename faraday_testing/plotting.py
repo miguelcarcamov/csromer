@@ -57,13 +57,35 @@ def _draw_pol_vs_l2(ax, l2, data, color_main: str, title: str, use_distinct_re_i
     ax.grid(True, alpha=0.3)
 
 
-def _draw_fd_panel(ax, phi, fd_dirty, fd_restored, sigma, recon, xlim_phi: tuple[float, float], title: str) -> float:
+def _draw_fd_panel(
+    ax,
+    phi,
+    fd_dirty,
+    fd_restored,
+    sigma,
+    recon,
+    xlim_phi: tuple[float, float],
+    title: str,
+) -> float:
+    """Draw FD spectrum panel. Restored curve is |fd_restored| (amplitude of restored complex spectrum)."""
     ax.plot(phi, np.abs(fd_dirty), "-", color=COLORS["teal"], lw=1.2, alpha=0.9, label=r"Dirty $|F(\phi)|$")
-    ax.plot(phi, np.abs(fd_restored), "-", color=COLORS["black"], lw=1.5, alpha=0.9, label=r"Restored $|F(\phi)|$")
+    restored_amp = np.abs(np.asarray(fd_restored))
+    ax.plot(phi, restored_amp, "-", color=COLORS["black"], lw=1.5, alpha=0.9, label=r"Restored $|F(\phi)|$")
     ax.axhline(5.0 * sigma, color=COLORS["gray"], linestyle="--", lw=1, alpha=0.8, label=r"5$\sigma$")
-    peak_idx = np.argmax(np.abs(fd_restored))
-    peak_phi = float(phi[peak_idx])
-    peak_err = getattr(recon, "rm_restored_error", None)
+    # Prefer quadratic-interpolated RM and its error when available, falling back to grid-based peak.
+    peak_phi = getattr(
+        recon,
+        "rm_restored_quadratic_interpolation",
+        getattr(recon, "rm_restored", None),
+    )
+    if peak_phi is None:
+        peak_idx = int(np.argmax(restored_amp))
+        peak_phi = float(phi[peak_idx])
+    peak_err = getattr(
+        recon,
+        "rm_restored_quadratic_interpolation_error",
+        getattr(recon, "rm_restored_error", None),
+    )
     ax.axvline(peak_phi, color=COLORS["accent"], linestyle="-", lw=1.2, alpha=0.45, label=peak_legend_label(peak_phi, peak_err))
     ax.set_xlim(xlim_phi[0], xlim_phi[1])
     ax.set_ylabel(r"$|F(\phi)|$ [Jy/RMSF]", fontsize=11)
