@@ -46,7 +46,7 @@ def clean_1d(
         rmtf_at_zero: Complex 1D RMTF at phi=0, same length as dirty, peak at center.
         gain: Loop gain (typical 0.1--0.3).
         maxiter: Maximum number of CLEAN components.
-        threshold: Optional; stop when max(|residual|) < threshold.
+        threshold: Optional; stop when max(|residual|) < threshold (threshold in FD-space units).
         n_phi: Length of grid (default len(dirty)); used for shift.
 
     Returns:

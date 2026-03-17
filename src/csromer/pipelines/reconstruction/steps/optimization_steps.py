@@ -17,6 +17,7 @@ from ..reconstruction_stats import (
     calculate_ricean_peak,
     calculate_second_moment,
     calculate_sigma_phi_peak,
+    compute_fd_noise_propagated,
     estimate_peak_quadratic_interpolation,
 )
 
@@ -66,22 +67,57 @@ class BuildMeasurementOperatorStep:
                 ctx._n_eff_after_grid = float(n_eff) if n_eff is not None else None
 
 
+class FDSigmaStep:
+    """
+    Optionally compute FD-space noise σ_fd from data-space Σ_d via A^H Σ_d A (Hutchinson).
+
+    Uses only the measurement operator and dataset noise (sigma or w). No dirty map,
+    no edges, no signal regions. When ctx.compute_sigma_fd is True, sets ctx.sigma_fd
+    (global RMS) and ctx.sigma_fd_per_phi. Used by CLEAN threshold, FD-panel plotting,
+    and FISTA adaptive-λ FD acceptance when fd_accept_n_sigma is set.
+    """
+
+    def run(self, ctx) -> None:
+        if not getattr(ctx, "compute_sigma_fd", False):
+            return
+        op = getattr(ctx, "measurement_operator", None)
+        dataset = getattr(ctx, "dataset", None)
+        if op is None or dataset is None:
+            return
+        n_phi = ctx.parameter.n
+        n_samples = int(getattr(ctx, "fd_sigma_n_samples", 15))
+        try:
+            sigma_fd_global, sigma_fd_per_phi = compute_fd_noise_propagated(
+                op, dataset, n_phi, n_samples=n_samples
+            )
+            ctx.sigma_fd = sigma_fd_global
+            ctx.sigma_fd_per_phi = sigma_fd_per_phi
+        except Exception:
+            pass
+
+
 class DefaultObjectiveFactoryStep:
     """Set default objective_factory when None (ChiSquared + L1 from lambda_l_norm, wavelet)."""
 
     def run(self, ctx) -> None:
         if getattr(ctx, "objective_factory", None) is None:
-            lambda_l_norm = getattr(ctx, "lambda_l_norm", 0.0)
-            # Scale regularization when gridded so data-term vs L1 balance matches direct case
-            n_before = getattr(ctx, "_n_eff_before_grid", None)
-            n_after = getattr(ctx, "_n_eff_after_grid", None)
-            if (
-                n_before is not None
-                and n_after is not None
-                and n_after > 0
-                and lambda_l_norm != 0
-            ):
-                lambda_l_norm = lambda_l_norm * (n_before / n_after)
+            lambda_estimator = getattr(ctx, "lambda_estimator", None)
+            if lambda_estimator is not None:
+                # Estimate from current dataset (after gridding) so m/sigma match the fit.
+                lambda_l_norm = float(lambda_estimator(ctx.dataset))
+            else:
+                lambda_l_norm = getattr(ctx, "lambda_l_norm", 0.0)
+                # Scale regularization when gridded so data-term vs L1 balance matches direct case
+                n_before = getattr(ctx, "_n_eff_before_grid", None)
+                n_after = getattr(ctx, "_n_eff_after_grid", None)
+                if (
+                    n_before is not None
+                    and n_after is not None
+                    and n_after > 0
+                    and lambda_l_norm != 0
+                ):
+                    lambda_l_norm = lambda_l_norm * (n_before / n_after)
+            ctx.lambda_l_norm = lambda_l_norm
             ctx.objective_factory = default_objective_factory(
                 lambda_l_norm,
                 getattr(ctx, "wavelet", None),
@@ -189,16 +225,75 @@ class OptimizationStep:
                 ctx.parameter.data = X_k.data
                 # Evaluate differentiable-only part as Chi-squared surrogate
                 chi2_val = F_obj_k.calculate_function(X_k.data, differentiable_only=True)
+                # Optional: FD-space acceptance when sigma_fd is set (propagated from data, no edges).
+                # Use per-φ noise so we compare residual at each φ to its local σ_fd, not global RMS.
+                fd_accept = True
+                sigma_fd = getattr(ctx, "sigma_fd", None)
+                sigma_fd_per_phi = getattr(ctx, "sigma_fd_per_phi", None)
+                fd_accept_n_sigma = getattr(ctx, "fd_accept_n_sigma", None)
+                use_per_phi_fd = False
+                max_fd_res = 0.0
+                max_ratio = 0.0
+                fd_threshold = 0.0
+                if (
+                    fd_accept_n_sigma is not None
+                    and fd_accept_n_sigma > 0
+                    and (sigma_fd is not None or sigma_fd_per_phi is not None)
+                ):
+                    op = ctx.measurement_operator
+                    model_data = op.forward(X_k.data)
+                    model_data = np.asarray(asnumpy(model_data)).ravel()
+                    data_res = np.asarray(asnumpy(ctx.dataset.data)).ravel() - model_data
+                    fd_res = op.backward(data_res)
+                    fd_res = np.asarray(asnumpy(fd_res)).ravel()
+                    abs_fd_res = np.abs(fd_res)
+                    max_fd_res = float(np.max(abs_fd_res))
+                    if sigma_fd_per_phi is not None and sigma_fd_per_phi.size == abs_fd_res.size:
+                        sigma_per = np.asarray(asnumpy(sigma_fd_per_phi)).ravel()
+                        # Floor per-φ sigma so ratio is not blown up at insensitive φ (Hutchinson can be ~0 there)
+                        sigma_fd_global = getattr(ctx, "sigma_fd", None)
+                        floor = 1e-30
+                        if sigma_fd_global is not None and sigma_fd_global > 0:
+                            floor = max(floor, 0.01 * float(sigma_fd_global))
+                        sigma_per = np.maximum(sigma_per, floor)
+                        ratio = abs_fd_res / sigma_per
+                        max_ratio = float(np.max(ratio))
+                        use_per_phi_fd = True
+                        fd_accept = max_ratio <= fd_accept_n_sigma
+                    else:
+                        # Fallback: global σ_fd (RMS over φ)
+                        if sigma_fd is not None and sigma_fd > 0:
+                            fd_threshold = fd_accept_n_sigma * sigma_fd
+                            fd_accept = max_fd_res <= fd_threshold
+                            max_ratio = max_fd_res / sigma_fd
+                        else:
+                            max_ratio = 0.0
                 if getattr(ctx, "verbose", True):
-                    print(
-                        "[adaptive-λ] step={}  lambda={:.6g}  chi2={:.6g}  target={:.6g}".format(
-                            k, lam, chi2_val, target_chi2
+                    # target_chi2 = 0.5*S² ⇒ residual-sigma S = sqrt(2*target_chi2)
+                    target_sigma = (2.0 * target_chi2) ** 0.5 if target_chi2 > 0 else 0.0
+                    msg = (
+                        "[adaptive-λ] step={}  lambda={:.6g}  chi2={:.6g}  target_chi2={:.4g} ({:.2f}σ)".format(
+                            k, lam, chi2_val, target_chi2, target_sigma
                         )
                     )
-                # If chi2 is at or below target (within relative tolerance), stop and keep this λ.
+                    if (
+                        fd_accept_n_sigma is not None
+                        and fd_accept_n_sigma > 0
+                        and (sigma_fd is not None or sigma_fd_per_phi is not None)
+                    ):
+                        if use_per_phi_fd:
+                            msg += "  fd: max(|r_fd|/σ_fd(φ))={:.4g} (limit {:g}σ)  accept={}".format(
+                                max_ratio, fd_accept_n_sigma, fd_accept
+                            )
+                        else:
+                            msg += "  fd: max|r_fd|={:.4e} (limit {:g}*σ_fd={:.4e})  accept={}".format(
+                                max_fd_res, fd_accept_n_sigma, fd_threshold, fd_accept
+                            )
+                    print(msg)
+                # If chi2 is at or below target (within relative tolerance) and FD criterion passes, stop.
                 chi2_rel_tol = float(getattr(ctx, "chi2_target_rel_tol", 0.05))
                 chi2_accept = target_chi2 * (1.0 + chi2_rel_tol)
-                if target_chi2 > 0.0 and chi2_val <= chi2_accept:
+                if target_chi2 > 0.0 and chi2_val <= chi2_accept and fd_accept:
                     X = X_k
                     ctx.lambda_l_norm = lam
                     break
@@ -246,9 +341,11 @@ class RestorationStep:
     """Compute residual and restored map (CLEAN-style)."""
 
     def run(self, ctx) -> None:
-        ctx.fd_residual = ctx.measurement_operator.dirty_spectrum(
-            ctx.dataset.data - ctx.dataset.model_data
-        )
+        # Residual: from data space (optimization path) unless already set in FD space (CLEAN path).
+        if getattr(ctx, "fd_residual", None) is None:
+            ctx.fd_residual = ctx.measurement_operator.dirty_spectrum(
+                ctx.dataset.data - ctx.dataset.model_data
+            )
         # Convolve complex Faraday spectrum and its amplitude with the clean beam.
         conv_model, conv_abs_model = ctx.parameter.convolve(x=ctx.fd_model)
         # Cache for later reuse in RestoredStatsStep.

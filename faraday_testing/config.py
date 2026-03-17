@@ -30,10 +30,19 @@ def setup_matplotlib():
 
 
 # ---------------------------------------------------------------------------
-# Faraday depth (plotting default xlim when phi_xlim not set)
+# Faraday depth (plotting xlim ±value rad/m² per band; default when not set)
 # ---------------------------------------------------------------------------
 
-PHI_MAX = 1000.0   # rad/m²
+PHI_MAX = 1000.0   # rad/m² (fallback when band not in PHI_XLIM_BY_BAND)
+
+# FD plot x-axis half-width per band (wider for B5a/B5b so thick peaks are visible).
+PHI_XLIM_BY_BAND = {
+    "SKA-LOW": 100.0,
+    "SKA-MID B1": 1000.0,
+    "SKA-MID B2": 1000.0,
+    "SKA-MID B5a": 10000.0,
+    "SKA-MID B5b": 30000.0,
+}
 
 
 # ---------------------------------------------------------------------------
@@ -50,10 +59,10 @@ def _ska_mid_b2_freq():
     return da.arange(950e6, 1760e6, 13.44e3, dtype=np.float32)
 
 def _ska_mid_b5a_freq():
-    return da.arange(4.6e9, 8.5e9, 13.44e3, dtype=np.float32)
+    return da.arange(4.6e9, 8.5e9, 13.44e3 * 10.0, dtype=np.float32)
 
 def _ska_mid_b5b_freq():
-    return da.arange(8.3e9, 15.4e9, 13.44e3, dtype=np.float32)
+    return da.arange(8.3e9, 15.4e9, 13.44e3 * 10.0, dtype=np.float32)
 
 
 # Internal band id (used in code) -> config
@@ -101,17 +110,90 @@ THIN_PARAMS = {
     "dchi": 0.0,
 }
 
-THICK_PARAMS = {
-    "phi_fg": 10.0,
-    "phi_center": 20.0,
-    "s_nu": 1.0,
-    "spectral_idx": -0.7,
+# Nominal Faraday depth resolution Δφ_nom [rad/m²] per band (RMTF FWHM).
+DELTA_PHI_NOM_BY_BAND = {
+    "SKA-LOW": 9.837e-02,
+    "SKA-MID B1": 5.312,
+    "SKA-MID B2": 4.909e01,
+    "SKA-MID B5a": 1.153e03,
+    "SKA-MID B5b": 3.742e03,
 }
 
+# Max scale [rad/m²] per band: maximum recoverable Faraday structure width.
+# Thick source full width 2*phi_fg must be ≤ this. From band λ² coverage.
+MAX_SCALE_BY_BAND = {
+    "SKA-LOW": 4.282e00,
+    "SKA-MID B1": 3.854e01,
+    "SKA-MID B2": 1.083e02,
+    "SKA-MID B5a": 2.525e03,
+    "SKA-MID B5b": 8.290e03,
+}
+
+# Thick source: top-hat in FD with half-width phi_fg (full width 2*phi_fg).
+# phi_fg = min(THICK_PHI_FG_SCALE * Δφ_nom, MAX_SCALE/2) so 2*phi_fg ≤ MAX_SCALE.
+# Standalone: phi_center = 2*phi_fg (thick sits in positive phi). Mixed overrides phi_center.
+THICK_PHI_FG_SCALE = 2.0
+THICK_PHI_CENTER_MULT = 2.0
+
+
+def get_thick_params_for_band(band_name: str) -> dict:
+    """
+    Thick source params: half-width phi_fg (full width 2*phi_fg ≤ max scale), center 2*phi_fg.
+    Used as-is for standalone thick; mixed overrides phi_center to half_sep.
+    """
+    delta_phi = DELTA_PHI_NOM_BY_BAND.get(band_name)
+    if delta_phi is None:
+        delta_phi = 5.0
+    phi_fg = float(THICK_PHI_FG_SCALE * delta_phi)
+    max_scale = MAX_SCALE_BY_BAND.get(band_name)
+    if max_scale is not None and max_scale > 0 and 2.0 * phi_fg > max_scale:
+        phi_fg = float(0.5 * max_scale)
+    phi_center = float(THICK_PHI_CENTER_MULT * phi_fg)
+    return {
+        "phi_fg": phi_fg,
+        "phi_center": phi_center,
+        "s_nu": 1.0,
+        "spectral_idx": -0.7,
+    }
+
+# Mixed source: thin + thick. Fallback only when band not in DELTA_PHI_NOM_BY_BAND.
 MIXED_CONFIG = [
     {"type": "thin",  "phi_gal": -400.0, "s_nu": 0.5, "spectral_idx": -0.7, "dchi": 0.0},
     {"type": "thick", "phi_fg": 50.0, "phi_center": 400.0, "s_nu": 0.5, "spectral_idx": -0.7},
 ]
+
+# Mixed separation: thin at -half_sep, thick center at +half_sep.
+# Gap between thin peak and thick's nearest edge = 2*half_sep - phi_fg. Require gap >= min_gap
+# so the two are clearly recognizable (not one on top of the other).
+MIXED_MIN_GAP_BEAMS = 3.0  # minimum gap in resolution elements (Δφ_nom) between thin and thick
+MIXED_SEPARATION_IN_BEAMS = 4.0
+MIXED_SEPARATION_BEAMS_BY_BAND = {
+    "SKA-MID B5a": 8.0,
+    "SKA-MID B5b": 8.0,
+}
+
+
+def get_mixed_config_for_band(band_name: str) -> list:
+    """
+    Mixed source: thin (delta) at -half_sep, thick (top-hat half-width phi_fg) at +half_sep.
+    half_sep is chosen so (1) thick does not overlap thin, (2) gap >= MIXED_MIN_GAP_BEAMS * Δφ_nom
+    so the two components are clearly recognizable.
+    """
+    delta_phi = DELTA_PHI_NOM_BY_BAND.get(band_name)
+    if delta_phi is None:
+        return MIXED_CONFIG
+    n_beams = MIXED_SEPARATION_BEAMS_BY_BAND.get(band_name, MIXED_SEPARATION_IN_BEAMS)
+    thick_params = get_thick_params_for_band(band_name)
+    phi_fg = thick_params["phi_fg"]
+    # Gap = 2*half_sep - phi_fg. Need gap >= min_gap_beams * delta_phi and half_sep >= phi_fg.
+    min_gap = MIXED_MIN_GAP_BEAMS * delta_phi
+    half_sep_from_gap = (phi_fg + min_gap) / 2.0
+    half_sep_from_beams = 0.5 * n_beams * delta_phi
+    half_sep = max(half_sep_from_beams, half_sep_from_gap, phi_fg)
+    return [
+        {"type": "thin", "phi_gal": -half_sep, "s_nu": 0.5, "spectral_idx": -0.7, "dchi": 0.0},
+        {"type": "thick", **{**thick_params, "phi_center": half_sep}},
+    ]
 
 
 # ---------------------------------------------------------------------------

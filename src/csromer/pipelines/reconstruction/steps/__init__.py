@@ -11,6 +11,7 @@ from .optimization_steps import (
     DefaultOptimizerFactoryStep,
     DirtyMapStep,
     DirtyStatsStep,
+    FDSigmaStep,
     FlagDataStep,
     L2ZeroStep,
     OptimizationStep,
@@ -21,6 +22,7 @@ from .optimization_steps import (
 __all__ = [
     "Clean1DStep",
     "FlagDataStep",
+    "FDSigmaStep",
     "L2ZeroStep",
     "BuildParameterStep",
     "BuildMeasurementOperatorStep",

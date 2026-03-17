@@ -21,8 +21,9 @@ from faraday_testing.config import (
     NOISE_BAND_FACTOR,
     RFI_REMOVE_FRAC_PER_BAND,
     TARGET_SNR_WORST,
-    THICK_PARAMS,
     THIN_PARAMS,
+    get_mixed_config_for_band,
+    get_thick_params_for_band,
 )
 
 
@@ -31,9 +32,10 @@ def get_noise_sigma_jy(band_name: str, source_type: str) -> float:
     if source_type == "thin":
         ref = THIN_PARAMS["s_nu"]
     elif source_type == "thick":
-        ref = THICK_PARAMS["s_nu"]
+        ref = get_thick_params_for_band(band_name)["s_nu"]
     elif source_type == "mixed":
-        ref = MIXED_CONFIG[0]["s_nu"] + MIXED_CONFIG[1]["s_nu"]
+        mixed_cfg = get_mixed_config_for_band(band_name)
+        ref = mixed_cfg[0]["s_nu"] + mixed_cfg[1]["s_nu"]
     else:
         raise ValueError(f"Unknown source_type '{source_type}'")
     factor = NOISE_BAND_FACTOR.get(band_name, 1.0)
@@ -86,7 +88,8 @@ def _run_thin_sources(nu, band_name: str) -> dict:
 def _simulate_thick_clean(nu, band_name: str):
     sigma = get_noise_sigma_jy(band_name, "thick")
     rng = np.random.RandomState(60)
-    src = FaradayThickSource(nu=nu, **THICK_PARAMS)
+    thick_params = get_thick_params_for_band(band_name)
+    src = FaradayThickSource(nu=nu, **thick_params)
     run_simulation(src, [SimulateStep(), ApplyNoiseStep(sigma, random_state=rng)])
     return src
 
@@ -96,7 +99,8 @@ def _simulate_thick_rfi(nu, band_name: str):
     sigma = get_noise_sigma_jy(band_name, "thick")
     rng_noise = np.random.RandomState(61)
     remove_frac = RFI_REMOVE_FRAC_PER_BAND[band_name]
-    src = FaradayThickSource(nu=nu, **THICK_PARAMS)
+    thick_params = get_thick_params_for_band(band_name)
+    src = FaradayThickSource(nu=nu, **thick_params)
     run_simulation(
         src,
         [
@@ -111,7 +115,8 @@ def _simulate_thick_rfi(nu, band_name: str):
 def _simulate_thick_depol(nu, band_name: str):
     sigma = get_noise_sigma_jy(band_name, "thick")
     rng = np.random.RandomState(62)
-    src = FaradayThickSource(nu=nu, **THICK_PARAMS)
+    thick_params = get_thick_params_for_band(band_name)
+    src = FaradayThickSource(nu=nu, **thick_params)
     run_simulation(src, [SimulateStep()])
     src.add_external_faraday_depolarization(sigma_rm=DEPOL_SIGMA_RM_THICK)
     run_simulation(src, [ApplyNoiseStep(sigma, random_state=rng)])
@@ -129,8 +134,9 @@ def _run_thick_sources(nu, band_name: str) -> dict:
 def _simulate_mixed_clean(nu, band_name: str):
     sigma = get_noise_sigma_jy(band_name, "mixed")
     rng = np.random.RandomState(70)
-    cfg_thin = {k: v for k, v in MIXED_CONFIG[0].items() if k != "type"}
-    cfg_thick = {k: v for k, v in MIXED_CONFIG[1].items() if k != "type"}
+    mixed_cfg = get_mixed_config_for_band(band_name)
+    cfg_thin = {k: v for k, v in mixed_cfg[0].items() if k != "type"}
+    cfg_thick = {k: v for k, v in mixed_cfg[1].items() if k != "type"}
     thin_c = FaradayThinSource(nu=nu, **cfg_thin)
     run_simulation(thin_c, [SimulateStep()])
     thick_c = FaradayThickSource(nu=nu, **cfg_thick)
@@ -145,8 +151,9 @@ def _simulate_mixed_rfi(nu, band_name: str):
     sigma = get_noise_sigma_jy(band_name, "mixed")
     rng_noise = np.random.RandomState(71)
     remove_frac = RFI_REMOVE_FRAC_PER_BAND[band_name]
-    cfg_thin = {k: v for k, v in MIXED_CONFIG[0].items() if k != "type"}
-    cfg_thick = {k: v for k, v in MIXED_CONFIG[1].items() if k != "type"}
+    mixed_cfg = get_mixed_config_for_band(band_name)
+    cfg_thin = {k: v for k, v in mixed_cfg[0].items() if k != "type"}
+    cfg_thick = {k: v for k, v in mixed_cfg[1].items() if k != "type"}
     thin_r = FaradayThinSource(nu=nu, **cfg_thin)
     run_simulation(thin_r, [SimulateStep()])
     thick_r = FaradayThickSource(nu=nu, **cfg_thick)

@@ -9,6 +9,8 @@ from __future__ import annotations
 import numpy as np
 from astropy.stats import sigma_clipped_stats
 
+from csromer.utils.array_utils import asnumpy
+
 
 def estimate_peak_quadratic_interpolation(
     fd_signal: np.ndarray, cellsize: float
@@ -44,8 +46,9 @@ def estimate_peak_quadratic_interpolation(
 
 
 def calculate_ricean_peak(peak: float, noise: float) -> float:
-    """Ricean-corrected peak value."""
-    return float(np.sqrt(peak**2 - (2.3 * noise**2)))
+    """Ricean-corrected peak value. Clamp to 0 when peak is consistent with noise."""
+    arg = peak**2 - (2.3 * noise**2)
+    return float(np.sqrt(max(0.0, arg)))
 
 
 def _robust_rms(data, sigma_val, cenfunc_val, stdfunc_val):
@@ -150,3 +153,57 @@ def calculate_second_moment(phi: np.ndarray, fd_model: np.ndarray) -> float:
         return 0.0
     first = np.sum(phi_nz * fd_abs) / k
     return float(np.sum(fd_abs * (phi_nz - first) ** 2) / k)
+
+
+def _dataset_sigma_sq(dataset) -> np.ndarray:
+    """Per-channel sigma² for Σ_d. Uses dataset.sigma or 1/w."""
+    sigma = getattr(dataset, "sigma", None)
+    if sigma is not None:
+        s = np.asarray(asnumpy(sigma))
+        return np.abs(s) ** 2
+    w = getattr(dataset, "w", None)
+    if w is not None:
+        w_np = np.asarray(asnumpy(w))
+        return np.where(w_np > 0, 1.0 / w_np, np.nan)
+    raise ValueError("Dataset has no sigma or w for noise.")
+
+
+def compute_fd_noise_propagated(
+    measurement_operator,
+    dataset,
+    n_phi: int,
+    n_samples: int = 15,
+):
+    """
+    Hutchinson-style estimate of FD-space noise from data-space Σ_d: diag(A^H Σ_d A).
+
+    Uses only the measurement operator and per-channel noise (dataset.sigma or 1/w).
+    No dirty map, no edges, no signal regions — pure error propagation from data
+    covariance Σ_d through A^H. Cov(r_fd) = A^H Σ_d A when data residual has Cov(r)=Σ_d.
+    Zero-weight (flagged) channels get variance 0 so they contribute nothing to the sum.
+    Returns global σ_fd (RMS over φ) and per-φ sigma. Use for CLEAN threshold,
+    FD-panel noise lines, or FISTA adaptive-λ FD acceptance.
+    """
+    sigma2 = _dataset_sigma_sq(dataset)
+    sigma2 = np.asarray(sigma2).ravel()
+    m = len(sigma2)
+    # Flagged / zero-weight channels: use 0 variance so they contribute nothing to A^H Σ_d A.
+    sigma2 = np.where(np.isfinite(sigma2) & (sigma2 > 0), sigma2, 0.0)
+
+    diag_est = np.zeros(n_phi, dtype=np.complex64)
+    for _ in range(n_samples):
+        z = (np.random.randn(n_phi) + 1j * np.random.randn(n_phi)) / np.sqrt(2)
+        Az = measurement_operator.forward(z)
+        Az = np.asarray(asnumpy(Az)).ravel()
+        if len(Az) != m:
+            raise ValueError(f"Forward output length {len(Az)} != dataset channels {m}")
+        SigmaAz = sigma2 * Az
+        AHSigmaAz = measurement_operator.backward(SigmaAz)
+        AHSigmaAz = np.asarray(asnumpy(AHSigmaAz)).ravel()
+        diag_est += z.conj() * AHSigmaAz
+    diag_est /= n_samples
+    var_fd = np.real(diag_est)
+    var_fd = np.maximum(var_fd, 1e-30)
+    sigma_fd_per_phi = np.sqrt(var_fd)
+    sigma_fd_global = float(np.sqrt(np.mean(var_fd)))
+    return sigma_fd_global, sigma_fd_per_phi

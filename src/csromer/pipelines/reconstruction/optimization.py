@@ -12,7 +12,7 @@ lambda_l_norm / wavelet.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, Optional
 
 import numpy as np
 
@@ -30,6 +30,7 @@ from .steps import (
     DefaultOptimizerFactoryStep,
     DirtyMapStep,
     DirtyStatsStep,
+    FDSigmaStep,
     FlagDataStep,
     L2ZeroStep,
     OptimizationStep,
@@ -75,6 +76,7 @@ class CSROMERReconstructorWrapper(PipelineFaradayReconstructor):
     oversampling: float = 7.0
     measurement_operator_kind: str = "direct"
     lambda_l_norm: float = 0.0
+    lambda_estimator: Optional[Callable] = None  # (dataset) -> float; used after gridding when set
     wavelet: Wavelet = None
     calculate_l2_zero: bool = False
     # Gridding options (when measurement_operator_kind == "gridded")
@@ -89,12 +91,18 @@ class CSROMERReconstructorWrapper(PipelineFaradayReconstructor):
     lambda_min: float = 0.0
     lambda_max: float = np.inf
     max_lambda_updates: int = 5
+    # FD-space noise from propagation A^H Σ_d A (Hutchinson); when True, sets ctx.sigma_fd
+    compute_sigma_fd: bool = False
+    fd_sigma_n_samples: int = 15
+    # When sigma_fd is set, require max|fd_residual| <= fd_accept_n_sigma * sigma_fd to accept λ (FISTA).
+    fd_accept_n_sigma: float | None = None  # None = do not use FD criterion
 
     def get_steps(self):
         return [
             L2ZeroStep(),
             BuildParameterStep(),
             BuildMeasurementOperatorStep(),
+            FDSigmaStep(),
             DefaultObjectiveFactoryStep(),
             DefaultOptimizerFactoryStep(),
             FlagDataStep(),
@@ -129,12 +137,15 @@ class CLEANReconstructorWrapper(PipelineFaradayReconstructor):
     clean_maxiter: int = 500
     clean_threshold: float | None = None
     clean_n_sigma: float | None = None
+    compute_sigma_fd: bool = False
+    fd_sigma_n_samples: int = 15
 
     def get_steps(self):
         return [
             L2ZeroStep(),
             BuildParameterStep(),
             BuildMeasurementOperatorStep(),
+            FDSigmaStep(),
             FlagDataStep(),
             DirtyMapStep(),
             DirtyStatsStep(),
