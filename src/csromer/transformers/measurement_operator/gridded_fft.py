@@ -5,9 +5,38 @@ when inputs are dask arrays.
 Implements the Faraday depth Fourier transform (Burn 1966):
 P(lambda²) = ∫ F(phi) * exp(+2j * phi * lambda²) dphi
 
-Gridded lambda² is l2_0, l2_0+d_l2, ..., l2_0+(n-1)*d_l2 (with l2_0 = dataset.l2_min > 0).
-The FFT implements the kernel at these physical λ²; the phase exp(2j φ l2_0) is applied
-so that when l2_0 = 0 (full resolution, grid at 0) the phase is 1.
+Discrete setup (after :class:`csromer.transformers.gridding.Gridding`):
+
+- **Phi grid** matches :meth:`csromer.reconstruction.parameter.Parameter.calculate_cellsize`:
+  ``phi[j] = cellsize * (j - n//2)`` for ``j = 0 … n-1``, so the most negative φ is at
+  ``j=0``, **φ = 0 at ``j = n//2``**, and positive φ at large ``j``. This is *not*
+  numpy's default FFT order (DC at index 0).
+
+- **Lambda² grid** is uniform: ``lambda2[k] = l2_0 + k * d_l2``, with only ``l2_0 > 0``
+  required (no need to sample λ² < 0). The pipeline chooses
+  ``d_l2 = π / (n * cellsize)``, so ``2 * cellsize * d_l2 = 2π/n`` and the cross-term
+  ``exp(2j * phi_j * k * d_l2)`` matches ``exp(2π i * (j - n//2) * k / n)`` after half-index
+  reordering.
+
+- **ifftshift / fftshift**: ``numpy.ifft`` pairs output bin ``k`` with input order where
+  index 0 is the “zero-wavenumber” mode. ``ifftshift`` moves the sample at **φ = 0**
+  (grid centre) to index 0 before ``ifft``; ``fft`` + ``fftshift`` inverts that on the
+  adjoint. This is the standard centred-grid ↔ FFT indexing map; it does **not** assume
+  infinite φ, only a periodic torus on the finite φ grid.
+
+- **Phase ``exp(2j * phi * l2_0)``**: for ``lambda2[k] = l2_0 + k*d_l2``,
+  ``exp(2j*phi*lambda2[k]) = exp(2j*phi*l2_0) * exp(2j*phi*k*d_l2)``. The first factor is
+  applied to the φ-domain vector before the FFT; the second is what the ``ifft`` implements
+  (``norm="forward"`` matches the rest of the stack). If ``l2_0 == 0``, that prefactor is 1.
+
+- **``norm="forward"`` and shifts**: With the same ``norm``, ``numpy.fft.fft`` and
+  ``numpy.fft.ifft`` are exact inverses (``fft(ifft(u)) = ifft(fft(u)) = u``). ``ifftshift``
+  and ``fftshift`` are inverse permutations. Forward ``ifft(ifftshift(·))`` and adjoint
+  ``fftshift(fft(·))`` therefore pair correctly with no extra scaling; unit-modulus diagonal
+  phase commutes with the shift.
+
+See ``tests/unit/transformers/test_measurement_operator.py::TestGriddedFFT1D`` (Parseval /
+round-trip) and ``tests/integration/test_ft_conventions.py`` (dirty-map peak vs direct).
 """
 from __future__ import annotations
 
@@ -60,13 +89,12 @@ class GriddedFFT1D(MeasurementOperator):
         """
         Forward operator implementation: phi -> P(lambda²) via FFT.
 
-        Protected method. No l2_ref; shift then ifft for positive sign convention.
+        Protected method. ``ifftshift`` then ``ifft(..., norm="forward")``; l2_0 phase from ``configure``.
         """
         if not hasattr(self, '_l2_ref_phase') or self._l2_ref_phase is None:
             self.configure()
-        # Phase is 1 (no l2_ref); x_phased = x
         x_phased = x * self._l2_ref_phase
-        # ifftshift so phi=0 maps to FFT DC; ifft(norm="forward") for exp(+2j*phi*lambda²)
+        # Centred phi grid -> DC-at-0 order; ifft(norm="forward") matches adjoint fft(same norm)
         if da is not None and is_dask_array(x_phased):
             x_shifted = da.fft.ifftshift(x_phased)
             return da.fft.ifft(x_shifted, norm="forward").astype(np.complex64)
@@ -75,8 +103,8 @@ class GriddedFFT1D(MeasurementOperator):
 
     def _adjoint_impl(self, b: Union[np.ndarray, Any], **kwargs) -> Union[np.ndarray, Any]:
         """
-        Adjoint operator implementation: P(lambda²) -> phi via IFFT.
-        No l2_ref; FFT then fftshift (adjoint of forward).
+        Adjoint: P(lambda²) -> phi via ``fft(..., norm="forward")``, ``fftshift``, then conjugate
+        l2_0 phase. ``fftshift`` undoes ``ifftshift``; same ``norm`` as forward ``ifft``.
         """
         if da is not None and is_dask_array(b):
             x_fft = da.fft.fft(b, norm="forward").astype(np.complex64)

@@ -10,6 +10,10 @@ Efficiency: interpolation matrix A is built once in configure() and stored as sp
 pydata/sparse is installed, A is stored as sparse.COO so the same matrix works for both numpy
 and dask (da.dot(sparse, dask_vector) via dask's tensordot_lookup). Otherwise we use scipy.sparse
 for numpy and build dense A on demand for dask.
+
+Consistency checks (same Burn sign as :class:`DirectFourier1D`): unit test
+``test_hilbert_adjoint_identity`` (vdot), integration point-source peaks vs direct/gridded, and
+``tests/integration/test_dirty_restoration.py`` parametrized ``nufft``.
 """
 from __future__ import annotations
 
@@ -309,26 +313,25 @@ class NUFFT1D(DirectFourier1D):
                 # This undoes the ifftshift applied in forward direction
                 out = np.fft.fftshift(x_fft)
         out = out.astype(np.complex64)
-        # Adjoint is pure: no extra scaling; dirty-spectrum scaling is applied in _dirty_spectrum_impl.
+        # Scale so _adjoint_impl is the Hilbert adjoint of _forward_impl under the standard
+        # inner product (same norm="forward" convention as GriddedFFT1D). Without this,
+        # ⟨A x, y⟩ = ⟨x, Aᴴ y⟩ / n_phi because ifft in the forward is not orthonormal.
+        n_phi = int(len(self.parameter.phi))
+        out = (out * n_phi).astype(np.complex64)
         return out
 
     def _dirty_spectrum_impl(self, data: Union[np.ndarray, Any]) -> Union[np.ndarray, Any]:
         """
-        Dirty spectrum: A^H(weighted data) with scaling so the result matches the
-        continuous definition (sum over channels; no 1/N from FFT).
-        The FFT adjoint with norm="forward" yields (1/N)*sum; multiply by N (n_phi)
-        so dirty amplitude matches DirectFourier/GriddedFFT (GriddedFFT uses n_chan = N).
+        Dirty spectrum: same as base (weighted data → adjoint). Adjoint already includes
+        the n_phi factor needed to match DirectFourier/GriddedFFT dirty amplitudes.
         """
-        raw = super()._dirty_spectrum_impl(data)
-        n_phi = len(self.parameter.phi)
-        return raw * n_phi
+        return super()._dirty_spectrum_impl(data)
 
     def RMTF(self, phi_x: float = 0.0):
         """
         Rotation Measure Transfer Function (RMTF).
 
-        Adjoint of (weights / sum(weights)), then multiplied by n_phi so the
-        RMTF matches this operator's dirty map convention (same as _dirty_spectrum_impl).
+        Uses base implementation; _adjoint_impl scaling keeps RMTF consistent with dirty_spectrum.
 
         Args:
             phi_x: Faraday depth of point source (rad/m², default: 0.0)
@@ -336,6 +339,4 @@ class NUFFT1D(DirectFourier1D):
         Returns:
             RMTF array (n_phi,)
         """
-        rmtf = super().RMTF(phi_x)
-        n_phi = len(self.parameter.phi)
-        return (rmtf * n_phi).astype(np.complex64)
+        return super().RMTF(phi_x).astype(np.complex64)

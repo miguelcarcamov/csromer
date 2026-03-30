@@ -11,6 +11,7 @@ from csromer.transformers.measurement_operator import (
     DirectFourier1D,
     GriddedFFT1D,
     MeasurementOperator,
+    NUFFT1D,
 )
 
 
@@ -118,4 +119,28 @@ class TestGriddedFFT1D:
         p = Parameter(phi=np.linspace(-1, 1, n), data=np.zeros(n, dtype=np.complex64))
         op = GriddedFFT1D(dataset=d, parameter=p)
         b = np.ones(n, dtype=np.complex64)
+        np.testing.assert_allclose(op.adjoint(b), op.backward(b))
+
+
+class TestNUFFT1D:
+    """NUFFT1D: Hilbert adjoint matches forward (same check as for exact NDFT / gridded FFT)."""
+
+    def test_hilbert_adjoint_identity(self, dataset_numpy, parameter_numpy):
+        """⟨A x, y⟩ = ⟨x, Aᴴ y⟩ with numpy.vdot (standard complex Hilbert pairing)."""
+        op = NUFFT1D(dataset=dataset_numpy, parameter=parameter_numpy)
+        n_phi = parameter_numpy.n
+        n_chan = dataset_numpy.m
+        rng = np.random.default_rng(0)
+        x = rng.standard_normal(n_phi) + 1j * rng.standard_normal(n_phi)
+        x = x.astype(np.complex64)
+        y = rng.standard_normal(n_chan) + 1j * rng.standard_normal(n_chan)
+        y = y.astype(np.complex64)
+        lhs = np.vdot(op.forward(x), y)
+        rhs = np.vdot(x, op.adjoint(y))
+        np.testing.assert_allclose(lhs, rhs, rtol=1e-5, atol=1e-6)
+
+    def test_backward_equals_adjoint(self, dataset_numpy, parameter_numpy):
+        op = NUFFT1D(dataset=dataset_numpy, parameter=parameter_numpy)
+        n_chan = dataset_numpy.m
+        b = np.ones(n_chan, dtype=np.complex64) / n_chan
         np.testing.assert_allclose(op.adjoint(b), op.backward(b))
