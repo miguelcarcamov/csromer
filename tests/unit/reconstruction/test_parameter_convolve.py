@@ -72,3 +72,26 @@ def test_convolve_conserves_peak_for_delta_at_arbitrary_index(parameter_with_gri
     conv_np = np.asarray(asnumpy(conv))
     peak_out = float(np.max(np.abs(conv_np)))
     np.testing.assert_allclose(peak_out, 1.0, rtol=1e-5, atol=1e-7)
+
+
+def test_sum_normalized_beam_matches_peak_normalized_peak(parameter_with_grid, monkeypatch):
+    """Sum-normalized kernel (sum=1) gets scaled by 1/max so delta peak matches default beam."""
+    p = parameter_with_grid
+    n = p.n
+    center = n // 2
+    fd_delta = np.zeros(n, dtype=np.complex128)
+    fd_delta[center] = 1.0 + 0.0j
+
+    conv_def, _ = p.convolve(x=fd_delta, rmtf_fwhm=p.rmtf_fwhm)
+    peak_default = float(np.max(np.abs(np.asarray(asnumpy(conv_def)))))
+
+    orig = p._clean_beam_kernel
+
+    def sum_kernel(fwhm):
+        k = np.asarray(orig(fwhm), dtype=np.float64)
+        return (k / np.sum(k)).astype(np.float32)
+
+    monkeypatch.setattr(p, "_clean_beam_kernel", sum_kernel)
+    conv_sum, _ = p.convolve(x=fd_delta, rmtf_fwhm=p.rmtf_fwhm)
+    peak_sum = float(np.max(np.abs(np.asarray(asnumpy(conv_sum)))))
+    np.testing.assert_allclose(peak_sum, peak_default, rtol=1e-5, atol=1e-6)

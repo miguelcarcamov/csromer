@@ -231,7 +231,7 @@ class Parameter:
             raise ValueError("Parameter data is not real")
 
     def _clean_beam_kernel(self, rmtf_fwhm: float):
-        """Build peak-normalized Gaussian clean beam kernel (max=1) from RMTF FWHM."""
+        """Build Gaussian clean beam from RMTF FWHM (default: peak-normalized, max=1)."""
         val_fwhm = 2.0 * np.sqrt(2.0 * np.log(2.0))
         sigma_x = rmtf_fwhm / val_fwhm
         sigma_x_pixels = max(1.0, sigma_x / self.cellsize)
@@ -244,10 +244,17 @@ class Parameter:
         self, x=None, rmtf_fwhm=None
     ) -> tuple[np.ndarray, np.ndarray]:
         """
-        Convolve Faraday depth spectrum with Gaussian restore beam (max=1, peak-conserving).
+        Convolve Faraday depth spectrum with Gaussian restore beam (default from
+        :meth:`_clean_beam_kernel`: peak-normalized, max=1).
 
         Convolves real and imaginary parts separately (complex restored) and also
         convolves the amplitude |F(φ)| (abs restored). Returns both products.
+
+        If the kernel sums to unity (sum-normalized beam), the convolved model is multiplied
+        by ``1 / max(kernel)``, i.e. the same total weight as the default peak-normalized
+        beam (where ``sum(kernel_peak) == 1/max(kernel_sum_norm)``). That makes sum- and
+        peak-normalized beams agree for a delta component. If the kernel is not
+        sum-normalized (default: max=1, typically sum>1), no extra scale is applied.
 
         Args:
             x: Input array (default: self.data), Jy/phi_pixel
@@ -267,14 +274,24 @@ class Parameter:
             "Convolving with Gaussian kernel where FWHM {0:2.3f} rad/m^2 - sigma {1:2.3f} rad/m^2 - sigma_pixels {2:.4f}"
             .format(rmtf_fwhm, sigma_x, sigma_x_pixels)
         )
+        k_sum = float(np.asarray(kernel).sum())
+        k_max = float(np.asarray(kernel).max())
         print(
-            "  [convolve_fd] kernel len=%d sum=%.6f max=%.6f (peak=1)"
-            % (len(kernel), float(kernel.sum()), 1.0)
+            "  [convolve_fd] kernel len=%d sum=%.6f max=%.6f"
+            % (len(kernel), k_sum, k_max)
         )
         data_src = x if x is not None else self.data
         data_np = np.asarray(asnumpy(data_src), dtype=np.complex64)
         complex_restored = convolve_complex(data_np, kernel, mode="same")
         abs_restored = convolve_real(np.abs(data_np), kernel, mode="same")
+        if np.isclose(k_sum, 1.0, rtol=1e-5, atol=1e-7):
+            scale = 1.0 / max(k_max, 1e-30)
+            complex_restored = (complex_restored * scale).astype(np.complex64)
+            abs_restored = np.asarray(abs_restored * scale, dtype=abs_restored.dtype)
+            print(
+                "  [convolve_fd] sum-normalized kernel: scale convolved model by 1/max(kernel)=%.6f"
+                % scale
+            )
         return complex_restored, abs_restored
 
     def convolve(self, x=None, rmtf_fwhm=None) -> np.ndarray:
