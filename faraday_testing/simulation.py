@@ -47,6 +47,7 @@ def _simulate_thin_clean(nu, band_name: str):
     rng = np.random.RandomState(50)
     src = FaradayThinSource(nu=nu, **THIN_PARAMS)
     run_simulation(src, [SimulateStep(), ApplyNoiseStep(sigma, random_state=rng)])
+    src.intrinsic_components = [{"type": "thin", **THIN_PARAMS}]
     return src
 
 
@@ -64,6 +65,7 @@ def _simulate_thin_rfi(nu, band_name: str):
             ApplyNoiseStep(sigma, random_state=rng_noise),
         ],
     )
+    src.intrinsic_components = [{"type": "thin", **THIN_PARAMS}]
     return src
 
 
@@ -74,6 +76,7 @@ def _simulate_thin_depol(nu, band_name: str):
     run_simulation(src, [SimulateStep()])
     src.add_external_faraday_depolarization(sigma_rm=DEPOL_SIGMA_RM_THIN)
     run_simulation(src, [ApplyNoiseStep(sigma, random_state=rng)])
+    src.intrinsic_components = [{"type": "thin", **THIN_PARAMS}]
     return src
 
 
@@ -91,6 +94,7 @@ def _simulate_thick_clean(nu, band_name: str):
     thick_params = get_thick_params_for_band(band_name)
     src = FaradayThickSource(nu=nu, **thick_params)
     run_simulation(src, [SimulateStep(), ApplyNoiseStep(sigma, random_state=rng)])
+    src.intrinsic_components = [{"type": "thick", **thick_params}]
     return src
 
 
@@ -109,6 +113,7 @@ def _simulate_thick_rfi(nu, band_name: str):
             ApplyNoiseStep(sigma, random_state=rng_noise),
         ],
     )
+    src.intrinsic_components = [{"type": "thick", **thick_params}]
     return src
 
 
@@ -120,6 +125,7 @@ def _simulate_thick_depol(nu, band_name: str):
     run_simulation(src, [SimulateStep()])
     src.add_external_faraday_depolarization(sigma_rm=DEPOL_SIGMA_RM_THICK)
     run_simulation(src, [ApplyNoiseStep(sigma, random_state=rng)])
+    src.intrinsic_components = [{"type": "thick", **thick_params}]
     return src
 
 
@@ -143,6 +149,7 @@ def _simulate_mixed_clean(nu, band_name: str):
     run_simulation(thick_c, [SimulateStep()])
     mixed = thin_c + thick_c
     run_simulation(mixed, [ApplyNoiseStep(sigma, random_state=rng)])
+    mixed.intrinsic_components = mixed_cfg
     return mixed
 
 
@@ -166,6 +173,7 @@ def _simulate_mixed_rfi(nu, band_name: str):
             ApplyNoiseStep(sigma, random_state=rng_noise),
         ],
     )
+    mixed.intrinsic_components = mixed_cfg
     return mixed
 
 
@@ -186,6 +194,22 @@ _SIMULATE_ONE = {
     "mixed_clean": _simulate_mixed_clean,
     "mixed_rfi": _simulate_mixed_rfi,
 }
+
+
+def intrinsic_components_for_key(key: str, band_name: str) -> list[dict] | None:
+    """
+    Return intrinsic (ground-truth) FD components for an experiment key.
+
+    This is used by plotting fallbacks (e.g. old cache products that predate
+    intrinsic_components persistence).
+    """
+    if key.startswith("thin_"):
+        return [{"type": "thin", **THIN_PARAMS}]
+    if key.startswith("thick_"):
+        return [{"type": "thick", **get_thick_params_for_band(band_name)}]
+    if key.startswith("mixed_"):
+        return get_mixed_config_for_band(band_name)
+    return None
 
 
 def simulate_one_source(key: str, nu, band_name: str):

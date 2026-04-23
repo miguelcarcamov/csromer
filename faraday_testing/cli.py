@@ -25,7 +25,7 @@ if _src.exists() and str(_src) not in sys.path:
 
 from faraday_testing import config
 from faraday_testing.reconstruction import run_csromer_reconstruction
-from faraday_testing.simulation import simulate_one_source
+from faraday_testing.simulation import intrinsic_components_for_key, simulate_one_source
 from faraday_testing.plotting import plot_2x2_clean_vs_rfi, plot_2x2_clean_vs_depol
 from faraday_testing.products import load_product, save_product, cache_available
 
@@ -103,6 +103,11 @@ def _parse_args():
         metavar="N",
         help="FISTA: also require max|fd_residual| <= N*σ_fd to accept λ. Default: not set (χ²-only acceptance).",
     )
+    p.add_argument(
+        "--show-intrinsic-model",
+        action="store_true",
+        help="Overlay intrinsic (ground-truth) |F(phi)| model on the upper-right FD panel.",
+    )
     return p.parse_args()
 
 
@@ -126,6 +131,7 @@ def run_band(
     target_residual_sigma: float | None = None,
     compute_sigma_fd: bool = True,
     fd_accept_n_sigma: float | None = None,
+    show_intrinsic_model: bool = False,
 ) -> None:
     """Run simulation, reconstruction (or load from zarr cache), and plotting for one band."""
     cfg = config.SKA_BANDS[band_name]
@@ -143,6 +149,10 @@ def run_band(
             loaded = load_product(cache_dir, band_name, reconstructor, key)
             if loaded is not None:
                 sims[key], recons[key] = loaded
+                if not hasattr(sims[key], "intrinsic_components"):
+                    fallback_components = intrinsic_components_for_key(key, band_name)
+                    if fallback_components is not None:
+                        sims[key].intrinsic_components = fallback_components
     # Only run simulation + reconstruction for experiments missing from cache
     missing = [k for k in keys if k not in sims]
     if missing:
@@ -178,6 +188,7 @@ def run_band(
             band_label=band_name, source_type="Thin",
             filename=str(outdir / f"thin_clean_vs_rfi_{short}_{rec}.png"),
             phi_xlim=phi_xlim,
+            show_intrinsic_model=show_intrinsic_model,
         )
     if sims.get("thin_clean") is not None and sims.get("thin_depol") is not None:
         print("    Plot: Thin clean vs depolarized...")
@@ -187,6 +198,7 @@ def run_band(
             band_label=band_name, source_type="Thin",
             filename=str(outdir / f"thin_depolarization_{short}_{rec}.png"),
             phi_xlim=phi_xlim,
+            show_intrinsic_model=show_intrinsic_model,
         )
 
     if band_name != "SKA-LOW":
@@ -198,6 +210,7 @@ def run_band(
                 band_label=band_name, source_type="Thick",
                 filename=str(outdir / f"thick_clean_vs_rfi_{short}_{rec}.png"),
                 phi_xlim=phi_xlim,
+                show_intrinsic_model=show_intrinsic_model,
             )
         if sims.get("thick_clean") is not None and sims.get("thick_depol") is not None:
             print("    Plot: Thick clean vs depolarized...")
@@ -207,6 +220,7 @@ def run_band(
                 band_label=band_name, source_type="Thick",
                 filename=str(outdir / f"thick_depolarization_{short}_{rec}.png"),
                 phi_xlim=phi_xlim,
+                show_intrinsic_model=show_intrinsic_model,
             )
         if sims.get("mixed_clean") is not None and sims.get("mixed_rfi") is not None:
             print("    Plot: Mixed clean vs RFI...")
@@ -216,6 +230,7 @@ def run_band(
                 band_label=band_name, source_type="Mixed",
                 filename=str(outdir / f"mixed_clean_vs_rfi_{short}_{rec}.png"),
                 phi_xlim=phi_xlim,
+                show_intrinsic_model=show_intrinsic_model,
             )
 
 
@@ -258,6 +273,7 @@ def main() -> None:
             target_residual_sigma=target_residual_sigma,
             compute_sigma_fd=not getattr(args, "no_compute_sigma_fd", False),
             fd_accept_n_sigma=args.fd_accept_n_sigma,
+            show_intrinsic_model=args.show_intrinsic_model,
         )
         print()
 

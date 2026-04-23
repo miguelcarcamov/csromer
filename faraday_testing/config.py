@@ -23,10 +23,27 @@ COLORS = {
     "accent": "#D55E00",
 }
 
+# Global plotting font sizes for paper-ready readability.
+AXIS_LABEL_FONT_SIZE = 14
+TICK_LABEL_FONT_SIZE = 12
+LEGEND_FONT_SIZE = 12
+AXIS_TITLE_FONT_SIZE = 14
+FIGURE_TITLE_FONT_SIZE = 16
+# Intrinsic (ground-truth) FD model overlay style.
+INTRINSIC_MODEL_ALPHA = 0.45
+INTRINSIC_MODEL_COLOR = COLORS["purple"]
+
+
 def setup_matplotlib():
     plt.rcParams["font.family"] = "serif"
     plt.rcParams["mathtext.fontset"] = "stix"
     plt.rcParams["figure.figsize"] = (10, 8)
+    plt.rcParams["axes.labelsize"] = AXIS_LABEL_FONT_SIZE
+    plt.rcParams["xtick.labelsize"] = TICK_LABEL_FONT_SIZE
+    plt.rcParams["ytick.labelsize"] = TICK_LABEL_FONT_SIZE
+    plt.rcParams["legend.fontsize"] = LEGEND_FONT_SIZE
+    plt.rcParams["axes.titlesize"] = AXIS_TITLE_FONT_SIZE
+    plt.rcParams["figure.titlesize"] = FIGURE_TITLE_FONT_SIZE
 
 
 # ---------------------------------------------------------------------------
@@ -184,6 +201,8 @@ def get_mixed_config_for_band(band_name: str) -> list:
         return MIXED_CONFIG
     n_beams = MIXED_SEPARATION_BEAMS_BY_BAND.get(band_name, MIXED_SEPARATION_IN_BEAMS)
     thick_params = get_thick_params_for_band(band_name)
+    # Keep mixed components balanced in polarized peak: thin 0.5 + thick 0.5.
+    thick_params["s_nu"] = 0.5
     phi_fg = thick_params["phi_fg"]
     # Gap = 2*half_sep - phi_fg. Need gap >= min_gap_beams * delta_phi and half_sep >= phi_fg.
     min_gap = MIXED_MIN_GAP_BEAMS * delta_phi

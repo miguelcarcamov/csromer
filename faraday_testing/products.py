@@ -85,6 +85,9 @@ def save_product(
         sigma = getattr(source, "sigma", None)
         if sigma is not None:
             root["source/sigma"] = np.asarray(sigma)
+        intrinsic_components = getattr(source, "intrinsic_components", None)
+        if intrinsic_components is not None:
+            root["source"].attrs["intrinsic_components"] = intrinsic_components
         # Recon: phi, fd_dirty, fd_restored, fd_residual (complex)
         phi = np.asarray(recon.parameter.phi)
         root["recon/phi"] = phi
@@ -142,6 +145,8 @@ def load_product(
         di = np.asarray(root["source/data_imag"])
         data = dr + 1j * di
         source_like = SimpleNamespace(lambda2=l2, data=data)
+        if "intrinsic_components" in root["source"].attrs:
+            source_like.intrinsic_components = root["source"].attrs["intrinsic_components"]
         # Load sigma if present (for Hutchinson when sigma_fd missing)
         sigma_arr = None
         if "source/sigma" in root:

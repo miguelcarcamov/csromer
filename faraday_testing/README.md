@@ -29,6 +29,7 @@ python -m faraday_testing --band low --band mid-b2
 # Output directory and reconstructor (csromer = FISTA+L1, cg, or clean)
 python -m faraday_testing -b mid-b5a -o ./figs --reconstructor csromer
 python -m faraday_testing -b mid-b5a --reconstructor clean
+python -m faraday_testing -b mid-b5a --show-intrinsic-model
 
 # Product cache (default: on). Saves products under <outdir>/zarr so re-runs skip simulation/reconstruction.
 python -m faraday_testing -b mid-b2 -o ./figs

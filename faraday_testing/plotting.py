@@ -7,8 +7,20 @@ from __future__ import annotations
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FormatStrFormatter
 
-from faraday_testing.config import COLORS, PHI_MAX, setup_matplotlib
+from faraday_testing.config import (
+    AXIS_LABEL_FONT_SIZE,
+    AXIS_TITLE_FONT_SIZE,
+    COLORS,
+    FIGURE_TITLE_FONT_SIZE,
+    INTRINSIC_MODEL_ALPHA,
+    INTRINSIC_MODEL_COLOR,
+    LEGEND_FONT_SIZE,
+    PHI_MAX,
+    TICK_LABEL_FONT_SIZE,
+    setup_matplotlib,
+)
 
 
 def sigma_from_complex_residual(fd_residual: np.ndarray) -> float:
@@ -52,10 +64,11 @@ def _draw_pol_vs_l2(ax, l2, data, color_main: str, title: str, use_distinct_re_i
     ax.plot(l2, data.real, ".", color=c_re, markersize=0.5, alpha=0.8, label="$Q$")
     ax.plot(l2, data.imag, ".", color=c_im, markersize=0.5, alpha=0.8, label="$U$")
     ax.plot(l2, np.abs(data), ".", color=color_main, markersize=0.8, alpha=0.9, label=r"$|P|$")
-    ax.set_xlabel(r"$\lambda^2$ [m²]", fontsize=11)
-    ax.set_ylabel("Polarization [Jy]", fontsize=11)
-    ax.set_title(title, fontsize=12, fontweight="bold")
-    ax.legend(loc="best", fontsize=9)
+    ax.set_xlabel(r"$\lambda^2$ [m²]", fontsize=AXIS_LABEL_FONT_SIZE)
+    ax.set_ylabel("Polarization [Jy]", fontsize=AXIS_LABEL_FONT_SIZE)
+    ax.set_title(title, fontsize=AXIS_TITLE_FONT_SIZE, fontweight="bold")
+    ax.legend(loc="best", fontsize=LEGEND_FONT_SIZE)
+    ax.tick_params(axis="both", labelsize=TICK_LABEL_FONT_SIZE)
     ax.grid(True, alpha=0.3)
 
 
@@ -76,6 +89,8 @@ def _draw_fd_panel(
     recon,
     xlim_phi: tuple[float, float],
     title: str,
+    intrinsic_fd_amp: np.ndarray | None = None,
+    intrinsic_components: list[dict] | None = None,
 ) -> float:
     """Draw FD spectrum panel. sigma is the same as residual panel (sigma_fd when set, else residual-based).
     Y-limits are data-driven so dirty/restored remain visible when they are much smaller than sigma (e.g. model=0).
@@ -86,6 +101,61 @@ def _draw_fd_panel(
     restored_amp = np.abs(fd_restored)
     ax.plot(phi, dirty_amp, "-", color=COLORS["teal"], lw=1.2, alpha=0.9, label=r"Dirty $|F(\phi)|$")
     ax.plot(phi, restored_amp, "-", color=COLORS["black"], lw=1.5, alpha=0.9, label=r"Restored $|F(\phi)|$")
+    if intrinsic_fd_amp is not None:
+        # Prefer component-wise rendering so thin parts are always delta-like,
+        # including mixed sources (thin + thick).
+        if intrinsic_components:
+            labeled = False
+            for comp in intrinsic_components:
+                ctype = str(comp.get("type", "")).lower()
+                s_nu = float(comp.get("s_nu", np.max(intrinsic_fd_amp)))
+                if ctype == "thin":
+                    phi_gal = float(comp.get("phi_gal", phi[np.argmax(intrinsic_fd_amp)]))
+                    ax.vlines(
+                        phi_gal,
+                        0.0,
+                        s_nu,
+                        colors=INTRINSIC_MODEL_COLOR,
+                        linewidth=1.8,
+                        alpha=INTRINSIC_MODEL_ALPHA,
+                        label=r"Intrinsic $|F(\phi)|$" if not labeled else None,
+                    )
+                    labeled = True
+                elif ctype == "thick":
+                    phi_fg = max(float(comp.get("phi_fg", 0.0)), 0.0)
+                    phi_center = float(comp.get("phi_center", 0.0))
+                    thick_curve = np.zeros_like(phi, dtype=float)
+                    thick_curve[np.abs(phi - phi_center) <= phi_fg] = s_nu
+                    ax.plot(
+                        phi,
+                        thick_curve,
+                        "-",
+                        color=INTRINSIC_MODEL_COLOR,
+                        lw=1.6,
+                        alpha=INTRINSIC_MODEL_ALPHA,
+                        label=r"Intrinsic $|F(\phi)|$" if not labeled else None,
+                    )
+                    labeled = True
+            if not labeled:
+                ax.plot(
+                    phi,
+                    intrinsic_fd_amp,
+                    "-",
+                    color=INTRINSIC_MODEL_COLOR,
+                    lw=1.6,
+                    alpha=INTRINSIC_MODEL_ALPHA,
+                    label=r"Intrinsic $|F(\phi)|$",
+                )
+        else:
+            ax.plot(
+                phi,
+                intrinsic_fd_amp,
+                "-",
+                color=INTRINSIC_MODEL_COLOR,
+                lw=1.6,
+                alpha=INTRINSIC_MODEL_ALPHA,
+                label=r"Intrinsic $|F(\phi)|$",
+            )
     for sig in [2, 3, 5]:
         ax.axhline(sig * sigma, color=COLORS["gray"], linestyle="--", lw=1, alpha=0.8, label=r"2$\sigma$, 3$\sigma$, 5$\sigma$" if sig == 2 else None)
     # Prefer quadratic-interpolated RM and its error when available, falling back to grid-based peak.
@@ -105,15 +175,73 @@ def _draw_fd_panel(
     ax.axvline(peak_phi, color=COLORS["accent"], linestyle="-", lw=1.2, alpha=0.45, label=peak_legend_label(peak_phi, peak_err))
     ax.set_xlim(xlim_phi[0], xlim_phi[1])
     # Data-driven ylim so dirty/restored are visible when model=0 (noise only) and sigma lines are large
-    data_max = float(np.maximum(dirty_amp.max(), restored_amp.max()))
+    intrinsic_max = float(np.max(intrinsic_fd_amp)) if intrinsic_fd_amp is not None else 0.0
+    data_max = float(np.max([dirty_amp.max(), restored_amp.max(), intrinsic_max]))
     y_max = max(1.2 * data_max, 1e-12)
     ax.set_ylim(0, y_max)
-    ax.set_ylabel(r"$|F(\phi)|$ [Jy/RMSF]", fontsize=11)
-    ax.set_title(title, fontsize=12, fontweight="bold")
-    ax.legend(loc="best", fontsize=9)
+    ax.set_ylabel(r"$|F(\phi)|$ [Jy/RMSF]", fontsize=AXIS_LABEL_FONT_SIZE)
+    ax.set_title(title, fontsize=AXIS_TITLE_FONT_SIZE, fontweight="bold")
+    ax.legend(loc="best", fontsize=LEGEND_FONT_SIZE)
+    ax.tick_params(axis="both", labelsize=TICK_LABEL_FONT_SIZE)
     ax.grid(True, alpha=0.3)
     ax.tick_params(axis="x", labelbottom=False)
     return peak_phi
+
+
+def _intrinsic_components_from_source(source) -> list[dict]:
+    """Return intrinsic component metadata if available."""
+    comps = getattr(source, "intrinsic_components", None)
+    if comps is not None:
+        return [dict(c) for c in comps]
+    # Fallback for direct (non-mixed) source objects.
+    if hasattr(source, "phi_gal"):
+        return [{
+            "type": "thin",
+            "phi_gal": float(getattr(source, "phi_gal", 0.0)),
+            "s_nu": float(getattr(source, "s_nu", 1.0)),
+        }]
+    if hasattr(source, "phi_fg"):
+        return [{
+            "type": "thick",
+            "phi_fg": float(getattr(source, "phi_fg", 0.0)),
+            "phi_center": float(getattr(source, "phi_center", 0.0)),
+            "s_nu": float(getattr(source, "s_nu", 1.0)),
+        }]
+    return []
+
+
+def _build_intrinsic_fd_model(phi: np.ndarray, source) -> np.ndarray | None:
+    """
+    Build a simple intrinsic |F(phi)| model from source metadata.
+
+    - Thin: delta at nearest phi pixel with amplitude s_nu.
+    - Thick: top-hat centered at phi_center, half-width phi_fg, peak/plateau = s_nu.
+    - Mixed: sum of the components.
+    """
+    phi = np.asarray(phi, dtype=float)
+    if phi.size == 0:
+        return None
+    comps = _intrinsic_components_from_source(source)
+    if not comps:
+        return None
+    model = np.zeros_like(phi, dtype=float)
+    for comp in comps:
+        ctype = str(comp.get("type", "")).lower()
+        s_nu = float(comp.get("s_nu", getattr(source, "s_nu", 1.0)))
+        if ctype == "thin":
+            phi_gal = float(comp.get("phi_gal", 0.0))
+            idx = int(np.argmin(np.abs(phi - phi_gal)))
+            model[idx] += s_nu
+        elif ctype == "thick":
+            phi_fg = max(float(comp.get("phi_fg", 0.0)), 0.0)
+            phi_center = float(comp.get("phi_center", 0.0))
+            if phi_fg <= 0.0:
+                idx = int(np.argmin(np.abs(phi - phi_center)))
+                model[idx] += s_nu
+                continue
+            mask = np.abs(phi - phi_center) <= phi_fg
+            model[mask] += s_nu
+    return model
 
 
 def _draw_residual_panel(ax, phi, fd_res, sigma_line: float, peak_phi: float, xlim_phi: tuple[float, float]) -> None:
@@ -134,8 +262,14 @@ def _draw_residual_panel(ax, phi, fd_res, sigma_line: float, peak_phi: float, xl
     res_max = float(max(np.abs(fd_res).max(), np.abs(fd_res.real).max(), np.abs(fd_res.imag).max()))
     y_max = max(1.2 * res_max, 1e-12)
     ax.set_ylim(-y_max, y_max)
-    ax.set_xlabel(r"$\phi$ [rad/m²]", fontsize=11)
-    ax.set_ylabel("Residuals", fontsize=11)
+    # Keep residual intensity axis uncluttered and avoid boundary-label overlap
+    # with the upper panel at the shared subplot edge.
+    tick_span = 0.8 * y_max
+    ax.set_yticks([-tick_span, 0.0, tick_span])
+    ax.yaxis.set_major_formatter(FormatStrFormatter("%.2f"))
+    ax.set_xlabel(r"$\phi$ [rad/m²]", fontsize=AXIS_LABEL_FONT_SIZE)
+    ax.set_ylabel("Residuals", fontsize=AXIS_LABEL_FONT_SIZE)
+    ax.tick_params(axis="both", labelsize=TICK_LABEL_FONT_SIZE)
     ax.grid(True, alpha=0.3)
 
 
@@ -158,6 +292,7 @@ def plot_2x2_clean_vs_rfi(
     filename: str | None = None,
     phi_xlim=None,
     figsize=(18, 12),
+    show_intrinsic_model: bool = False,
 ) -> None:
     """2×2: Clean (top) vs RFI (bottom). Left: pol vs λ²; right: FD spectrum + residuals.
 
@@ -186,12 +321,21 @@ def plot_2x2_clean_vs_rfi(
     sigma_line_r = _sigma_for_both_panels(recon_rfi, sigma_res_r)
 
     fig, gs, gs_rt, gs_rb = _build_2x2_figure(figsize)
+    intrinsic_components_c = _intrinsic_components_from_source(clean_source) if show_intrinsic_model else None
+    intrinsic_c = _build_intrinsic_fd_model(phi_c, clean_source) if show_intrinsic_model else None
+    intrinsic_components_r = _intrinsic_components_from_source(rfi_source) if show_intrinsic_model else None
+    intrinsic_r = _build_intrinsic_fd_model(phi_r, rfi_source) if show_intrinsic_model else None
 
     ax1 = fig.add_subplot(gs[0, 0])
     _draw_pol_vs_l2(ax1, l2_c, data_c, COLORS["blue"], r"Reference (no RFI): Polarization vs $\lambda^2$")
 
     ax2_fd = fig.add_subplot(gs_rt[0])
-    peak_c = _draw_fd_panel(ax2_fd, phi_c, fd_dirty_c, fd_c, sigma_line_c, recon_clean, xlim_phi, "Reference (no RFI): Faraday depth spectrum")
+    peak_c = _draw_fd_panel(
+        ax2_fd, phi_c, fd_dirty_c, fd_c, sigma_line_c, recon_clean, xlim_phi,
+        "Reference (no RFI): Faraday depth spectrum",
+        intrinsic_fd_amp=intrinsic_c,
+        intrinsic_components=intrinsic_components_c,
+    )
     ax2_res = fig.add_subplot(gs_rt[1])
     _draw_residual_panel(ax2_res, phi_c, fd_res_c, sigma_line_c, peak_c, xlim_phi)
 
@@ -199,11 +343,20 @@ def plot_2x2_clean_vs_rfi(
     _draw_pol_vs_l2(ax3, l2_r, data_r, COLORS["blue"], r"With RFI: Polarization vs $\lambda^2$")
 
     ax4_fd = fig.add_subplot(gs_rb[0])
-    peak_r = _draw_fd_panel(ax4_fd, phi_r, fd_dirty_r, fd_r, sigma_line_r, recon_rfi, xlim_phi, "With RFI: Faraday depth spectrum")
+    peak_r = _draw_fd_panel(
+        ax4_fd, phi_r, fd_dirty_r, fd_r, sigma_line_r, recon_rfi, xlim_phi,
+        "With RFI: Faraday depth spectrum",
+        intrinsic_fd_amp=intrinsic_r,
+        intrinsic_components=intrinsic_components_r,
+    )
     ax4_res = fig.add_subplot(gs_rb[1])
     _draw_residual_panel(ax4_res, phi_r, fd_res_r, sigma_line_r, peak_r, xlim_phi)
 
-    fig.suptitle(f"{source_type} Source: Reference vs RFI ({band_label})", fontsize=14, fontweight="bold")
+    fig.suptitle(
+        f"{source_type} Source: Reference vs RFI ({band_label})",
+        fontsize=FIGURE_TITLE_FONT_SIZE,
+        fontweight="bold",
+    )
     plt.tight_layout()
     if filename:
         plt.savefig(filename, dpi=150, bbox_inches="tight")
@@ -222,6 +375,7 @@ def plot_2x2_clean_vs_depol(
     filename: str | None = None,
     phi_xlim=None,
     figsize=(18, 12),
+    show_intrinsic_model: bool = False,
 ) -> None:
     """2×2: Clean (top) vs Depolarized (bottom). Left: pol vs λ²; right: FD spectrum + residuals.
 
@@ -250,12 +404,21 @@ def plot_2x2_clean_vs_depol(
     sigma_line_d = _sigma_for_both_panels(recon_depol, sigma_res_d)
 
     fig, gs, gs_rt, gs_rb = _build_2x2_figure(figsize)
+    intrinsic_components_c = _intrinsic_components_from_source(clean_source) if show_intrinsic_model else None
+    intrinsic_c = _build_intrinsic_fd_model(phi_c, clean_source) if show_intrinsic_model else None
+    intrinsic_components_d = _intrinsic_components_from_source(depol_source) if show_intrinsic_model else None
+    intrinsic_d = _build_intrinsic_fd_model(phi_d, depol_source) if show_intrinsic_model else None
 
     ax1 = fig.add_subplot(gs[0, 0])
     _draw_pol_vs_l2(ax1, l2_c, data_c, COLORS["blue"], r"Reference (no depol.): Polarization vs $\lambda^2$")
 
     ax2_fd = fig.add_subplot(gs_rt[0])
-    peak_c = _draw_fd_panel(ax2_fd, phi_c, fd_dirty_c, fd_c, sigma_line_c, recon_clean, xlim_phi, "Reference (no depol.): Faraday depth spectrum")
+    peak_c = _draw_fd_panel(
+        ax2_fd, phi_c, fd_dirty_c, fd_c, sigma_line_c, recon_clean, xlim_phi,
+        "Reference (no depol.): Faraday depth spectrum",
+        intrinsic_fd_amp=intrinsic_c,
+        intrinsic_components=intrinsic_components_c,
+    )
     ax2_res = fig.add_subplot(gs_rt[1])
     _draw_residual_panel(ax2_res, phi_c, fd_res_c, sigma_line_c, peak_c, xlim_phi)
 
@@ -263,11 +426,20 @@ def plot_2x2_clean_vs_depol(
     _draw_pol_vs_l2(ax3, l2_d, data_d, COLORS["blue"], r"Depolarized: Polarization vs $\lambda^2$")
 
     ax4_fd = fig.add_subplot(gs_rb[0])
-    peak_d = _draw_fd_panel(ax4_fd, phi_d, fd_dirty_d, fd_d, sigma_line_d, recon_depol, xlim_phi, "Depolarized: Faraday depth spectrum")
+    peak_d = _draw_fd_panel(
+        ax4_fd, phi_d, fd_dirty_d, fd_d, sigma_line_d, recon_depol, xlim_phi,
+        "Depolarized: Faraday depth spectrum",
+        intrinsic_fd_amp=intrinsic_d,
+        intrinsic_components=intrinsic_components_d,
+    )
     ax4_res = fig.add_subplot(gs_rb[1])
     _draw_residual_panel(ax4_res, phi_d, fd_res_d, sigma_line_d, peak_d, xlim_phi)
 
-    fig.suptitle(f"{source_type} Source: Reference vs Depolarized ({band_label})", fontsize=14, fontweight="bold")
+    fig.suptitle(
+        f"{source_type} Source: Reference vs Depolarized ({band_label})",
+        fontsize=FIGURE_TITLE_FONT_SIZE,
+        fontweight="bold",
+    )
     plt.tight_layout()
     if filename:
         plt.savefig(filename, dpi=150, bbox_inches="tight")
