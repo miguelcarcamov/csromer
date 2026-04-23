@@ -46,6 +46,7 @@ from typing import Any, Union
 import numpy as np
 
 from ...utils.array_utils import asnumpy, is_dask_array, math_module
+from ...utils.fft_utils import fft1d_forward, fft1d_inverse
 from .base import MeasurementOperator
 
 try:
@@ -94,24 +95,15 @@ class GriddedFFT1D(MeasurementOperator):
         if not hasattr(self, '_l2_ref_phase') or self._l2_ref_phase is None:
             self.configure()
         x_phased = x * self._l2_ref_phase
-        # Centred phi grid -> DC-at-0 order; ifft(norm="forward") matches adjoint fft(same norm)
-        if da is not None and is_dask_array(x_phased):
-            x_shifted = da.fft.ifftshift(x_phased)
-            return da.fft.ifft(x_shifted, norm="forward").astype(np.complex64)
-        x_shifted = np.fft.ifftshift(x_phased)
-        return np.fft.ifft(x_shifted, norm="forward").astype(np.complex64)
+        # Centred phi grid -> DC-at-0 order; paired with inverse fft(..., centered=True).
+        return fft1d_forward(x_phased, centered=True, norm="forward")
 
     def _adjoint_impl(self, b: Union[np.ndarray, Any], **kwargs) -> Union[np.ndarray, Any]:
         """
         Adjoint: P(lambda²) -> phi via ``fft(..., norm="forward")``, ``fftshift``, then conjugate
         l2_0 phase. ``fftshift`` undoes ``ifftshift``; same ``norm`` as forward ``ifft``.
         """
-        if da is not None and is_dask_array(b):
-            x_fft = da.fft.fft(b, norm="forward").astype(np.complex64)
-            x_fft = da.fft.fftshift(x_fft).astype(np.complex64)
-        else:
-            x_fft = np.fft.fft(b, norm="forward").astype(np.complex64)
-            x_fft = np.fft.fftshift(x_fft).astype(np.complex64)
+        x_fft = fft1d_inverse(b, centered=True, norm="forward")
         if not hasattr(self, '_l2_ref_phase') or self._l2_ref_phase is None:
             self.configure()
         phase_conj = np.conj(self._l2_ref_phase)
