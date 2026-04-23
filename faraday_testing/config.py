@@ -58,7 +58,8 @@ PHI_XLIM_BY_BAND = {
     "SKA-MID B1": 1000.0,
     "SKA-MID B2": 1000.0,
     "SKA-MID B5a": 10000.0,
-    "SKA-MID B5b": 30000.0,
+    # Wider window so intrinsic components do not sit beneath the legend.
+    "SKA-MID B5b": 80000.0,
 }
 
 

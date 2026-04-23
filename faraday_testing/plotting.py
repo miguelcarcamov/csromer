@@ -124,16 +124,26 @@ def _draw_fd_panel(
                 elif ctype == "thick":
                     phi_fg = max(float(comp.get("phi_fg", 0.0)), 0.0)
                     phi_center = float(comp.get("phi_center", 0.0))
-                    thick_curve = np.zeros_like(phi, dtype=float)
-                    thick_curve[np.abs(phi - phi_center) <= phi_fg] = s_nu
-                    ax.plot(
-                        phi,
-                        thick_curve,
-                        "-",
-                        color=INTRINSIC_MODEL_COLOR,
-                        lw=1.6,
+                    left = phi_center - phi_fg
+                    right = phi_center + phi_fg
+                    # Draw explicit top-hat edges so vertical sides are straight,
+                    # independent of phi sampling density.
+                    ax.hlines(
+                        s_nu,
+                        left,
+                        right,
+                        colors=INTRINSIC_MODEL_COLOR,
+                        linewidth=1.6,
                         alpha=INTRINSIC_MODEL_ALPHA,
                         label=r"Intrinsic $|F(\phi)|$" if not labeled else None,
+                    )
+                    ax.vlines(
+                        [left, right],
+                        0.0,
+                        s_nu,
+                        colors=INTRINSIC_MODEL_COLOR,
+                        linewidth=1.6,
+                        alpha=INTRINSIC_MODEL_ALPHA,
                     )
                     labeled = True
             if not labeled:
