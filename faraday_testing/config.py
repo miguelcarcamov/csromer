@@ -24,20 +24,25 @@ COLORS = {
 }
 
 # Global plotting font sizes for paper-ready readability.
-AXIS_LABEL_FONT_SIZE = 14
-TICK_LABEL_FONT_SIZE = 12
-LEGEND_FONT_SIZE = 12
-AXIS_TITLE_FONT_SIZE = 14
-FIGURE_TITLE_FONT_SIZE = 16
+# Tuned for manuscript figures exported at large canvas then scaled in LaTeX.
+AXIS_LABEL_FONT_SIZE = 18
+TICK_LABEL_FONT_SIZE = 15
+LEGEND_FONT_SIZE = 14
+AXIS_TITLE_FONT_SIZE = 18
+FIGURE_TITLE_FONT_SIZE = 20
+# Keep large canvas for 2x2 detail; readability controlled by font sizes above.
+FIGURE_WIDTH_IN = 18.0
+FIGURE_HEIGHT_IN = 12.0
 # Intrinsic (ground-truth) FD model overlay style.
 INTRINSIC_MODEL_ALPHA = 0.45
 INTRINSIC_MODEL_COLOR = COLORS["purple"]
+INTRINSIC_MODEL_LINESTYLE = "-."
 
 
 def setup_matplotlib():
     plt.rcParams["font.family"] = "serif"
     plt.rcParams["mathtext.fontset"] = "stix"
-    plt.rcParams["figure.figsize"] = (10, 8)
+    plt.rcParams["figure.figsize"] = (FIGURE_WIDTH_IN, FIGURE_HEIGHT_IN)
     plt.rcParams["axes.labelsize"] = AXIS_LABEL_FONT_SIZE
     plt.rcParams["xtick.labelsize"] = TICK_LABEL_FONT_SIZE
     plt.rcParams["ytick.labelsize"] = TICK_LABEL_FONT_SIZE

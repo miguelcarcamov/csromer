@@ -13,9 +13,12 @@ from faraday_testing.config import (
     AXIS_LABEL_FONT_SIZE,
     AXIS_TITLE_FONT_SIZE,
     COLORS,
+    FIGURE_HEIGHT_IN,
     FIGURE_TITLE_FONT_SIZE,
+    FIGURE_WIDTH_IN,
     INTRINSIC_MODEL_ALPHA,
     INTRINSIC_MODEL_COLOR,
+    INTRINSIC_MODEL_LINESTYLE,
     LEGEND_FONT_SIZE,
     PHI_MAX,
     TICK_LABEL_FONT_SIZE,
@@ -117,6 +120,7 @@ def _draw_fd_panel(
                         s_nu,
                         colors=INTRINSIC_MODEL_COLOR,
                         linewidth=1.8,
+                        linestyles=INTRINSIC_MODEL_LINESTYLE,
                         alpha=INTRINSIC_MODEL_ALPHA,
                         label=r"Intrinsic $|F(\phi)|$" if not labeled else None,
                     )
@@ -134,6 +138,7 @@ def _draw_fd_panel(
                         right,
                         colors=INTRINSIC_MODEL_COLOR,
                         linewidth=1.6,
+                        linestyles=INTRINSIC_MODEL_LINESTYLE,
                         alpha=INTRINSIC_MODEL_ALPHA,
                         label=r"Intrinsic $|F(\phi)|$" if not labeled else None,
                     )
@@ -143,6 +148,7 @@ def _draw_fd_panel(
                         s_nu,
                         colors=INTRINSIC_MODEL_COLOR,
                         linewidth=1.6,
+                        linestyles=INTRINSIC_MODEL_LINESTYLE,
                         alpha=INTRINSIC_MODEL_ALPHA,
                     )
                     labeled = True
@@ -150,7 +156,7 @@ def _draw_fd_panel(
                 ax.plot(
                     phi,
                     intrinsic_fd_amp,
-                    "-",
+                    INTRINSIC_MODEL_LINESTYLE,
                     color=INTRINSIC_MODEL_COLOR,
                     lw=1.6,
                     alpha=INTRINSIC_MODEL_ALPHA,
@@ -160,7 +166,7 @@ def _draw_fd_panel(
             ax.plot(
                 phi,
                 intrinsic_fd_amp,
-                "-",
+                INTRINSIC_MODEL_LINESTYLE,
                 color=INTRINSIC_MODEL_COLOR,
                 lw=1.6,
                 alpha=INTRINSIC_MODEL_ALPHA,
@@ -191,7 +197,16 @@ def _draw_fd_panel(
     ax.set_ylim(0, y_max)
     ax.set_ylabel(r"$|F(\phi)|$ [Jy/RMSF]", fontsize=AXIS_LABEL_FONT_SIZE)
     ax.set_title(title, fontsize=AXIS_TITLE_FONT_SIZE, fontweight="bold")
-    ax.legend(loc="best", fontsize=LEGEND_FONT_SIZE)
+    if intrinsic_fd_amp is not None:
+        # Keep legend off intrinsic overlays (especially mixed thin+thick cases).
+        ax.legend(
+            loc="upper left",
+            bbox_to_anchor=(1.01, 1.0),
+            borderaxespad=0.0,
+            fontsize=LEGEND_FONT_SIZE,
+        )
+    else:
+        ax.legend(loc="best", fontsize=LEGEND_FONT_SIZE)
     ax.tick_params(axis="both", labelsize=TICK_LABEL_FONT_SIZE)
     ax.grid(True, alpha=0.3)
     ax.tick_params(axis="x", labelbottom=False)
@@ -283,7 +298,7 @@ def _draw_residual_panel(ax, phi, fd_res, sigma_line: float, peak_phi: float, xl
     ax.grid(True, alpha=0.3)
 
 
-def _build_2x2_figure(figsize=(18, 12)):
+def _build_2x2_figure(figsize=(FIGURE_WIDTH_IN, FIGURE_HEIGHT_IN)):
     setup_matplotlib()
     fig = plt.figure(figsize=figsize)
     gs = fig.add_gridspec(2, 2, width_ratios=[1, 1], height_ratios=[1, 1])
@@ -301,7 +316,7 @@ def plot_2x2_clean_vs_rfi(
     source_type: str,
     filename: str | None = None,
     phi_xlim=None,
-    figsize=(18, 12),
+    figsize=(FIGURE_WIDTH_IN, FIGURE_HEIGHT_IN),
     show_intrinsic_model: bool = False,
 ) -> None:
     """2×2: Clean (top) vs RFI (bottom). Left: pol vs λ²; right: FD spectrum + residuals.
@@ -384,7 +399,7 @@ def plot_2x2_clean_vs_depol(
     source_type: str,
     filename: str | None = None,
     phi_xlim=None,
-    figsize=(18, 12),
+    figsize=(FIGURE_WIDTH_IN, FIGURE_HEIGHT_IN),
     show_intrinsic_model: bool = False,
 ) -> None:
     """2×2: Clean (top) vs Depolarized (bottom). Left: pol vs λ²; right: FD spectrum + residuals.
