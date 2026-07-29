@@ -3,7 +3,7 @@ Pipeline steps for reconstruction.
 
 Each step implements run(ctx) and reads/writes the reconstructor context.
 """
-from .clean_steps import Clean1DStep
+from .clean_steps import Clean1DStep, make_clean_1d_step
 from .optimization_steps import (
     BuildMeasurementOperatorStep,
     BuildParameterStep,
@@ -21,6 +21,7 @@ from .optimization_steps import (
 
 __all__ = [
     "Clean1DStep",
+    "make_clean_1d_step",
     "FlagDataStep",
     "FDSigmaStep",
     "L2ZeroStep",

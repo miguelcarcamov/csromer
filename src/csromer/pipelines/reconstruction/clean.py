@@ -1,32 +1,24 @@
 """
-1D CLEAN algorithm for Faraday depth.
+1D CLEAN for Faraday depth reconstruction.
 
-Pure implementation: takes dirty spectrum and RMTF (at phi=0), returns model and
-residual. Assumes equispaced phi grid; RMTF is shifted by integer roll for each
-component. No dependency on Parameter, Dataset, or measurement operator.
+Two variants with the same greedy peak-picking, different residual updates:
+
+* ``clean_1d`` — Högbom in φ-space: subtract a shifted RMTF from the FD residual.
+* ``clean_1d_major_cycle`` — major cycle: predict with ``forward``, subtract in λ²,
+  then form the FD residual with ``dirty_spectrum``.
+
+Arrays are ``complex64``, matching Dataset / measurement operators.
 """
 from __future__ import annotations
+
+from typing import Callable, Optional
 
 import numpy as np
 
 
 def _shift_rmtf_to_peak(rmtf0: np.ndarray, peak_idx: int, n_phi: int) -> np.ndarray:
-    """
-    Shift RMTF so its peak aligns with peak_idx (for equispaced phi grid).
-
-    RMTF(0) has its peak at center index n_phi // 2. Roll so that peak moves
-    to peak_idx.
-
-    Args:
-        rmtf0: RMTF array (n_phi,) with peak at center.
-        peak_idx: Target index for the peak.
-        n_phi: Length of the grid (len(rmtf0)).
-
-    Returns:
-        Shifted RMTF, same shape as rmtf0.
-    """
-    shift = int(peak_idx) - n_phi // 2
-    return np.roll(rmtf0, shift)
+    """Roll RMTF so the peak at index ``n_phi // 2`` moves to ``peak_idx``."""
+    return np.roll(rmtf0, int(peak_idx) - n_phi // 2)
 
 
 def clean_1d(
@@ -34,51 +26,96 @@ def clean_1d(
     rmtf_at_zero: np.ndarray,
     gain: float,
     maxiter: int,
-    threshold: float | None = None,
-    n_phi: int | None = None,
+    threshold: Optional[float] = None,
+    n_phi: Optional[int] = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
-    1D CLEAN loop: find peaks in residual, add scaled components to model,
-    subtract scaled shifted RMTF from residual.
+    φ-space Högbom CLEAN.
 
-    Args:
-        dirty: Complex 1D dirty Faraday spectrum.
-        rmtf_at_zero: Complex 1D RMTF at phi=0, same length as dirty, peak at center.
-        gain: Loop gain (typical 0.1--0.3).
-        maxiter: Maximum number of CLEAN components.
-        threshold: Optional; stop when max(|residual|) < threshold (threshold in FD-space units).
-        n_phi: Length of grid (default len(dirty)); used for shift.
+    Each iteration finds the peak of the FD residual, adds ``gain * peak`` as a
+    δ-component to the model, and subtracts ``gain * peak * shifted_RMTF``.
 
-    Returns:
-        (model, residual): Complex 1D arrays, same shape as dirty.
+    Returns
+    -------
+    model, residual
+        Both ``complex64``, same length as ``dirty``.
     """
-    dirty = np.asarray(dirty, dtype=np.complex128)
-    rmtf_at_zero = np.asarray(rmtf_at_zero, dtype=np.complex128)
-    n = len(dirty)
-    if n != len(rmtf_at_zero):
+    dirty = np.asarray(dirty, dtype=np.complex64)
+    rmtf = np.asarray(rmtf_at_zero, dtype=np.complex64)
+    if dirty.shape != rmtf.shape:
         raise ValueError("dirty and rmtf_at_zero must have the same length")
-    n_phi = n if n_phi is None else n_phi
+    n_phi = len(dirty) if n_phi is None else int(n_phi)
 
-    # Normalise RMTF to peak 1 so subtraction scale is correct
-    rmtf_peak = np.abs(rmtf_at_zero).max()
-    if rmtf_peak <= 0:
+    rmtf_peak = float(np.abs(rmtf).max())
+    if rmtf_peak <= 0.0:
         return np.zeros_like(dirty), dirty.copy()
-    rmtf_norm = rmtf_at_zero / rmtf_peak
+    rmtf = rmtf / rmtf_peak
 
     model = np.zeros_like(dirty)
     residual = dirty.copy()
 
     for _ in range(maxiter):
-        imax = int(np.argmax(np.abs(residual)))
-        peak_val = residual[imax]
-        peak_amp = np.abs(peak_val)
+        peak_idx = int(np.argmax(np.abs(residual)))
+        peak = residual[peak_idx]
+        peak_amp = float(np.abs(peak))
+        if peak_amp <= 0.0:
+            break
         if threshold is not None and peak_amp < threshold:
             break
-        if peak_amp <= 0:
+
+        component = np.complex64(gain * peak)
+        model[peak_idx] += component
+        residual -= component * _shift_rmtf_to_peak(rmtf, peak_idx, n_phi)
+
+    return model, residual
+
+
+def clean_1d_major_cycle(
+    data: np.ndarray,
+    forward: Callable[[np.ndarray], np.ndarray],
+    dirty_spectrum: Callable[[np.ndarray], np.ndarray],
+    gain: float,
+    maxiter: int,
+    threshold: Optional[float] = None,
+    dirty: Optional[np.ndarray] = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Major-cycle CLEAN (residual formed via the measurement operator).
+
+    Each iteration finds the peak of the FD residual, adds ``gain * peak`` as a
+    δ-component, then sets::
+
+        residual = dirty_spectrum(data - forward(model))
+
+    ``forward`` and ``dirty_spectrum`` are callables so this module stays free of
+    Dataset / Parameter types; pass ``op.forward`` and ``op.dirty_spectrum``.
+
+    Returns
+    -------
+    model, residual
+        Both ``complex64`` Faraday-depth arrays.
+    """
+    data = np.asarray(data, dtype=np.complex64)
+    if dirty is None:
+        residual = np.asarray(dirty_spectrum(data), dtype=np.complex64)
+    else:
+        residual = np.asarray(dirty, dtype=np.complex64).copy()
+
+    model = np.zeros_like(residual)
+    if float(np.abs(residual).max()) <= 0.0:
+        return model, residual
+
+    for _ in range(maxiter):
+        peak_idx = int(np.argmax(np.abs(residual)))
+        peak = residual[peak_idx]
+        peak_amp = float(np.abs(peak))
+        if peak_amp <= 0.0:
+            break
+        if threshold is not None and peak_amp < threshold:
             break
 
-        model[imax] += gain * peak_val
-        beam = _shift_rmtf_to_peak(rmtf_norm, imax, n_phi)
-        residual -= gain * peak_val * beam
+        model[peak_idx] += np.complex64(gain * peak)
+        predicted = np.asarray(forward(model), dtype=np.complex64)
+        residual = np.asarray(dirty_spectrum(data - predicted), dtype=np.complex64)
 
-    return model.astype(dirty.dtype), residual.astype(dirty.dtype)
+    return model, residual

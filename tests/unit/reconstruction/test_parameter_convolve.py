@@ -55,7 +55,7 @@ def test_convolve_conserves_peak_for_delta_1jy(parameter_with_grid, re, im):
     assert np.isclose(np.abs(val), 1.0), "Test assumes |val| = 1"
     fd_delta = np.zeros(n, dtype=np.complex128)
     fd_delta[center] = val
-    conv = p.convolve(x=fd_delta, rmtf_fwhm=p.rmtf_fwhm)
+    conv, _ = p.convolve(x=fd_delta, rmtf_fwhm=p.rmtf_fwhm)
     conv_np = np.asarray(asnumpy(conv))
     peak_out = float(np.max(np.abs(conv_np)))
     np.testing.assert_allclose(peak_out, 1.0, rtol=1e-5, atol=1e-7)
@@ -68,10 +68,18 @@ def test_convolve_conserves_peak_for_delta_at_arbitrary_index(parameter_with_gri
     idx = n // 4
     fd_delta = np.zeros(n, dtype=np.complex128)
     fd_delta[idx] = 1.0 + 0.0j
-    conv = p.convolve(x=fd_delta, rmtf_fwhm=p.rmtf_fwhm)
+    conv, _ = p.convolve(x=fd_delta, rmtf_fwhm=p.rmtf_fwhm)
     conv_np = np.asarray(asnumpy(conv))
     peak_out = float(np.max(np.abs(conv_np)))
     np.testing.assert_allclose(peak_out, 1.0, rtol=1e-5, atol=1e-7)
+
+
+def test_clean_beam_kernel_peak_normalized_not_sum_normalized(parameter_with_grid):
+    """H1: _clean_beam_kernel must satisfy max=1 (not integral=1)."""
+    p = parameter_with_grid
+    kernel = p._clean_beam_kernel(p.rmtf_fwhm)
+    np.testing.assert_allclose(float(np.max(kernel)), 1.0, rtol=1e-6)
+    assert float(np.sum(kernel)) > 1.0 + 1e-3
 
 
 def test_sum_normalized_beam_matches_peak_normalized_peak(parameter_with_grid, monkeypatch):

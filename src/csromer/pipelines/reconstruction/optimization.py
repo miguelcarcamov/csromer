@@ -25,7 +25,6 @@ from .optimizer_factories import make_cg_optimizer, make_fista_optimizer
 from .steps import (
     BuildMeasurementOperatorStep,
     BuildParameterStep,
-    Clean1DStep,
     DefaultObjectiveFactoryStep,
     DefaultOptimizerFactoryStep,
     DirtyMapStep,
@@ -36,6 +35,7 @@ from .steps import (
     OptimizationStep,
     RestorationStep,
     RestoredStatsStep,
+    make_clean_1d_step,
 )
 
 if TYPE_CHECKING:
@@ -122,6 +122,10 @@ class CLEANReconstructorWrapper(PipelineFaradayReconstructor):
     Steps: L2Zero → BuildParameter → BuildMeasurementOperator → Flag →
     DirtyMap → DirtyStats → Clean1DStep → Restoration → RestoredStats.
 
+    ``clean_kind`` selects the residual-update strategy:
+      - ``"phi"`` (default): Högbom CLEAN in Faraday depth (shifted RMTF).
+      - ``"major_cycle"``: predict with A, subtract in λ², dirty residual via AᴴW.
+
     Same result attributes as CSROMERReconstructorWrapper (fd_dirty, fd_model,
     fd_restored, fd_residual, rm_*, second_moment, etc.).
     """
@@ -133,6 +137,7 @@ class CLEANReconstructorWrapper(PipelineFaradayReconstructor):
     gridding_kernel: str = "kaiser"
     gridding_kernel_half_width: float = 4.0
     gridding_kernel_beta: float = 2.5
+    clean_kind: str = "phi"
     clean_gain: float = 0.2
     clean_maxiter: int = 500
     clean_threshold: float | None = None
@@ -149,7 +154,8 @@ class CLEANReconstructorWrapper(PipelineFaradayReconstructor):
             FlagDataStep(),
             DirtyMapStep(),
             DirtyStatsStep(),
-            Clean1DStep(
+            make_clean_1d_step(
+                kind=self.clean_kind,
                 gain=self.clean_gain,
                 maxiter=self.clean_maxiter,
                 threshold=self.clean_threshold,
