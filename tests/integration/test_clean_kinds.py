@@ -143,3 +143,124 @@ def test_phi_and_major_cycle_results_similar():
         f"windowed restored L2 relative difference {rel_l2:.3f} too large "
         f"(P_phi={P_phi:.4f}, P_maj={P_maj:.4f})"
     )
+
+
+def test_all_methods_comparison_point_source():
+    """
+    Dirty + both CLEANs + CG/FISTA (λ=0) + FISTA (mild L1) on one noiseless source.
+
+    Expectation under default oversampling:
+      - dirty & both CLEANs recover ~P0 in restored (or dirty) peak
+      - CG/FISTA λ=0 fit the data but restored peak ≪ P0 (spread min-norm model)
+      - mild L1 improves restored peak toward P0 vs λ=0
+      - all methods agree on φ peak location
+    """
+    from csromer.pipelines.reconstruction import (
+        CSROMERReconstructorWrapper,
+        make_cg_optimizer,
+        make_fista_optimizer,
+    )
+
+    P0, phi0 = 1.0, 50.0
+    oversampling = 6.0
+    results = {}
+
+    # Dirty only
+    from csromer.reconstruction import Parameter
+    from csromer.transformers.measurement_operator import DirectFourier1D
+
+    src = _thin_source(P0=P0, phi0=phi0)
+    param = Parameter()
+    param.calculate_cellsize(dataset=src, oversampling=oversampling, verbose=False)
+    op = DirectFourier1D(dataset=src, parameter=param)
+    dirty = op.dirty_spectrum(src.data)
+    half = 3.0 * param.rmtf_fwhm
+    P_d, phi_d = _window_peak(dirty, param.phi, phi0, half)
+    results["dirty"] = {"P_rest": P_d, "phi": phi_d}
+
+    for kind in ("phi", "major_cycle"):
+        r = CLEANReconstructorWrapper(
+            dataset=_thin_source(P0=P0, phi0=phi0),
+            oversampling=oversampling,
+            clean_kind=kind,
+            clean_maxiter=400,
+            clean_gain=0.1,
+            clean_threshold=1e-3,
+        )
+        r.reconstruct()
+        hw = 3.0 * r.parameter.rmtf_fwhm
+        P, ph = _window_peak(r.fd_restored, r.parameter.phi, phi0, hw)
+        results[f"clean_{kind}"] = {
+            "P_rest": P,
+            "phi": ph,
+            "nnz": int(np.sum(np.abs(r.fd_model) > 1e-4)),
+        }
+
+    r_cg = CSROMERReconstructorWrapper(
+        dataset=_thin_source(P0=P0, phi0=phi0),
+        oversampling=oversampling,
+        lambda_l_norm=0.0,
+        wavelet=None,
+        optimizer_factory=make_cg_optimizer(maxiter=80, tol=1e-6, verbose=False),
+    )
+    r_cg.reconstruct()
+    hw = 3.0 * r_cg.parameter.rmtf_fwhm
+    P, ph = _window_peak(r_cg.fd_restored, r_cg.parameter.phi, phi0, hw)
+    results["cg_l0"] = {
+        "P_rest": P,
+        "phi": ph,
+        "nnz": int(np.sum(np.abs(r_cg.fd_model) > 1e-4)),
+    }
+    # Model fits data even when restored peak is low
+    md = r_cg.measurement_operator.dirty_spectrum(
+        r_cg.measurement_operator.forward(r_cg.fd_model)
+    )
+    P_af, _ = _window_peak(md, r_cg.parameter.phi, phi0, hw)
+    results["cg_l0"]["P_dirty_AF"] = P_af
+
+    r_f0 = CSROMERReconstructorWrapper(
+        dataset=_thin_source(P0=P0, phi0=phi0),
+        oversampling=oversampling,
+        lambda_l_norm=0.0,
+        wavelet=None,
+        optimizer_factory=make_fista_optimizer(maxiter=80, verbose=False),
+    )
+    r_f0.reconstruct()
+    P, ph = _window_peak(r_f0.fd_restored, r_f0.parameter.phi, phi0, hw)
+    results["fista_l0"] = {"P_rest": P, "phi": ph}
+
+    r_f = CSROMERReconstructorWrapper(
+        dataset=_thin_source(P0=P0, phi0=phi0),
+        oversampling=oversampling,
+        lambda_l_norm=0.05,
+        wavelet=None,
+        optimizer_factory=make_fista_optimizer(maxiter=80, verbose=False),
+    )
+    r_f.reconstruct()
+    P, ph = _window_peak(r_f.fd_restored, r_f.parameter.phi, phi0, hw)
+    results["fista_l005"] = {
+        "P_rest": P,
+        "phi": ph,
+        "nnz": int(np.sum(np.abs(r_f.fd_model) > 1e-4)),
+    }
+
+    # Position: everyone finds the source
+    for name, res in results.items():
+        assert abs(res["phi"] - phi0) < half, f"{name} phi={res['phi']}"
+
+    # Amplitude classes
+    assert abs(results["dirty"]["P_rest"] - P0) / P0 < 0.03
+    assert abs(results["clean_phi"]["P_rest"] - P0) / P0 < 0.12
+    assert abs(results["clean_major_cycle"]["P_rest"] - P0) / P0 < 0.12
+    assert abs(
+        results["clean_phi"]["P_rest"] - results["clean_major_cycle"]["P_rest"]
+    ) / P0 < 0.12
+
+    # λ→0 RML: restored attenuated, but dirty(A F) ≈ P0
+    assert results["cg_l0"]["P_rest"] < 0.4 * P0
+    assert results["fista_l0"]["P_rest"] < 0.4 * P0
+    assert abs(results["cg_l0"]["P_dirty_AF"] - P0) / P0 < 0.05
+
+    # Mild L1 beats λ=0 on restored peak; still may be below CLEAN
+    assert results["fista_l005"]["P_rest"] > results["fista_l0"]["P_rest"]
+    assert results["fista_l005"]["nnz"] < results["cg_l0"]["nnz"]
