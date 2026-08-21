@@ -12,8 +12,8 @@ from typing import TYPE_CHECKING, Literal, Optional, Tuple
 
 import numpy as np
 
-from ..optimizer import Optimizer
 from ..linesearch import FISTABacktracking
+from ..optimizer import Optimizer
 
 if TYPE_CHECKING:
     from csromer.reconstruction import Parameter
@@ -22,13 +22,13 @@ if TYPE_CHECKING:
 def _f_value(F, x) -> float:
     """
     Evaluate F(x) and return scalar (dask-safe).
-    
+
     Private helper function. Handles both numpy and dask arrays.
-    
+
     Args:
         F: Objective function callable
         x: Input array
-        
+
     Returns:
         Function value (float)
     """
@@ -39,13 +39,13 @@ def _f_value(F, x) -> float:
 def _inner_real(a, b) -> float:
     """
     Real part of inner product (dask-safe).
-    
+
     Private helper function. Computes real part of <a, b>.
-    
+
     Args:
         a: First array
         b: Second array
-        
+
     Returns:
         Real part of inner product (float)
     """
@@ -66,11 +66,11 @@ def _check_function_convergence(f_current: float, f_previous: float, tol: float)
 class FISTA(Optimizer):
     """
     Fast Iterative Shrinkage-Thresholding Algorithm (FISTA).
-    
+
     Optimizes objectives F(x) = f(x) + g(x) with smooth f and proximal for g.
     Step size: by default uses FISTABacktracking to adaptively find L each iteration.
     Set step= to use a fixed step size instead.
-    
+
     Attributes:
         noise: Noise level for cooling schedule (optional)
         monotonic: If True, use monotone FISTA (reject non-monotone steps)
@@ -83,18 +83,20 @@ class FISTA(Optimizer):
     monotonic: bool = False
     adaptive_restart: Optional[Literal["function", "gradient"]] = None
     step: float = None  # If set, use fixed step (no backtracking). If None, use linesearcher.
-    linesearcher: Optional[FISTABacktracking] = None  # If None and step is None, create default FISTABacktracking.
+    linesearcher: Optional[FISTABacktracking
+                           ] = None  # If None and step is None, create default FISTABacktracking.
 
     def run(self) -> Tuple[float, "Parameter"]:
         """
         Run FISTA optimization.
-        
+
         Public method. Performs FISTA iterations with optional cooling schedule
         and adaptive restart. Step size: FISTABacktracking (default) or fixed step if step= is set.
-        
+
         Returns:
             Tuple of (final_cost, optimized_parameter)
         """
+
         def grad_f(z):
             return self.F_obj.calculate_gradient(z, differentiable_only=True)
 
@@ -114,15 +116,18 @@ class FISTA(Optimizer):
                 param_ls.data = y
                 f_new, _ = ls.search(param_ls)
                 return np.array(param_ls.data, copy=True), f_new
+
             if self.verbose:
                 print("FISTA step: backtracking (FISTABacktracking)")
         else:
             step = self.step
+
             def step_callback(y):
                 g = grad_f(y)
                 z_step = y - step * g
                 x = self.F_obj.apply_prox_nondiff(z_step, nu=step)
                 return x, _f_value(self.F_obj.evaluate, x)
+
             if self.verbose:
                 print("FISTA step size (fixed): {:.2e}".format(step))
 
@@ -155,7 +160,7 @@ class FISTA(Optimizer):
     ) -> Tuple[float, np.ndarray]:
         """
         Core FISTA algorithm implementation (Pyralysis-style: no lambda cooling).
-        
+
         step_callback(y) must return (x, f_new) where x = prox(y - step*grad) and f_new = F(x).
         """
         if x is None and n is not None:
@@ -199,7 +204,10 @@ class FISTA(Optimizer):
 
             if _check_function_convergence(f_new, f_prev, tol):
                 if verbose:
-                    print("FISTA converged (relative function change <= tol) after {} iterations".format(it + 1))
+                    print(
+                        "FISTA converged (relative function change <= tol) after {} iterations".
+                        format(it + 1)
+                    )
                 f_prev = f_new
                 break
 

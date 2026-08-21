@@ -33,12 +33,12 @@ def _approx_abs(x, epsilon: float, xp=None):
     if xp is np and hasattr(x, "__array__") and not hasattr(x, "compute"):
         x = np.asarray(x)
     if xp is np and np.iscomplexobj(x):
-        return xp.sqrt(xp.real(x) ** 2 + xp.imag(x) ** 2 + epsilon)
+        return xp.sqrt(xp.real(x)**2 + xp.imag(x)**2 + epsilon)
     if xp is np:
         return xp.sqrt(x * x + epsilon)
     # dask path: support complex (use np.issubdtype for dtype check)
     if np.issubdtype(x.dtype, np.complexfloating):
-        return xp.sqrt(xp.real(x) ** 2 + xp.imag(x) ** 2 + epsilon)
+        return xp.sqrt(xp.real(x)**2 + xp.imag(x)**2 + epsilon)
     return xp.sqrt(x * x + epsilon)
 
 

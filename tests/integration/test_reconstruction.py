@@ -8,16 +8,15 @@ import pytest
 
 pytest.importorskip("pywt", reason="integration tests require PyWavelets (pip install PyWavelets)")
 
-
 pytestmark = pytest.mark.integration
 
-from csromer.simulation import FaradayThinSource
 from csromer.pipelines.reconstruction import (
     CLEANReconstructorWrapper,
     CSROMERReconstructorWrapper,
     make_cg_optimizer,
     make_fista_optimizer,
 )
+from csromer.simulation import FaradayThinSource
 
 
 @pytest.fixture
@@ -44,13 +43,13 @@ def test_cg_reconstruction_end_to_end(small_thin_source):
     recon.reconstruct()
 
     n_phi = recon.parameter.phi.shape[0]
-    assert recon.fd_dirty.shape == (n_phi,)
+    assert recon.fd_dirty.shape == (n_phi, )
     assert np.all(np.isfinite(recon.fd_dirty))
-    assert recon.fd_model.shape == (n_phi,)
+    assert recon.fd_model.shape == (n_phi, )
     assert np.all(np.isfinite(recon.fd_model))
-    assert recon.fd_restored.shape == (n_phi,)
+    assert recon.fd_restored.shape == (n_phi, )
     assert np.all(np.isfinite(recon.fd_restored))
-    assert recon.fd_residual.shape == (n_phi,)
+    assert recon.fd_residual.shape == (n_phi, )
     assert np.all(np.isfinite(recon.fd_residual))
 
     assert np.isfinite(recon.rm_dirty)
@@ -70,13 +69,13 @@ def test_clean_reconstruction_end_to_end(small_thin_source):
     recon.reconstruct()
 
     n_phi = recon.parameter.phi.shape[0]
-    assert recon.fd_dirty.shape == (n_phi,)
+    assert recon.fd_dirty.shape == (n_phi, )
     assert np.all(np.isfinite(recon.fd_dirty))
-    assert recon.fd_model.shape == (n_phi,)
+    assert recon.fd_model.shape == (n_phi, )
     assert np.all(np.isfinite(recon.fd_model))
-    assert recon.fd_restored.shape == (n_phi,)
+    assert recon.fd_restored.shape == (n_phi, )
     assert np.all(np.isfinite(recon.fd_restored))
-    assert recon.fd_residual.shape == (n_phi,)
+    assert recon.fd_residual.shape == (n_phi, )
     assert np.all(np.isfinite(recon.fd_residual))
     assert np.isfinite(recon.rm_dirty)
     assert np.isfinite(recon.rm_model)
@@ -94,17 +93,19 @@ def test_fista_reconstruction_end_to_end(small_thin_source):
     recon.reconstruct()
 
     n_phi = recon.parameter.phi.shape[0]
-    assert recon.fd_dirty.shape == (n_phi,)
+    assert recon.fd_dirty.shape == (n_phi, )
     assert np.all(np.isfinite(recon.fd_dirty))
-    assert recon.fd_model.shape == (n_phi,)
+    assert recon.fd_model.shape == (n_phi, )
     assert np.all(np.isfinite(recon.fd_model))
-    assert recon.fd_restored.shape == (n_phi,)
+    assert recon.fd_restored.shape == (n_phi, )
     assert np.all(np.isfinite(recon.fd_restored))
     assert np.isfinite(recon.rm_model)
     assert np.isfinite(recon.second_moment)
 
 
-@pytest.mark.xfail(reason="FISTA currently stuck in monotone reject; model/restored near zero until fixed")
+@pytest.mark.xfail(
+    reason="FISTA currently stuck in monotone reject; model/restored near zero until fixed"
+)
 def test_fista_restored_amplitude_vs_dirty(small_thin_source):
     """
     FISTA with lambda_l_norm=0 (Chi-squared only, same as CG) should produce
@@ -131,6 +132,4 @@ def test_fista_restored_amplitude_vs_dirty(small_thin_source):
         f"max|restored|={max_restored:.2e}, max|dirty|={max_dirty:.2e}"
     )
     # Model (Jy/phi_pixel) can be smaller than dirty (Jy/rmtf); check it's not identically zero
-    assert max_model >= 1e-10, (
-        f"FISTA model should be non-zero: max|model|={max_model:.2e}"
-    )
+    assert max_model >= 1e-10, (f"FISTA model should be non-zero: max|model|={max_model:.2e}")

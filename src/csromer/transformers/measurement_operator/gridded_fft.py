@@ -146,18 +146,8 @@ class GriddedFFT1D(MeasurementOperator):
         if abs(sum_w) < 1e-10:
             sum_w = 1.0
         normalized = weights / sum_w
-        # Use this class's adjoint (IFFT path), not the base helper
+        # Use this class's adjoint (IFFT path), not the base helper.
+        # l2_ref phase (if set) is applied inside adjoint() itself (base._l2_ref_ramp).
         raw = self.adjoint(normalized)
-        l2_ref = getattr(self.dataset, "l2_ref", None)
-        if (
-            self.parameter is not None
-            and l2_ref is not None
-            and abs(float(l2_ref)) >= 1e-10
-        ):
-            xp = math_module(raw)
-            phi = self.parameter.phi
-            phi_same = xp.asarray(phi)
-            phase_ramp = xp.exp(2.0j * phi_same * float(l2_ref)).astype(np.complex64)
-            raw = raw * phase_ramp
         n_chan = self.dataset.m
         return (raw * n_chan).astype(np.complex64)

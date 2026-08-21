@@ -26,4 +26,4 @@ class TestFixed:
         f_step, step = ls.search(param_x, step=0.25)
         assert step == 0.25
         # f(0.25)=0.5*(0.75)^2*5
-        assert f_step == pytest.approx(0.5 * (0.75 ** 2) * 5, rel=1e-8)
+        assert f_step == pytest.approx(0.5 * (0.75**2) * 5, rel=1e-8)

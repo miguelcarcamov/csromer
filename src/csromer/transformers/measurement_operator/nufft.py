@@ -54,7 +54,7 @@ def _kaiser_1d(u: float, half_width: int, beta: float) -> float:
     """
     if abs(u) > half_width:
         return 0.0
-    arg = beta * np.sqrt(1.0 - (u / half_width) ** 2)
+    arg = beta * np.sqrt(1.0 - (u / half_width)**2)
     return i0(arg) / i0(beta)
 
 
@@ -205,7 +205,8 @@ class NUFFT1D(DirectFourier1D):
 
         if self._nufft_pydata and self._nufft_A_sparse is not None:
             # Use ifft with norm="forward" for positive sign convention
-            X = da.fft.ifft(x_shifted, norm="forward") if use_dask else xp.fft.ifft(x_shifted, norm="forward")
+            X = da.fft.ifft(x_shifted,
+                            norm="forward") if use_dask else xp.fft.ifft(x_shifted, norm="forward")
             if use_dask:
                 interp = da.dot(self._nufft_A_sparse, X)
             else:
@@ -271,7 +272,8 @@ class NUFFT1D(DirectFourier1D):
             # Use fft with norm="forward" for positive sign convention (adjoint of ifft)
             # The adjoint of ifftshift is fftshift, so we don't need ifftshift here
             # Just apply fft, then fftshift to restore phi grid order (undoing ifftshift from forward)
-            x_fft = da.fft.fft(back, norm="forward") if use_dask else xp.fft.fft(back, norm="forward")
+            x_fft = da.fft.fft(back,
+                               norm="forward") if use_dask else xp.fft.fft(back, norm="forward")
             # Shift output to restore phi grid order (fftshift after FFT)
             # This undoes the ifftshift applied in forward direction
             out = da.fft.fftshift(x_fft) if use_dask else np.fft.fftshift(x_fft)

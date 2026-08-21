@@ -46,12 +46,8 @@ class GoldenSection(LineSearcher):
 
     def search(self, x: Parameter, **kwargs) -> Tuple[float, float]:
         self._read_kwargs(**kwargs)
-        f, a, c = setup_bracketing(
-            self.objective_function, x, initial_a=0.0, initial_b=1.0
-        )
-        f_min, x_min = pure_golden_section_search(
-            f, a, c, self.max_iter, self.tol, self.zeps
-        )
+        f, a, c = setup_bracketing(self.objective_function, x, initial_a=0.0, initial_b=1.0)
+        f_min, x_min = pure_golden_section_search(f, a, c, self.max_iter, self.tol, self.zeps)
         return f_min, x_min
 
     def _read_kwargs(self, **kwargs) -> None:

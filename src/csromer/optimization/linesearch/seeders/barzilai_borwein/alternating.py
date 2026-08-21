@@ -13,9 +13,8 @@ from .base import BarzilaiBorwein
 class BarzilaiBorweinAlternating(BarzilaiBorwein):
     """Alternating: even k -> BB1, odd k -> BB2."""
 
-    def _select_step_candidate(
-        self, alpha_bb1: float, alpha_bb2: float, iteration: int
-    ) -> Optional[float]:
+    def _select_step_candidate(self, alpha_bb1: float, alpha_bb2: float,
+                               iteration: int) -> Optional[float]:
         bb1_valid = np.isfinite(alpha_bb1) and alpha_bb1 > 0
         bb2_valid = np.isfinite(alpha_bb2) and alpha_bb2 > 0
         if not (bb1_valid or bb2_valid):

@@ -82,7 +82,9 @@ def _autocorr_gridded(x: np.ndarray) -> np.ndarray:
     return result[result.size // 2:]
 
 
-def boxpierce(x: np.ndarray = None, k: Union[List, int] = None, conf_level: float = 0.95) -> Tuple[np.ndarray, float]:
+def boxpierce(x: np.ndarray = None,
+              k: Union[List, int] = None,
+              conf_level: float = 0.95) -> Tuple[np.ndarray, float]:
     """
     Box-Pierce test statistic for residual autocorrelation.
 
@@ -118,7 +120,9 @@ def boxpierce(x: np.ndarray = None, k: Union[List, int] = None, conf_level: floa
         return np.array(x_sum), scipy.stats.chi2.ppf(conf_level, df=k)
 
 
-def ljungbox(x: np.ndarray = None, k: Union[List, int] = None, conf_level: float = 0.95) -> Tuple[np.ndarray, float]:
+def ljungbox(x: np.ndarray = None,
+             k: Union[List, int] = None,
+             conf_level: float = 0.95) -> Tuple[np.ndarray, float]:
     """
     Ljung-Box test statistic for residual autocorrelation.
 
@@ -322,7 +326,7 @@ class Dataset(metaclass=ABCMeta):
 
         if self.__lambda2 is not None and self.__nu_0 is not None:
             nu = c / np.sqrt(self.__lambda2)
-            self.__s = (nu / self.__nu_0) ** self.__spectral_idx
+            self.__s = (nu / self.__nu_0)**self.__spectral_idx
 
     @property
     def s(self) -> Union[np.ndarray, "da.Array", None]:
@@ -383,18 +387,23 @@ class Dataset(metaclass=ABCMeta):
         """
         self.__lambda2 = val
         if val is not None:
-            # Cast lambda2 to float32 while preserving numpy vs dask
+            # Cast lambda2 to float64 while preserving numpy vs dask. float64 (not
+            # float32) because lambda2 feeds phase kernels exp(+/-2j*phi*lambda2)
+            # directly: float32 storage independently rounds each element, which
+            # destroys exact uniform spacing in Gridding-constructed grids (each
+            # lambda2[k] = l2_min + k*step gets its own ~1e-7 rounding jitter, large
+            # relative to a fine grid step) and loses precision in the phase itself.
             if da is not None and is_dask_array(val):
-                val = val.astype(np.float32)
+                val = val.astype(np.float64)
             else:
-                val = np.asarray(val, dtype=np.float32)
+                val = np.asarray(val, dtype=np.float64)
             val_np = asnumpy(val)
             # Ensure ascending order in lambda²
             if np.all(np.diff(val_np) < 0):
                 if da is not None and is_dask_array(val):
                     val = val[::-1]
                 else:
-                    val = val[::-1].astype(np.float32)
+                    val = val[::-1].astype(np.float64)
                 self.__lambda2 = val
                 val_np = asnumpy(val)
             else:
@@ -417,10 +426,12 @@ class Dataset(metaclass=ABCMeta):
                 self.__nu_0 = 0.5 * (float(nu_min) + float(nu_max))
             else:
                 self.__nu_0 = np.nan
-            if hasattr(self, "spectral_idx") and self.__spectral_idx is not None and np.isfinite(self.__nu_0):
+            if hasattr(self, "spectral_idx") and self.__spectral_idx is not None and np.isfinite(
+                self.__nu_0
+            ):
                 # Only compute s where nu is finite; otherwise use 1.0 (no spectral correction)
                 with np.errstate(invalid="ignore"):
-                    s_vals = (self.__nu / self.__nu_0) ** self.__spectral_idx
+                    s_vals = (self.__nu / self.__nu_0)**self.__spectral_idx
                 self.__s = np.where(np.isfinite(self.__nu), s_vals, 1.0).astype(np.float32)
             elif hasattr(self, "spectral_idx") and self.__spectral_idx is not None:
                 self.__s = np.ones_like(self.__nu, dtype=np.float32)
@@ -933,7 +944,9 @@ class Dataset(metaclass=ABCMeta):
         p_hat = p * galrm_shift
         self.data = p_hat
 
-    def assess_residuals(self, gridding_object: "Gridding" = None, confidence_interval: float = 0.95) -> Tuple:
+    def assess_residuals(
+        self, gridding_object: "Gridding" = None, confidence_interval: float = 0.95
+    ) -> Tuple:
         """
         Assess residual autocorrelation for quality control.
 

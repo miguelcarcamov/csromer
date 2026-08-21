@@ -29,7 +29,9 @@ class BarzilaiBorwein(StepSizeSeeder):
     _iter_count: int = field(default=0, init=False, repr=False)
 
     @staticmethod
-    def _bb1(step_norm_squared: float, step_curvature: float, curvature_tol: float = 1e-12) -> float:
+    def _bb1(
+        step_norm_squared: float, step_curvature: float, curvature_tol: float = 1e-12
+    ) -> float:
         """Long BB: alpha = ||s||^2 / (s'y)."""
         if np.isfinite(step_curvature) and step_curvature > curvature_tol:
             return step_norm_squared / step_curvature
@@ -43,18 +45,15 @@ class BarzilaiBorwein(StepSizeSeeder):
     ) -> float:
         """Short BB: alpha = s'y / ||y||^2."""
         if (
-            np.isfinite(grad_change_norm_sqr)
-            and grad_change_norm_sqr > curvature_tol
-            and np.isfinite(step_curvature)
-            and step_curvature > curvature_tol
+            np.isfinite(grad_change_norm_sqr) and grad_change_norm_sqr > curvature_tol
+            and np.isfinite(step_curvature) and step_curvature > curvature_tol
         ):
             return step_curvature / grad_change_norm_sqr
         return np.nan
 
     @abstractmethod
-    def _select_step_candidate(
-        self, alpha_bb1: float, alpha_bb2: float, iteration: int
-    ) -> Optional[float]:
+    def _select_step_candidate(self, alpha_bb1: float, alpha_bb2: float,
+                               iteration: int) -> Optional[float]:
         """Select between BB1 and BB2. Subclasses implement strategy."""
         raise NotImplementedError
 
@@ -72,18 +71,14 @@ class BarzilaiBorwein(StepSizeSeeder):
             step_norm_sqr = _vdot_real(step_diff, step_diff)
             step_curvature = _vdot_real(step_diff, grad_diff)
             grad_change_norm_sqr = _vdot_real(grad_diff, grad_diff)
-            alpha_bb1 = self._bb1(
-                step_norm_sqr, step_curvature, curvature_tol=self.curvature_tol
-            )
+            alpha_bb1 = self._bb1(step_norm_sqr, step_curvature, curvature_tol=self.curvature_tol)
             alpha_bb2 = self._bb2(
                 step_curvature, grad_change_norm_sqr, curvature_tol=self.curvature_tol
             )
             iteration = max(1, self._iter_count)
             alpha_candidate = self._select_step_candidate(alpha_bb1, alpha_bb2, iteration=iteration)
             if (
-                alpha_candidate is not None
-                and np.isfinite(alpha_candidate)
-                and alpha_candidate > 0
+                alpha_candidate is not None and np.isfinite(alpha_candidate) and alpha_candidate > 0
             ):
                 step_seed = alpha_candidate
             else:

@@ -21,7 +21,7 @@ def _kaiser_weight(u: float, half_width: float, beta: float) -> float:
         return 0.0
     if half_width <= 0:
         return 1.0 if u == 0 else 0.0
-    x = np.sqrt(1.0 - (u / half_width) ** 2)
+    x = np.sqrt(1.0 - (u / half_width)**2)
     return float(i0(beta * x) / i0(beta))
 
 
@@ -80,11 +80,7 @@ class Gridding:
         if l2_min is None or l2_max is None:
             raise ValueError("Dataset must have lambda2 set for gridding")
 
-        step = (
-            float(self.d_lambda2)
-            if self.d_lambda2 is not None
-            else self.dataset.delta_l2_mean
-        )
+        step = (float(self.d_lambda2) if self.d_lambda2 is not None else self.dataset.delta_l2_mean)
         if step is None or step <= 0:
             raise ValueError("Gridding requires d_lambda2 or dataset.delta_l2_mean")
 
@@ -94,9 +90,8 @@ class Gridding:
             delta_phi_fwhm = self.dataset.delta_phi
             if delta_phi_fwhm is None:
                 delta_phi_fwhm = (
-                    2.0 * np.sqrt(3.0) / (l2_max - l2_min)
-                    if l2_max > l2_min
-                    else 2.0 / (l2_max + l2_min)
+                    2.0 * np.sqrt(3.0) / (l2_max - l2_min) if l2_max > l2_min else 2.0 /
+                    (l2_max + l2_min)
                 )
             phi_max = np.sqrt(3) / float(self.dataset.delta_l2_mean or 1e-20)
             phi_max = max(phi_max, float(delta_phi_fwhm) * 10.0)

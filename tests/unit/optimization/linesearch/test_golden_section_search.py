@@ -13,13 +13,13 @@ class TestPureGoldenSectionSearch:
 
     def test_pure_golden_section_finds_minimum(self):
         # f(t) = (t - 1)^2, min at t=1
-        f = lambda t: (t - 1.0) ** 2
+        f = lambda t: (t - 1.0)**2
         f_min, x_min = pure_golden_section_search(f, 0.0, 3.0, max_iter=50, tol=1e-7)
         assert abs(x_min - 1.0) < 0.01
         assert f_min < 0.01
 
     def test_pure_golden_section_returns_tuple(self):
-        f = lambda t: t ** 2
+        f = lambda t: t**2
         f_min, x_min = pure_golden_section_search(f, -1.0, 1.0, max_iter=20, tol=1e-6)
         assert isinstance(f_min, (float, np.floating))
         assert isinstance(x_min, (float, np.floating))

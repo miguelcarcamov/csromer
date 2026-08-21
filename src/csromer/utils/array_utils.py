@@ -20,13 +20,13 @@ except ImportError:
 def asnumpy(arr) -> np.ndarray:
     """
     Convert array to NumPy.
-    
+
     Public utility function. If input is a Dask array, computes it. Otherwise
     returns as NumPy array (copy if needed).
-    
+
     Args:
         arr: Input array (numpy, dask, or None)
-        
+
     Returns:
         NumPy array or None
     """
@@ -40,12 +40,12 @@ def asnumpy(arr) -> np.ndarray:
 def is_dask_array(arr) -> bool:
     """
     Check if array is a Dask array.
-    
+
     Public utility function.
-    
+
     Args:
         arr: Input array
-        
+
     Returns:
         True if arr is a Dask array, False otherwise
     """
@@ -57,12 +57,12 @@ def is_dask_array(arr) -> bool:
 def length_of(arr) -> int:
     """
     Return length along first axis.
-    
+
     Public utility function. Supports both NumPy and Dask arrays.
-    
+
     Args:
         arr: Input array (or None)
-        
+
     Returns:
         Length (int) or 0 if arr is None
     """
@@ -74,13 +74,13 @@ def length_of(arr) -> int:
 def math_module(arr):
     """
     Return the math/array module appropriate for the given array.
-    
+
     Public utility function. Returns numpy or dask.array based on input type.
     Use for element-wise math (sqrt, cos, sin, etc.) so dask arrays stay lazy.
-    
+
     Args:
         arr: Input array (or None)
-        
+
     Returns:
         numpy or dask.array module
     """
@@ -94,14 +94,14 @@ def math_module(arr):
 def zeros_like(arr, **kwargs):
     """
     Return zeros with same shape/dtype as arr, in the same backend.
-    
+
     Public utility function. Returns numpy.zeros_like or da.zeros_like based
     on input type. Use so gradient accumulation stays dask when input is dask.
-    
+
     Args:
         arr: Input array (or None)
         **kwargs: Additional arguments passed to zeros_like
-        
+
     Returns:
         Zeros array (same backend as arr) or None
     """

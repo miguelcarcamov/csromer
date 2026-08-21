@@ -9,6 +9,7 @@ from csromer.optimization.linesearch.seeders import StepSizeSeeder
 
 
 class DummySeeder(StepSizeSeeder):
+
     def estimate_step_size(self, x, objective_function):
         return 0.5
 

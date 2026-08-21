@@ -6,13 +6,13 @@ from __future__ import annotations
 
 import numpy as np
 
-from csromer.utils.array_utils import asnumpy
 from csromer.pipelines import (
     CLEANReconstructorWrapper,
     CSROMERReconstructorWrapper,
     make_cg_optimizer,
     make_fista_optimizer,
 )
+from csromer.utils.array_utils import asnumpy
 
 
 def _estimate_lambda_l1(
@@ -107,7 +107,7 @@ def run_csromer_reconstruction(
     else:
         # χ² = (1/2)*sum(w|r|²)/n_eff ⇒ E[χ²] = (1/2)*(r/σ)² per DoF. So 5σ → target 12.5.
         _target_sigma = target_residual_sigma if target_residual_sigma is not None else 1.0
-        _target_chi2 = 0.5 * float(_target_sigma ** 2)
+        _target_chi2 = 0.5 * float(_target_sigma**2)
 
         # When σ_fd is computed (Hutchinson), use FD acceptance by default with same sigma as data target.
         _fd_accept_n_sigma = fd_accept_n_sigma

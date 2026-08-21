@@ -23,6 +23,7 @@ def make_fista_optimizer(
     Return an optimizer factory for FISTA.
     The returned callable takes (parameter, F_obj) and returns a FISTA instance.
     """
+
     def factory(parameter, F_obj):
         kw = dict(
             guess_param=parameter,
@@ -36,6 +37,7 @@ def make_fista_optimizer(
         if step is not None:
             kw["step"] = step
         return FISTA(**kw)
+
     return factory
 
 
@@ -49,6 +51,7 @@ def make_cg_optimizer(
     Return an optimizer factory for Conjugate Gradient.
     The returned callable takes (parameter, F_obj) and returns a CG optimizer instance.
     """
+
     def factory(parameter, F_obj):
         grad_fun = None
         if F_obj.F and len(F_obj.F) == 1:
@@ -61,4 +64,5 @@ def make_cg_optimizer(
             tol=tol,
             verbose=verbose,
         )
+
     return factory

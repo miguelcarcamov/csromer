@@ -29,9 +29,7 @@ class GLLArmijo(BacktrackingArmijo):
             self._current_max = float("-inf")
             return
         if self._function_history is None:
-            self._function_history = np.full(
-                self.memory_window, np.nan, dtype=np.float32
-            )
+            self._function_history = np.full(self.memory_window, np.nan, dtype=np.float32)
             self._history_index = 0
             self._history_filled = False
             self._current_max = float("-inf")
@@ -59,7 +57,8 @@ class GLLArmijo(BacktrackingArmijo):
         f = f1dim(self.objective_function, x)
         grad = self.objective_function.dphi
         grad_norm = np.real(np.vdot(np.ravel(grad), np.ravel(grad)))
-        grad_norm = float(grad_norm.compute()) if hasattr(grad_norm, "compute") else float(np.real(grad_norm))
+        grad_norm = float(grad_norm.compute()) if hasattr(grad_norm,
+                                                          "compute") else float(np.real(grad_norm))
         m = -self.contraction * grad_norm
         self._update_function_history(current_phi)
         step_size = self._get_initial_step_size(x)

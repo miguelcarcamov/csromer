@@ -10,7 +10,7 @@ from ...reconstruction.parameter import Parameter
 from .linesearcher import LineSearcher
 from .setup_bracketing import setup_bracketing
 
-CGOLD = (1.0 / 1.618034) ** 2
+CGOLD = (1.0 / 1.618034)**2
 
 
 def _golden_step(x: float, a: float, b: float, xm: float) -> Tuple[float, float]:
@@ -28,8 +28,7 @@ class Brent(LineSearcher):
     def search(self, x: Parameter, **kwargs) -> Tuple[float, float]:
         self._read_kwargs(**kwargs)
         f, a, b, b_ = setup_bracketing(
-            self.objective_function, x,
-            initial_a=0.0, initial_b=1.0, return_middle=True
+            self.objective_function, x, initial_a=0.0, initial_b=1.0, return_middle=True
         )
         e = d = 0.0
         x_pt = w = v = b_

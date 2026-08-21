@@ -7,7 +7,7 @@ even though this requires PyWavelets (pywt) to be installed in the environment.
 import numpy as np
 import pytest
 
-from csromer.pipelines.reconstruction.clean import clean_1d, _shift_rmtf_to_peak
+from csromer.pipelines.reconstruction.clean import _shift_rmtf_to_peak, clean_1d
 
 
 @pytest.fixture
@@ -20,7 +20,7 @@ def rmtf_gaussian_like(n_phi):
     """RMTF-like kernel with peak at center (Gaussian shape)."""
     x = np.arange(n_phi, dtype=np.float64) - n_phi // 2
     sigma = 3.0
-    r = np.exp(-0.5 * (x / sigma) ** 2)
+    r = np.exp(-0.5 * (x / sigma)**2)
     return (r + 0.01 * np.random.RandomState(42).randn(n_phi)).astype(np.complex128)
 
 
@@ -71,11 +71,9 @@ def test_clean_1d_maxiter_stop(n_phi, rmtf_gaussian_like):
     """Loop stops at maxiter; shapes unchanged."""
     dirty = np.zeros(n_phi, dtype=np.complex128)
     dirty[n_phi // 2] = 1.0
-    model, residual = clean_1d(
-        dirty, rmtf_gaussian_like, gain=0.2, maxiter=3, threshold=None
-    )
-    assert model.shape == (n_phi,)
-    assert residual.shape == (n_phi,)
+    model, residual = clean_1d(dirty, rmtf_gaussian_like, gain=0.2, maxiter=3, threshold=None)
+    assert model.shape == (n_phi, )
+    assert residual.shape == (n_phi, )
     # Should have done exactly 3 components (or fewer if residual went to zero)
     n_comp = np.sum(np.abs(model) > 1e-12)
     assert n_comp <= 3
@@ -163,8 +161,8 @@ def test_clean_1d_major_cycle_single_component(n_phi, rmtf_gaussian_like):
         threshold=1e-3,
         dirty=dirty,
     )
-    assert model.shape == (n_phi,)
-    assert residual.shape == (n_phi,)
+    assert model.shape == (n_phi, )
+    assert residual.shape == (n_phi, )
     assert np.argmax(np.abs(model)) == center
     assert np.abs(model[center]) > 0.5  # most flux collected at true pixel
     assert np.max(np.abs(residual)) < np.max(np.abs(dirty))
@@ -196,10 +194,7 @@ def test_clean_1d_major_cycle_threshold_stop(n_phi, rmtf_gaussian_like):
 
 
 def test_make_clean_1d_step_factory():
-    from csromer.pipelines.reconstruction.steps.clean_steps import (
-        Clean1DStep,
-        make_clean_1d_step,
-    )
+    from csromer.pipelines.reconstruction.steps.clean_steps import Clean1DStep, make_clean_1d_step
 
     phi = make_clean_1d_step("phi")
     maj = make_clean_1d_step("major_cycle")

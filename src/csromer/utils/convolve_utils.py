@@ -47,7 +47,9 @@ def convolve(data: np.ndarray, kernel: np.ndarray, mode: str = "same") -> np.nda
     n_kernel = kernel_np.shape[0]
     n_full = n_data + n_kernel - 1
     spec_data = fft1d_forward(np.pad(data_np, (0, n_full - n_data)), centered=False, norm="forward")
-    spec_kernel = fft1d_forward(np.pad(kernel_np, (0, n_full - n_kernel)), centered=False, norm="forward")
+    spec_kernel = fft1d_forward(
+        np.pad(kernel_np, (0, n_full - n_kernel)), centered=False, norm="forward"
+    )
     full = fft1d_inverse(spec_data * spec_kernel, centered=False, norm="forward")
     out = np.asarray(full[_same_slice(n_full, n_data)].real, dtype=np.float64)
     out_dtype = getattr(np.asarray(data), "dtype", np.float32)
@@ -56,9 +58,7 @@ def convolve(data: np.ndarray, kernel: np.ndarray, mode: str = "same") -> np.nda
     return np.asarray(out, dtype=out_dtype)
 
 
-def convolve_complex(
-    data: np.ndarray, kernel: np.ndarray, mode: str = "same"
-) -> np.ndarray:
+def convolve_complex(data: np.ndarray, kernel: np.ndarray, mode: str = "same") -> np.ndarray:
     """
     Convolve a complex 1D array with a real 1D kernel.
 
@@ -83,9 +83,15 @@ def convolve_complex(
     n_data = data_np.shape[0]
     n_kernel = kernel_np.shape[0]
     n_full = n_data + n_kernel - 1
-    kernel_spec = fft1d_forward(np.pad(kernel_np, (0, n_full - n_kernel)), centered=False, norm="forward")
-    data_real_spec = fft1d_forward(np.pad(data_np.real, (0, n_full - n_data)), centered=False, norm="forward")
-    data_imag_spec = fft1d_forward(np.pad(data_np.imag, (0, n_full - n_data)), centered=False, norm="forward")
+    kernel_spec = fft1d_forward(
+        np.pad(kernel_np, (0, n_full - n_kernel)), centered=False, norm="forward"
+    )
+    data_real_spec = fft1d_forward(
+        np.pad(data_np.real, (0, n_full - n_data)), centered=False, norm="forward"
+    )
+    data_imag_spec = fft1d_forward(
+        np.pad(data_np.imag, (0, n_full - n_data)), centered=False, norm="forward"
+    )
     real_full = fft1d_inverse(data_real_spec * kernel_spec, centered=False, norm="forward")
     imag_full = fft1d_inverse(data_imag_spec * kernel_spec, centered=False, norm="forward")
     data_slice = _same_slice(n_full, n_data)

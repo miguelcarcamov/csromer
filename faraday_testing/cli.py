@@ -24,18 +24,20 @@ if _src.exists() and str(_src) not in sys.path:
     sys.path.insert(0, str(_src))
 
 from faraday_testing import config
+from faraday_testing.plotting import plot_2x2_clean_vs_depol, plot_2x2_clean_vs_rfi
+from faraday_testing.products import cache_available, load_product, save_product
 from faraday_testing.reconstruction import run_csromer_reconstruction
 from faraday_testing.simulation import intrinsic_components_for_key, simulate_one_source
-from faraday_testing.plotting import plot_2x2_clean_vs_rfi, plot_2x2_clean_vs_depol
-from faraday_testing.products import load_product, save_product, cache_available
 
 
 def _parse_args():
     p = argparse.ArgumentParser(
-        description="CS-ROMER Faraday testing: thin/thick/mixed sources, RFI and depolarization, SKA bands.",
+        description=
+        "CS-ROMER Faraday testing: thin/thick/mixed sources, RFI and depolarization, SKA bands.",
     )
     p.add_argument(
-        "--band", "-b",
+        "--band",
+        "-b",
         action="append",
         dest="bands",
         choices=config.BAND_CHOICES + ["all"],
@@ -48,7 +50,8 @@ def _parse_args():
         help="Reconstructor: csromer (FISTA+L1), cg, or clean.",
     )
     p.add_argument(
-        "--outdir", "-o",
+        "--outdir",
+        "-o",
         type=Path,
         default=Path("."),
         help="Output directory for PNG figures (default: current directory).",
@@ -57,7 +60,8 @@ def _parse_args():
         "--cache",
         action="store_true",
         default=True,
-        help="Use zarr cache to skip re-running simulations/reconstructions when products exist (default).",
+        help=
+        "Use zarr cache to skip re-running simulations/reconstructions when products exist (default).",
     )
     p.add_argument(
         "--no-cache",
@@ -72,36 +76,46 @@ def _parse_args():
         help="Directory for zarr product cache (default: <outdir>/zarr).",
     )
     p.add_argument(
-        "--experiment", "-e",
+        "--experiment",
+        "-e",
         action="append",
         dest="experiments",
         choices=[
-            "thin_clean", "thin_rfi", "thin_depol",
-            "thick_clean", "thick_rfi", "thick_depol",
-            "mixed_clean", "mixed_rfi",
+            "thin_clean",
+            "thin_rfi",
+            "thin_depol",
+            "thick_clean",
+            "thick_rfi",
+            "thick_depol",
+            "mixed_clean",
+            "mixed_rfi",
         ],
         metavar="KEY",
-        help="Run only these experiments (can repeat). If not set, run all for each band. For LOW only thin_* apply.",
+        help=
+        "Run only these experiments (can repeat). If not set, run all for each band. For LOW only thin_* apply.",
     )
     p.add_argument(
         "--target-residual-sigma",
         type=float,
         default=None,
         metavar="S",
-        help="FISTA: target data residual level in sigma (1=noise, 5=~5σ). Default: 1.0; if only --fd-accept-n-sigma is set, that value is used here too.",
+        help=
+        "FISTA: target data residual level in sigma (1=noise, 5=~5σ). Default: 1.0; if only --fd-accept-n-sigma is set, that value is used here too.",
     )
     p.add_argument(
         "--no-compute-sigma-fd",
         action="store_true",
         dest="no_compute_sigma_fd",
-        help="Disable FD-space σ_fd computation (Hutchinson A^H Σ_d A). By default σ_fd is computed for CLEAN threshold and FD-panel lines.",
+        help=
+        "Disable FD-space σ_fd computation (Hutchinson A^H Σ_d A). By default σ_fd is computed for CLEAN threshold and FD-panel lines.",
     )
     p.add_argument(
         "--fd-accept-n-sigma",
         type=float,
         default=None,
         metavar="N",
-        help="FISTA: also require max|fd_residual| <= N*σ_fd to accept λ. Default: not set (χ²-only acceptance).",
+        help=
+        "FISTA: also require max|fd_residual| <= N*σ_fd to accept λ. Default: not set (χ²-only acceptance).",
     )
     p.add_argument(
         "--show-intrinsic-model",
@@ -139,7 +153,9 @@ def run_band(
     phi_xlim = config.PHI_XLIM_BY_BAND.get(band_name, config.PHI_MAX)
     keys = _keys_for_band(band_name, experiments)
     if not keys:
-        print(f"  No experiments to run for {band_name} (check --experiment choices for this band).")
+        print(
+            f"  No experiments to run for {band_name} (check --experiment choices for this band)."
+        )
         return
 
     sims = {}
@@ -172,8 +188,12 @@ def run_band(
                 recons[key] = recon
                 if use_cache and cache_available():
                     save_product(
-                        cache_dir, band_name, reconstructor, key,
-                        source, recon,
+                        cache_dir,
+                        band_name,
+                        reconstructor,
+                        key,
+                        source,
+                        recon,
                     )
             else:
                 recons[key] = None
@@ -183,9 +203,12 @@ def run_band(
     if sims.get("thin_clean") is not None and sims.get("thin_rfi") is not None:
         print("    Plot: Thin clean vs RFI...")
         plot_2x2_clean_vs_rfi(
-            sims["thin_clean"], sims["thin_rfi"],
-            recons["thin_clean"], recons["thin_rfi"],
-            band_label=band_name, source_type="Thin",
+            sims["thin_clean"],
+            sims["thin_rfi"],
+            recons["thin_clean"],
+            recons["thin_rfi"],
+            band_label=band_name,
+            source_type="Thin",
             filename=str(outdir / f"thin_clean_vs_rfi_{short}_{rec}.png"),
             phi_xlim=phi_xlim,
             show_intrinsic_model=show_intrinsic_model,
@@ -193,9 +216,12 @@ def run_band(
     if sims.get("thin_clean") is not None and sims.get("thin_depol") is not None:
         print("    Plot: Thin clean vs depolarized...")
         plot_2x2_clean_vs_depol(
-            sims["thin_clean"], sims["thin_depol"],
-            recons["thin_clean"], recons["thin_depol"],
-            band_label=band_name, source_type="Thin",
+            sims["thin_clean"],
+            sims["thin_depol"],
+            recons["thin_clean"],
+            recons["thin_depol"],
+            band_label=band_name,
+            source_type="Thin",
             filename=str(outdir / f"thin_depolarization_{short}_{rec}.png"),
             phi_xlim=phi_xlim,
             show_intrinsic_model=show_intrinsic_model,
@@ -205,9 +231,12 @@ def run_band(
         if sims.get("thick_clean") is not None and sims.get("thick_rfi") is not None:
             print("    Plot: Thick clean vs RFI...")
             plot_2x2_clean_vs_rfi(
-                sims["thick_clean"], sims["thick_rfi"],
-                recons["thick_clean"], recons["thick_rfi"],
-                band_label=band_name, source_type="Thick",
+                sims["thick_clean"],
+                sims["thick_rfi"],
+                recons["thick_clean"],
+                recons["thick_rfi"],
+                band_label=band_name,
+                source_type="Thick",
                 filename=str(outdir / f"thick_clean_vs_rfi_{short}_{rec}.png"),
                 phi_xlim=phi_xlim,
                 show_intrinsic_model=show_intrinsic_model,
@@ -215,9 +244,12 @@ def run_band(
         if sims.get("thick_clean") is not None and sims.get("thick_depol") is not None:
             print("    Plot: Thick clean vs depolarized...")
             plot_2x2_clean_vs_depol(
-                sims["thick_clean"], sims["thick_depol"],
-                recons["thick_clean"], recons["thick_depol"],
-                band_label=band_name, source_type="Thick",
+                sims["thick_clean"],
+                sims["thick_depol"],
+                recons["thick_clean"],
+                recons["thick_depol"],
+                band_label=band_name,
+                source_type="Thick",
                 filename=str(outdir / f"thick_depolarization_{short}_{rec}.png"),
                 phi_xlim=phi_xlim,
                 show_intrinsic_model=show_intrinsic_model,
@@ -225,9 +257,12 @@ def run_band(
         if sims.get("mixed_clean") is not None and sims.get("mixed_rfi") is not None:
             print("    Plot: Mixed clean vs RFI...")
             plot_2x2_clean_vs_rfi(
-                sims["mixed_clean"], sims["mixed_rfi"],
-                recons["mixed_clean"], recons["mixed_rfi"],
-                band_label=band_name, source_type="Mixed",
+                sims["mixed_clean"],
+                sims["mixed_rfi"],
+                recons["mixed_clean"],
+                recons["mixed_rfi"],
+                band_label=band_name,
+                source_type="Mixed",
                 filename=str(outdir / f"mixed_clean_vs_rfi_{short}_{rec}.png"),
                 phi_xlim=phi_xlim,
                 show_intrinsic_model=show_intrinsic_model,

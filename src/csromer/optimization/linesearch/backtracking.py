@@ -25,7 +25,8 @@ class BacktrackingArmijo(LineSearcher):
         f = f1dim(self.objective_function, x)
         grad = self.objective_function.dphi
         grad_norm = np.real(np.vdot(np.ravel(grad), np.ravel(grad)))
-        grad_norm = float(grad_norm.compute()) if hasattr(grad_norm, "compute") else float(np.real(grad_norm))
+        grad_norm = float(grad_norm.compute()) if hasattr(grad_norm,
+                                                          "compute") else float(np.real(grad_norm))
         m = -self.contraction * grad_norm
         step_size = self._get_initial_step_size(x)
         for _ in range(self.max_iter):

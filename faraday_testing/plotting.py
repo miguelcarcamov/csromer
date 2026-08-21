@@ -5,8 +5,8 @@ Shared helpers and panel drawing to avoid redundancy.
 
 from __future__ import annotations
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.ticker import FormatStrFormatter
 
 from faraday_testing.config import (
@@ -58,7 +58,9 @@ def _phi_xlim(phi_xlim, phi_max: float = PHI_MAX) -> tuple[float, float]:
     return (-x, x)
 
 
-def _draw_pol_vs_l2(ax, l2, data, color_main: str, title: str, use_distinct_re_im: bool = True) -> None:
+def _draw_pol_vs_l2(
+    ax, l2, data, color_main: str, title: str, use_distinct_re_im: bool = True
+) -> None:
     if use_distinct_re_im:
         c_re, c_im = COLORS["purple"], COLORS["orange"]
     else:
@@ -102,8 +104,18 @@ def _draw_fd_panel(
     fd_restored = np.asarray(fd_restored)
     dirty_amp = np.abs(fd_dirty)
     restored_amp = np.abs(fd_restored)
-    ax.plot(phi, dirty_amp, "-", color=COLORS["teal"], lw=1.2, alpha=0.9, label=r"Dirty $|F(\phi)|$")
-    ax.plot(phi, restored_amp, "-", color=COLORS["black"], lw=1.5, alpha=0.9, label=r"Restored $|F(\phi)|$")
+    ax.plot(
+        phi, dirty_amp, "-", color=COLORS["teal"], lw=1.2, alpha=0.9, label=r"Dirty $|F(\phi)|$"
+    )
+    ax.plot(
+        phi,
+        restored_amp,
+        "-",
+        color=COLORS["black"],
+        lw=1.5,
+        alpha=0.9,
+        label=r"Restored $|F(\phi)|$"
+    )
     if intrinsic_fd_amp is not None:
         # Prefer component-wise rendering so thin parts are always delta-like,
         # including mixed sources (thin + thick).
@@ -173,7 +185,14 @@ def _draw_fd_panel(
                 label=r"Intrinsic $|F(\phi)|$",
             )
     for sig in [2, 3, 5]:
-        ax.axhline(sig * sigma, color=COLORS["gray"], linestyle="--", lw=1, alpha=0.8, label=r"2$\sigma$, 3$\sigma$, 5$\sigma$" if sig == 2 else None)
+        ax.axhline(
+            sig * sigma,
+            color=COLORS["gray"],
+            linestyle="--",
+            lw=1,
+            alpha=0.8,
+            label=r"2$\sigma$, 3$\sigma$, 5$\sigma$" if sig == 2 else None
+        )
     # Prefer quadratic-interpolated RM and its error when available, falling back to grid-based peak.
     peak_phi = getattr(
         recon,
@@ -188,7 +207,14 @@ def _draw_fd_panel(
         "rm_restored_quadratic_interpolation_error",
         getattr(recon, "rm_restored_error", None),
     )
-    ax.axvline(peak_phi, color=COLORS["accent"], linestyle="-", lw=1.2, alpha=0.45, label=peak_legend_label(peak_phi, peak_err))
+    ax.axvline(
+        peak_phi,
+        color=COLORS["accent"],
+        linestyle="-",
+        lw=1.2,
+        alpha=0.45,
+        label=peak_legend_label(peak_phi, peak_err)
+    )
     ax.set_xlim(xlim_phi[0], xlim_phi[1])
     # Data-driven ylim so dirty/restored are visible when model=0 (noise only) and sigma lines are large
     intrinsic_max = float(np.max(intrinsic_fd_amp)) if intrinsic_fd_amp is not None else 0.0
@@ -220,18 +246,22 @@ def _intrinsic_components_from_source(source) -> list[dict]:
         return [dict(c) for c in comps]
     # Fallback for direct (non-mixed) source objects.
     if hasattr(source, "phi_gal"):
-        return [{
-            "type": "thin",
-            "phi_gal": float(getattr(source, "phi_gal", 0.0)),
-            "s_nu": float(getattr(source, "s_nu", 1.0)),
-        }]
+        return [
+            {
+                "type": "thin",
+                "phi_gal": float(getattr(source, "phi_gal", 0.0)),
+                "s_nu": float(getattr(source, "s_nu", 1.0)),
+            }
+        ]
     if hasattr(source, "phi_fg"):
-        return [{
-            "type": "thick",
-            "phi_fg": float(getattr(source, "phi_fg", 0.0)),
-            "phi_center": float(getattr(source, "phi_center", 0.0)),
-            "s_nu": float(getattr(source, "s_nu", 1.0)),
-        }]
+        return [
+            {
+                "type": "thick",
+                "phi_fg": float(getattr(source, "phi_fg", 0.0)),
+                "phi_center": float(getattr(source, "phi_center", 0.0)),
+                "s_nu": float(getattr(source, "s_nu", 1.0)),
+            }
+        ]
     return []
 
 
@@ -269,7 +299,9 @@ def _build_intrinsic_fd_model(phi: np.ndarray, source) -> np.ndarray | None:
     return model
 
 
-def _draw_residual_panel(ax, phi, fd_res, sigma_line: float, peak_phi: float, xlim_phi: tuple[float, float]) -> None:
+def _draw_residual_panel(
+    ax, phi, fd_res, sigma_line: float, peak_phi: float, xlim_phi: tuple[float, float]
+) -> None:
     """Residual panel. sigma_line must be the same as FD panel (so 2σ/3σ/5σ match).
     Y-limits are data-driven so residual is visible when it is much smaller than sigma (e.g. model=0).
     """
@@ -346,17 +378,29 @@ def plot_2x2_clean_vs_rfi(
     sigma_line_r = _sigma_for_both_panels(recon_rfi, sigma_res_r)
 
     fig, gs, gs_rt, gs_rb = _build_2x2_figure(figsize)
-    intrinsic_components_c = _intrinsic_components_from_source(clean_source) if show_intrinsic_model else None
+    intrinsic_components_c = _intrinsic_components_from_source(
+        clean_source
+    ) if show_intrinsic_model else None
     intrinsic_c = _build_intrinsic_fd_model(phi_c, clean_source) if show_intrinsic_model else None
-    intrinsic_components_r = _intrinsic_components_from_source(rfi_source) if show_intrinsic_model else None
+    intrinsic_components_r = _intrinsic_components_from_source(
+        rfi_source
+    ) if show_intrinsic_model else None
     intrinsic_r = _build_intrinsic_fd_model(phi_r, rfi_source) if show_intrinsic_model else None
 
     ax1 = fig.add_subplot(gs[0, 0])
-    _draw_pol_vs_l2(ax1, l2_c, data_c, COLORS["blue"], r"Reference (no RFI): Polarization vs $\lambda^2$")
+    _draw_pol_vs_l2(
+        ax1, l2_c, data_c, COLORS["blue"], r"Reference (no RFI): Polarization vs $\lambda^2$"
+    )
 
     ax2_fd = fig.add_subplot(gs_rt[0])
     peak_c = _draw_fd_panel(
-        ax2_fd, phi_c, fd_dirty_c, fd_c, sigma_line_c, recon_clean, xlim_phi,
+        ax2_fd,
+        phi_c,
+        fd_dirty_c,
+        fd_c,
+        sigma_line_c,
+        recon_clean,
+        xlim_phi,
         "Reference (no RFI): Faraday depth spectrum",
         intrinsic_fd_amp=intrinsic_c,
         intrinsic_components=intrinsic_components_c,
@@ -369,7 +413,13 @@ def plot_2x2_clean_vs_rfi(
 
     ax4_fd = fig.add_subplot(gs_rb[0])
     peak_r = _draw_fd_panel(
-        ax4_fd, phi_r, fd_dirty_r, fd_r, sigma_line_r, recon_rfi, xlim_phi,
+        ax4_fd,
+        phi_r,
+        fd_dirty_r,
+        fd_r,
+        sigma_line_r,
+        recon_rfi,
+        xlim_phi,
         "With RFI: Faraday depth spectrum",
         intrinsic_fd_amp=intrinsic_r,
         intrinsic_components=intrinsic_components_r,
@@ -429,17 +479,29 @@ def plot_2x2_clean_vs_depol(
     sigma_line_d = _sigma_for_both_panels(recon_depol, sigma_res_d)
 
     fig, gs, gs_rt, gs_rb = _build_2x2_figure(figsize)
-    intrinsic_components_c = _intrinsic_components_from_source(clean_source) if show_intrinsic_model else None
+    intrinsic_components_c = _intrinsic_components_from_source(
+        clean_source
+    ) if show_intrinsic_model else None
     intrinsic_c = _build_intrinsic_fd_model(phi_c, clean_source) if show_intrinsic_model else None
-    intrinsic_components_d = _intrinsic_components_from_source(depol_source) if show_intrinsic_model else None
+    intrinsic_components_d = _intrinsic_components_from_source(
+        depol_source
+    ) if show_intrinsic_model else None
     intrinsic_d = _build_intrinsic_fd_model(phi_d, depol_source) if show_intrinsic_model else None
 
     ax1 = fig.add_subplot(gs[0, 0])
-    _draw_pol_vs_l2(ax1, l2_c, data_c, COLORS["blue"], r"Reference (no depol.): Polarization vs $\lambda^2$")
+    _draw_pol_vs_l2(
+        ax1, l2_c, data_c, COLORS["blue"], r"Reference (no depol.): Polarization vs $\lambda^2$"
+    )
 
     ax2_fd = fig.add_subplot(gs_rt[0])
     peak_c = _draw_fd_panel(
-        ax2_fd, phi_c, fd_dirty_c, fd_c, sigma_line_c, recon_clean, xlim_phi,
+        ax2_fd,
+        phi_c,
+        fd_dirty_c,
+        fd_c,
+        sigma_line_c,
+        recon_clean,
+        xlim_phi,
         "Reference (no depol.): Faraday depth spectrum",
         intrinsic_fd_amp=intrinsic_c,
         intrinsic_components=intrinsic_components_c,
@@ -452,7 +514,13 @@ def plot_2x2_clean_vs_depol(
 
     ax4_fd = fig.add_subplot(gs_rb[0])
     peak_d = _draw_fd_panel(
-        ax4_fd, phi_d, fd_dirty_d, fd_d, sigma_line_d, recon_depol, xlim_phi,
+        ax4_fd,
+        phi_d,
+        fd_dirty_d,
+        fd_d,
+        sigma_line_d,
+        recon_depol,
+        xlim_phi,
         "Depolarized: Faraday depth spectrum",
         intrinsic_fd_amp=intrinsic_d,
         intrinsic_components=intrinsic_components_d,

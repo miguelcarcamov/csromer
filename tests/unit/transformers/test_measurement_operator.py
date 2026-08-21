@@ -8,17 +8,17 @@ import pytest
 from csromer.base import Dataset
 from csromer.reconstruction import Parameter
 from csromer.transformers.measurement_operator import (
+    NUFFT1D,
     DirectFourier1D,
     GriddedFFT1D,
     MeasurementOperator,
-    NUFFT1D,
 )
 
 
 @pytest.fixture
 def dataset_numpy():
     """Small dataset with numpy arrays."""
-    lam2 = np.linspace(0.02, 0.1, 32) ** 2
+    lam2 = np.linspace(0.02, 0.1, 32)**2
     d = Dataset(lambda2=lam2)
     d.data = np.ones(32, dtype=np.complex64)
     return d
@@ -42,9 +42,9 @@ class TestDirectFourier1D:
         x = np.zeros(n_phi, dtype=np.complex64)
         x[n_phi // 2] = 1.0
         b = op.forward(x)
-        assert b.shape == (n_chan,)
+        assert b.shape == (n_chan, )
         a = op.adjoint(b)
-        assert a.shape == (n_phi,)
+        assert a.shape == (n_phi, )
 
     def test_backward_equals_adjoint(self, dataset_numpy, parameter_numpy):
         op = DirectFourier1D(dataset=dataset_numpy, parameter=parameter_numpy)
@@ -55,7 +55,8 @@ class TestDirectFourier1D:
     def test_adjoint_forward_composition(self, dataset_numpy, parameter_numpy):
         op = DirectFourier1D(dataset=dataset_numpy, parameter=parameter_numpy)
         n_phi = parameter_numpy.n
-        x = np.random.randn(n_phi).astype(np.float32) + 1j * np.random.randn(n_phi).astype(np.float32)
+        x = np.random.randn(n_phi).astype(np.float32
+                                          ) + 1j * np.random.randn(n_phi).astype(np.float32)
         x = x.astype(np.complex64)
         b = op.forward(x)
         a = op.adjoint(b)
@@ -66,7 +67,7 @@ class TestDirectFourier1D:
     def test_rmtf_shape(self, dataset_numpy, parameter_numpy):
         op = DirectFourier1D(dataset=dataset_numpy, parameter=parameter_numpy)
         rmtf = op.RMTF()
-        assert rmtf.shape == (parameter_numpy.n,)
+        assert rmtf.shape == (parameter_numpy.n, )
 
 
 class TestDirectFourier1DDask:
@@ -80,7 +81,7 @@ class TestDirectFourier1DDask:
         import dask.array as da
 
         # Use dask for lambda2 so operator uses dask path
-        lam2 = da.from_array(np.linspace(0.02, 0.1, 32) ** 2, chunks=16)
+        lam2 = da.from_array(np.linspace(0.02, 0.1, 32)**2, chunks=16)
         d = Dataset(lambda2=lam2)
         d.data = da.ones(32, dtype=np.complex64, chunks=16)
         p = Parameter()
@@ -92,10 +93,10 @@ class TestDirectFourier1DDask:
         x = da.from_array(x_np, chunks=n_phi // 2)
         b = op.forward(x)
         assert hasattr(b, "compute")  # dask array
-        assert b.shape == (32,)
+        assert b.shape == (32, )
         a = op.adjoint(b)
         assert hasattr(a, "compute")
-        assert a.shape == (n_phi,)
+        assert a.shape == (n_phi, )
 
 
 class TestGriddedFFT1D:
@@ -103,7 +104,7 @@ class TestGriddedFFT1D:
 
     def test_forward_adjoint_roundtrip(self):
         n = 64
-        lam2 = np.linspace(0.01, 0.1, n) ** 2
+        lam2 = np.linspace(0.01, 0.1, n)**2
         d = Dataset(lambda2=lam2)
         p = Parameter(phi=np.linspace(-1, 1, n), data=np.zeros(n, dtype=np.complex64))
         op = GriddedFFT1D(dataset=d, parameter=p)
@@ -114,7 +115,7 @@ class TestGriddedFFT1D:
 
     def test_backward_equals_adjoint(self):
         n = 32
-        lam2 = np.linspace(0.01, 0.05, n) ** 2
+        lam2 = np.linspace(0.01, 0.05, n)**2
         d = Dataset(lambda2=lam2)
         p = Parameter(phi=np.linspace(-1, 1, n), data=np.zeros(n, dtype=np.complex64))
         op = GriddedFFT1D(dataset=d, parameter=p)

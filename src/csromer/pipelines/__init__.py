@@ -17,12 +17,7 @@ from csromer.pipelines.reconstruction import (
     make_cg_optimizer,
     make_fista_optimizer,
 )
-from csromer.pipelines.simulation import (
-    ApplyNoiseStep,
-    ApplyRFIStep,
-    SimulateStep,
-    run_simulation,
-)
+from csromer.pipelines.simulation import ApplyNoiseStep, ApplyRFIStep, SimulateStep, run_simulation
 
 __all__ = [
     "Step",

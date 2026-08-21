@@ -26,13 +26,13 @@ class TestPureFibonacciSearch:
     """Test pure_fibonacci_search on 1D function."""
 
     def test_pure_fibonacci_finds_minimum(self):
-        f = lambda t: (t - 1.0) ** 2
+        f = lambda t: (t - 1.0)**2
         f_min, x_min = pure_fibonacci_search(f, 0.0, 3.0, max_iter=30, tol=1e-6)
         assert abs(x_min - 1.0) < 0.1
         assert f_min < 0.1
 
     def test_pure_fibonacci_narrow_interval(self):
-        f = lambda t: t ** 2
+        f = lambda t: t**2
         f_min, x_min = pure_fibonacci_search(f, -0.1, 0.1, max_iter=20, tol=1e-8)
         assert abs(x_min) < 0.1
 

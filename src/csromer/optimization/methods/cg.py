@@ -12,20 +12,15 @@ from typing import Optional, Tuple, Union
 
 import numpy as np
 
-from ...utils.array_utils import math_module
 from ...reconstruction.parameter import Parameter
+from ...utils.array_utils import math_module
 from ..optimizer import Optimizer
-from .gradient_optimizer import (
-    GradientOptimizer,
-    _inner,
-    _norm2,
-)
+from .gradient_optimizer import GradientOptimizer, _inner, _norm2
 
 try:
     import dask.array as da
 except ImportError:
     da = None
-
 
 # Powell (1977) restart: restart when g_{k+1}^T g_k < eta * ||g_{k+1}||^2
 POWELL_RESTART_ETA = 0.2
@@ -34,7 +29,7 @@ POWELL_RESTART_ETA = 0.2
 class GradientNormError(Exception):
     """
     Raised when gradient norm is zero (degenerate step).
-    
+
     Exception class for CG optimization errors.
     """
     pass
@@ -44,7 +39,7 @@ class GradientNormError(Exception):
 class ConjugateGradient(GradientOptimizer):
     """
     Non-linear Conjugate Gradient for smooth unconstrained minimization.
-    
+
     Base class for CG variants. Search direction: d_{k+1} = -g_{k+1} + beta_k * d_k.
     Uses Powell restart and optional negative-beta restart. Supports dask arrays.
     """
@@ -52,13 +47,13 @@ class ConjugateGradient(GradientOptimizer):
     def run(self) -> Tuple[float, Parameter]:
         """
         Run CG optimization.
-        
+
         Public method. Performs conjugate gradient iterations with line search
         and restart logic.
-        
+
         Returns:
             Tuple of (final_cost, optimized_parameter)
-            
+
         Raises:
             ValueError: If guess_param or F_obj is None
         """
@@ -108,13 +103,20 @@ class ConjugateGradient(GradientOptimizer):
         return prev_function_value, current_param
 
     def _line_search(
-        self, x, d, f_x: float, grad_x, c1: float = None, rho: float = None, max_ls: int = 30
+        self,
+        x,
+        d,
+        f_x: float,
+        grad_x,
+        c1: float = None,
+        rho: float = None,
+        max_ls: int = 30
     ) -> float:
         """
         Armijo backtracking line search.
-        
+
         Protected method. Finds alpha such that f(x + alpha*d) <= f(x) + c1*alpha*<grad,d>.
-        
+
         Args:
             x: Current point
             d: Search direction
@@ -123,7 +125,7 @@ class ConjugateGradient(GradientOptimizer):
             c1: Armijo parameter (default: self.c1)
             rho: Backtracking factor (default: self.rho)
             max_ls: Maximum line search iterations
-            
+
         Returns:
             Step size alpha
         """
@@ -146,23 +148,21 @@ class ConjugateGradient(GradientOptimizer):
             alpha *= rho
         return alpha
 
-    def conjugate_gradient_parameter(
-        self, grad, grad_prev, dir_prev
-    ) -> Tuple[float, float, float]:
+    def conjugate_gradient_parameter(self, grad, grad_prev, dir_prev) -> Tuple[float, float, float]:
         """
         Compute beta_k and scalars for restart check.
-        
+
         Public method. Computes conjugate gradient parameter beta and auxiliary
         scalars for restart logic.
-        
+
         Args:
             grad: Current gradient
             grad_prev: Previous gradient
             dir_prev: Previous search direction
-            
+
         Returns:
             Tuple of (beta, g_dot_g_prev, norm2_g)
-            
+
         Raises:
             GradientNormError: If ||grad_prev||^2 == 0
         """
@@ -191,15 +191,15 @@ class ConjugateGradient(GradientOptimizer):
     ) -> bool:
         """
         Check if restart is needed (Powell condition or negative beta).
-        
+
         Protected method. Restarts with steepest descent when beta <= 0 or
         Powell condition holds.
-        
+
         Args:
             conjugate_parameter: Beta value
             g_dot_g_prev: <g_k+1, g_k>
             norm2_g: ||g_k+1||^2
-            
+
         Returns:
             True if restart needed
         """
@@ -216,16 +216,16 @@ class ConjugateGradient(GradientOptimizer):
     ) -> Tuple[Parameter, float, any, Optional[any], bool]:
         """
         Perform one CG iteration.
-        
+
         Protected method. Performs line search, updates parameter, computes gradient,
         beta, and new search direction.
-        
+
         Args:
             iteration: Iteration number
             current_param: Current parameter
             prev_gradient: Previous gradient
             prev_search_direction: Previous search direction
-            
+
         Returns:
             Tuple of (updated_param, new_f, current_gradient, new_search_direction, converged)
         """
@@ -290,9 +290,9 @@ class ConjugateGradient(GradientOptimizer):
     def method_name(self) -> str:
         """
         Name of the CG variant.
-        
+
         Abstract method: subclasses must implement.
-        
+
         Returns:
             Method name (string)
         """
@@ -300,21 +300,27 @@ class ConjugateGradient(GradientOptimizer):
 
     @abstractmethod
     def _conjugate_gradient_parameter(
-        self, grad, grad_prev, *, dir_prev=None, norm2_grad_prev: float = None, norm2_grad: float = None
+        self,
+        grad,
+        grad_prev,
+        *,
+        dir_prev=None,
+        norm2_grad_prev: float = None,
+        norm2_grad: float = None
     ) -> Union[float, any]:
         """
         Compute beta_k for this variant.
-        
+
         Protected abstract method: subclasses must implement. May return scalar
         or array (will be computed to float).
-        
+
         Args:
             grad: Current gradient
             grad_prev: Previous gradient
             dir_prev: Previous search direction
             norm2_grad_prev: ||grad_prev||^2 (precomputed)
             norm2_grad: ||grad||^2 (precomputed)
-            
+
         Returns:
             Beta value (scalar or array)
         """
@@ -328,14 +334,14 @@ class ConjugateGradient(GradientOptimizer):
 class FletcherReeves(ConjugateGradient):
     """
     Fletcher-Reeves CG variant.
-    
+
     Beta formula: beta = ||g_{k+1}||^2 / ||g_k||^2.
     """
 
     def method_name(self) -> str:
         """
         Return method name.
-        
+
         Returns:
             "Fletcher-Reeves"
         """
@@ -346,7 +352,7 @@ class FletcherReeves(ConjugateGradient):
     ):
         """
         Compute Fletcher-Reeves beta.
-        
+
         Protected method.
         """
         if norm2_grad is None:
@@ -358,14 +364,14 @@ class FletcherReeves(ConjugateGradient):
 class PolakRibiere(ConjugateGradient):
     """
     Polak-Ribière-Polyak CG variant.
-    
+
     Beta formula: beta = g_{k+1}^T (g_{k+1} - g_k) / ||g_k||^2.
     """
 
     def method_name(self) -> str:
         """
         Return method name.
-        
+
         Returns:
             "Polak-Ribiere-Polyak"
         """
@@ -376,7 +382,7 @@ class PolakRibiere(ConjugateGradient):
     ):
         """
         Compute Polak-Ribière beta.
-        
+
         Protected method.
         """
         xp = math_module(grad)
@@ -389,14 +395,14 @@ class PolakRibiere(ConjugateGradient):
 class HestenesStiefel(ConjugateGradient):
     """
     Hestenes-Stiefel CG variant.
-    
+
     Beta formula: beta = g_{k+1}^T (g_{k+1} - g_k) / (d_k^T (g_{k+1} - g_k)).
     """
 
     def method_name(self) -> str:
         """
         Return method name.
-        
+
         Returns:
             "Hestenes-Stiefel"
         """
@@ -407,7 +413,7 @@ class HestenesStiefel(ConjugateGradient):
     ):
         """
         Compute Hestenes-Stiefel beta.
-        
+
         Protected method.
         """
         grad_diff = grad - grad_prev
@@ -422,14 +428,14 @@ class HestenesStiefel(ConjugateGradient):
 class DaiYuan(ConjugateGradient):
     """
     Dai-Yuan CG variant.
-    
+
     Beta formula: beta = ||g_{k+1}||^2 / (d_k^T (g_{k+1} - g_k)).
     """
 
     def method_name(self) -> str:
         """
         Return method name.
-        
+
         Returns:
             "Dai-Yuan"
         """
@@ -440,7 +446,7 @@ class DaiYuan(ConjugateGradient):
     ):
         """
         Compute Dai-Yuan beta.
-        
+
         Protected method.
         """
         if norm2_grad is None:
@@ -456,7 +462,7 @@ class DaiYuan(ConjugateGradient):
 class HagerZhang(ConjugateGradient):
     """
     Hager-Zhang CG variant.
-    
+
     Beta formula: beta = (1/(d^T y)) * (y - 2*d*||y||^2/(d^T y))^T g_{k+1},
     where y = g_{k+1} - g_k.
     """
@@ -464,7 +470,7 @@ class HagerZhang(ConjugateGradient):
     def method_name(self) -> str:
         """
         Return method name.
-        
+
         Returns:
             "Hager-Zhang"
         """
@@ -475,7 +481,7 @@ class HagerZhang(ConjugateGradient):
     ):
         """
         Compute Hager-Zhang beta.
-        
+
         Protected method.
         """
         grad_diff = grad - grad_prev

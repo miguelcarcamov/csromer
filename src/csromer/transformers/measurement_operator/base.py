@@ -93,12 +93,42 @@ class MeasurementOperator(metaclass=ABCMeta):
         """
         pass
 
+    def _l2_ref_ramp(self, sign: float):
+        """
+        exp(sign * 2j * phi * l2_ref), or None if l2_ref is unset/zero.
+
+        Private helper. Applied in forward()/adjoint() so that the Faraday-depth
+        model CG/FISTA fit and dirty_spectrum() share one phase convention: with
+        l2_ref != 0, dirty_spectrum estimates F(phi) rotated by exp(+2j*phi*l2_ref)
+        (Brentjens & de Bruyn lambda0² referencing). Multiplying x by exp(-2j*phi*l2_ref)
+        before the underlying (l2_ref-agnostic) forward, and the underlying adjoint's
+        output by exp(+2j*phi*l2_ref), makes forward/adjoint estimate that same rotated
+        F(phi)—so conv(model) and dirty/residual no longer mix conventions (which
+        otherwise causes phase-cancellation when convolving with the restoring beam).
+
+        Args:
+            sign: +1.0 for adjoint (post-multiply), -1.0 for forward (pre-multiply)
+
+        Returns:
+            Ramp array (n_phi,) or None
+        """
+        if self.dataset is None or self.parameter is None:
+            return None
+        l2_ref = getattr(self.dataset, "l2_ref", None)
+        if l2_ref is None or abs(float(l2_ref)) < 1e-10:
+            return None
+        xp = math_module(self.parameter.phi)
+        phi = xp.asarray(self.parameter.phi)
+        return xp.exp(sign * 2.0j * phi * float(l2_ref)).astype(np.complex64)
+
     def forward(self, x: Union[np.ndarray, Any]) -> Union[np.ndarray, Any]:
         """
         Forward operator: phi -> P(lambda²).
 
         Public method. If wavelet_transform is set, reconstructs coefficients to
-        Faraday depth first, then applies measurement operator.
+        Faraday depth first, then applies measurement operator. When dataset.l2_ref
+        is set, rotates by exp(-2j*phi*l2_ref) first so the model this fits matches
+        dirty_spectrum's rotated convention (see _l2_ref_ramp).
 
         Args:
             x: Complex Faraday depth spectrum (n_phi,) or wavelet coefficients
@@ -108,14 +138,19 @@ class MeasurementOperator(metaclass=ABCMeta):
         """
         if self.wavelet_transform is not None:
             x = self.wavelet_transform.reconstruct_complex(np.array(x, copy=False))
+        ramp = self._l2_ref_ramp(-1.0)
+        if ramp is not None:
+            x = x * ramp
         return self._forward_impl(x)
 
     def adjoint(self, b: Union[np.ndarray, Any], **kwargs) -> Union[np.ndarray, Any]:
         """
         Adjoint operator: P(lambda²) -> phi.
 
-        Public method. Applies measurement operator adjoint. If wavelet_transform is set,
-        decomposes result to coefficients.
+        Public method. Applies measurement operator adjoint. When dataset.l2_ref is
+        set, rotates the result by exp(+2j*phi*l2_ref) (see _l2_ref_ramp) before any
+        wavelet decomposition, so adjoint/dirty_spectrum/RMTF and forward all share
+        one phase convention.
 
         Args:
             b: Complex polarization P(lambda²) (n_channels,)
@@ -125,6 +160,9 @@ class MeasurementOperator(metaclass=ABCMeta):
             Complex Faraday depth spectrum (n_phi,) or wavelet coefficients
         """
         res = self._adjoint_impl(b, **kwargs)
+        ramp = self._l2_ref_ramp(1.0)
+        if ramp is not None:
+            res = res * ramp
         if self.wavelet_transform is not None:
             # Complex Faraday depth -> complex coefficients (pywt)
             res = self.wavelet_transform.decompose_complex(res)
@@ -196,7 +234,8 @@ class MeasurementOperator(metaclass=ABCMeta):
         if s is not None:
             weighted = (w / s) * data
             sum_w_over_s = xp.sum(w / s)
-            sum_w_over_s = sum_w_over_s.compute() if hasattr(sum_w_over_s, "compute") else sum_w_over_s
+            sum_w_over_s = sum_w_over_s.compute(
+            ) if hasattr(sum_w_over_s, "compute") else sum_w_over_s
             if sum_w_over_s is not None:
                 sum_w_over_s = float(sum_w_over_s)
                 if abs(sum_w_over_s) > 1e-10:  # Avoid division by very small numbers
@@ -212,27 +251,15 @@ class MeasurementOperator(metaclass=ABCMeta):
 
         # Adjoint operator receives properly weighted and normalized data
         # No need to divide by k after, since normalization by sum(w) or sum(w/s) is equivalent
-        raw = self.adjoint(weighted)
-        # When l2_ref > 0, apply nominal phase ramp exp(+2j*phi*l2_ref) so dirty/residual
-        # are in the same nominal convention. Use same backend as raw (dask or numpy).
-        l2_ref = getattr(self.dataset, "l2_ref", None) if self.dataset is not None else None
-        if (
-            self.parameter is not None
-            and l2_ref is not None
-            and abs(float(l2_ref)) >= 1e-10
-        ):
-            xp = math_module(raw)
-            phi = self.parameter.phi
-            l2 = float(l2_ref)
-            phi_same = xp.asarray(phi)
-            phase_ramp = xp.exp(2.0j * phi_same * l2).astype(np.complex64)
-            raw = raw * phase_ramp
-        return raw
+        # l2_ref phase (if set) is applied inside adjoint() itself, so forward/adjoint/
+        # dirty_spectrum/RMTF all share one convention (see _l2_ref_ramp).
+        return self.adjoint(weighted)
 
     def _adjoint_normalized_weights(self) -> Union[np.ndarray, Any]:
         """
-        Adjoint of (weights / sum(weights)), with l2_ref phase applied.
+        Adjoint of (weights / sum(weights)).
         Used by subclasses to implement RMTF without going through forward.
+        l2_ref phase (if set) is applied inside adjoint() itself (see _l2_ref_ramp).
         """
         if self.dataset is None:
             raise RuntimeError("dataset is required for RMTF")
@@ -249,19 +276,7 @@ class MeasurementOperator(metaclass=ABCMeta):
         if abs(sum_w) < 1e-10:
             sum_w = 1.0
         normalized = weights / sum_w
-        raw = self.adjoint(normalized)
-        l2_ref = getattr(self.dataset, "l2_ref", None)
-        if (
-            self.parameter is not None
-            and l2_ref is not None
-            and abs(float(l2_ref)) >= 1e-10
-        ):
-            xp = math_module(raw)
-            phi = self.parameter.phi
-            phi_same = xp.asarray(phi)
-            phase_ramp = xp.exp(2.0j * phi_same * float(l2_ref)).astype(np.complex64)
-            raw = raw * phase_ramp
-        return raw
+        return self.adjoint(normalized)
 
     def configure(self) -> None:
         """

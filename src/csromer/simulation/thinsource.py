@@ -22,7 +22,7 @@ class FaradayThinSource(FaradaySource):
     def simulate(self):
         xp = math_module(self.lambda2)
         nu = c / xp.sqrt(self.lambda2)
-        k = (nu / self.nu_0) ** self.spectral_idx
+        k = (nu / self.nu_0)**self.spectral_idx
         mu_q = xp.cos(2.0 * self.phi_gal * self.lambda2)
         mu_u = xp.sin(2.0 * self.phi_gal * self.lambda2 + self.dchi)
         self.data = self.s_nu * k * (mu_q + 1j * mu_u)

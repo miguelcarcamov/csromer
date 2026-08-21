@@ -31,7 +31,7 @@ _KIND_ALIASES = {
 def _normalize_kind(kind: str) -> str:
     key = (kind or "phi").strip().lower().replace("-", "_")
     if key not in _KIND_ALIASES:
-        raise ValueError("clean kind must be 'phi' or 'major_cycle'; got %r" % (kind,))
+        raise ValueError("clean kind must be 'phi' or 'major_cycle'; got %r" % (kind, ))
     return _KIND_ALIASES[key]
 
 
@@ -79,19 +79,18 @@ class Clean1DStep:
             peak0 = float(np.abs(fd_dirty).max())
             if threshold is None:
                 print(
-                    "  [%s] no threshold  dirty_peak=%.6e  maxiter=%d"
-                    % (label, peak0, self.maxiter)
+                    "  [%s] no threshold  dirty_peak=%.6e  maxiter=%d" %
+                    (label, peak0, self.maxiter)
                 )
             else:
                 tag = (
-                    "%.1f*sigma_fd" % self.n_sigma
-                    if (self.n_sigma is not None and self.n_sigma > 0)
-                    else "absolute"
+                    "%.1f*sigma_fd" % self.n_sigma if
+                    (self.n_sigma is not None and self.n_sigma > 0) else "absolute"
                 )
                 status = "stop (peak < thresh)" if peak0 < threshold else "iterating"
                 print(
-                    "  [%s] threshold=%.6e (%s)  dirty_peak=%.6e  %s"
-                    % (label, threshold, tag, peak0, status)
+                    "  [%s] threshold=%.6e (%s)  dirty_peak=%.6e  %s" %
+                    (label, threshold, tag, peak0, status)
                 )
         return threshold
 
@@ -100,9 +99,7 @@ class Clean1DStep:
         threshold = self._resolve_threshold(ctx, fd_dirty)
 
         if self.kind == "phi":
-            rmtf = np.asarray(
-                asnumpy(ctx.measurement_operator.RMTF(0.0)), dtype=np.complex64
-            )
+            rmtf = np.asarray(asnumpy(ctx.measurement_operator.RMTF(0.0)), dtype=np.complex64)
             model, residual = clean_1d(
                 fd_dirty,
                 rmtf,

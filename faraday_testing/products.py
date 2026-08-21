@@ -154,15 +154,12 @@ def load_product(
         # Recon-like: .parameter.phi, .fd_dirty, .fd_restored, .fd_residual, .rm_*
         phi = np.asarray(root["recon/phi"])
         recon_phi = SimpleNamespace(phi=phi)
-        fd_dirty = np.asarray(root["recon/fd_dirty_real"]) + 1j * np.asarray(
-            root["recon/fd_dirty_imag"]
-        )
-        fd_restored = np.asarray(root["recon/fd_restored_real"]) + 1j * np.asarray(
-            root["recon/fd_restored_imag"]
-        )
-        fd_residual = np.asarray(root["recon/fd_residual_real"]) + 1j * np.asarray(
-            root["recon/fd_residual_imag"]
-        )
+        fd_dirty = np.asarray(root["recon/fd_dirty_real"]
+                              ) + 1j * np.asarray(root["recon/fd_dirty_imag"])
+        fd_restored = np.asarray(root["recon/fd_restored_real"]
+                                 ) + 1j * np.asarray(root["recon/fd_restored_imag"])
+        fd_residual = np.asarray(root["recon/fd_residual_real"]
+                                 ) + 1j * np.asarray(root["recon/fd_residual_imag"])
         attrs = root["recon"].attrs
         sigma_fd = None
         if "sigma_fd" in attrs:

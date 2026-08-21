@@ -20,34 +20,34 @@ class TestConjugateGradientParameter:
     """Test beta formulas for each CG variant (gradient convention: g, not residual)."""
 
     def test_fletcher_reeves_beta(self):
-        grad = np.ones((16,))
-        grad_prev = np.ones((16,))
-        dir_prev = np.ones((16,))
+        grad = np.ones((16, ))
+        grad_prev = np.ones((16, ))
+        dir_prev = np.ones((16, ))
         cg = FletcherReeves()
         beta, _, _ = cg.conjugate_gradient_parameter(grad, grad_prev, dir_prev)
         assert abs(beta - 1.0) < 1e-10
 
     def test_polak_ribiere_beta_same_grad(self):
-        grad = np.ones((16,))
-        grad_prev = np.ones((16,))
-        dir_prev = np.ones((16,))
+        grad = np.ones((16, ))
+        grad_prev = np.ones((16, ))
+        dir_prev = np.ones((16, ))
         cg = PolakRibiere()
         beta, _, _ = cg.conjugate_gradient_parameter(grad, grad_prev, dir_prev)
         assert abs(beta - 0.0) < 1e-10
 
     def test_dai_yuan_beta(self):
-        grad = np.full((16,), 2.0)
-        grad_prev = np.ones((16,))
-        dir_prev = np.ones((16,))
+        grad = np.full((16, ), 2.0)
+        grad_prev = np.ones((16, ))
+        dir_prev = np.ones((16, ))
         cg = DaiYuan()
         beta, _, _ = cg.conjugate_gradient_parameter(grad, grad_prev, dir_prev)
         # norm2_g=4*16=64, denom = dir_prev^T (grad - grad_prev) = 1*16 = 16, beta = 64/16 = 4
         assert abs(beta - 4.0) < 1e-10
 
     def test_hestenes_stiefel_beta(self):
-        grad = np.full((16,), 2.0)
-        grad_prev = np.ones((16,))
-        dir_prev = np.ones((16,))
+        grad = np.full((16, ), 2.0)
+        grad_prev = np.ones((16, ))
+        dir_prev = np.ones((16, ))
         cg = HestenesStiefel()
         beta, _, _ = cg.conjugate_gradient_parameter(grad, grad_prev, dir_prev)
         # numer = g^T (g - g_prev) = 2*16 = 32, denom = d^T (g - g_prev) = 16, beta = 2
@@ -55,9 +55,9 @@ class TestConjugateGradientParameter:
 
     def test_gradient_norm_error(self):
         cg = DaiYuan()
-        grad = np.ones((4,))
-        grad_prev = np.zeros((4,))
-        dir_prev = np.ones((4,))
+        grad = np.ones((4, ))
+        grad_prev = np.zeros((4, ))
+        dir_prev = np.ones((4, ))
         with pytest.raises(GradientNormError):
             cg.conjugate_gradient_parameter(grad, grad_prev, dir_prev)
 

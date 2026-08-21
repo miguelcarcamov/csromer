@@ -8,7 +8,9 @@ from ...utils.array_utils import asnumpy, math_module
 from .flagger import Flagger
 
 
-def mean_flagger_threshold(sigma: np.ndarray, mean_sigma: Union[float, None] = None, nsigma: float = 0.0) -> float:
+def mean_flagger_threshold(
+    sigma: np.ndarray, mean_sigma: Union[float, None] = None, nsigma: float = 0.0
+) -> float:
     """Compute threshold from sigma (numpy); returns scalar threshold."""
     n = len(sigma)
     if mean_sigma is None:

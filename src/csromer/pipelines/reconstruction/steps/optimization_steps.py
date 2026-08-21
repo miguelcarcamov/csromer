@@ -111,9 +111,7 @@ class DefaultObjectiveFactoryStep:
                 n_before = getattr(ctx, "_n_eff_before_grid", None)
                 n_after = getattr(ctx, "_n_eff_after_grid", None)
                 if (
-                    n_before is not None
-                    and n_after is not None
-                    and n_after > 0
+                    n_before is not None and n_after is not None and n_after > 0
                     and lambda_l_norm != 0
                 ):
                     lambda_l_norm = lambda_l_norm * (n_before / n_after)
@@ -169,9 +167,7 @@ class DirtyStatsStep:
         (
             ctx.rm_dirty_quadratic_interpolation,
             ctx.dirty_peak_quadratic_interpolation,
-        ) = estimate_peak_quadratic_interpolation(
-            ctx.fd_dirty, ctx.parameter.cellsize
-        )
+        ) = estimate_peak_quadratic_interpolation(ctx.fd_dirty, ctx.parameter.cellsize)
         ctx.rm_dirty_quadratic_interpolation_error = calculate_sigma_phi_peak(
             ctx.parameter.rmtf_fwhm,
             ctx.dirty_peak_quadratic_interpolation,
@@ -236,8 +232,7 @@ class OptimizationStep:
                 max_ratio = 0.0
                 fd_threshold = 0.0
                 if (
-                    fd_accept_n_sigma is not None
-                    and fd_accept_n_sigma > 0
+                    fd_accept_n_sigma is not None and fd_accept_n_sigma > 0
                     and (sigma_fd is not None or sigma_fd_per_phi is not None)
                 ):
                     op = ctx.measurement_operator
@@ -270,15 +265,13 @@ class OptimizationStep:
                             max_ratio = 0.0
                 if getattr(ctx, "verbose", True):
                     # target_chi2 = 0.5*S² ⇒ residual-sigma S = sqrt(2*target_chi2)
-                    target_sigma = (2.0 * target_chi2) ** 0.5 if target_chi2 > 0 else 0.0
+                    target_sigma = (2.0 * target_chi2)**0.5 if target_chi2 > 0 else 0.0
                     msg = (
-                        "[adaptive-λ] step={}  lambda={:.6g}  chi2={:.6g}  target_chi2={:.4g} ({:.2f}σ)".format(
-                            k, lam, chi2_val, target_chi2, target_sigma
-                        )
+                        "[adaptive-λ] step={}  lambda={:.6g}  chi2={:.6g}  target_chi2={:.4g} ({:.2f}σ)"
+                        .format(k, lam, chi2_val, target_chi2, target_sigma)
                     )
                     if (
-                        fd_accept_n_sigma is not None
-                        and fd_accept_n_sigma > 0
+                        fd_accept_n_sigma is not None and fd_accept_n_sigma > 0
                         and (sigma_fd is not None or sigma_fd_per_phi is not None)
                     ):
                         if use_per_phi_fd:
@@ -310,7 +303,7 @@ class OptimizationStep:
                 # When chi2_val < target_chi2 (over-regularized / overfitting), ratio > 1 and λ increases.
                 if chi2_val > 0.0 and target_chi2 > 0.0:
                     ratio = target_chi2 / chi2_val
-                    lam = lam * (ratio ** gamma)
+                    lam = lam * (ratio**gamma)
                     lam = float(np.clip(lam, lambda_min, lambda_max))
                 else:
                     # If chi2 is non-positive or target is invalid, stop updating
@@ -361,6 +354,7 @@ class RestoredStatsStep:
     """Compute restored RM and error / quadratic-interp stats; optional debug print."""
 
     def run(self, ctx) -> None:
+
         def _peak(a):
             return float(np.max(np.abs(np.asarray(asnumpy(a)))))
 
@@ -383,29 +377,25 @@ class RestoredStatsStep:
 
         print("[restore DEBUG]")
         print(
-            "  cellsize=%.6f  rmtf_fwhm=%.6f  pixels_per_rmtf=%.4f"
-            % (ctx.parameter.cellsize, ctx.parameter.rmtf_fwhm, pixels_per_rmtf)
+            "  cellsize=%.6f  rmtf_fwhm=%.6f  pixels_per_rmtf=%.4f" %
+            (ctx.parameter.cellsize, ctx.parameter.rmtf_fwhm, pixels_per_rmtf)
         )
         print(
-            "  peak:  dirty=%.6e  model=%.6e  residual=%.6e"
-            % (_peak(ctx.fd_dirty), _peak(ctx.fd_model), _peak(ctx.fd_residual))
+            "  peak:  dirty=%.6e  model=%.6e  residual=%.6e" %
+            (_peak(ctx.fd_dirty), _peak(ctx.fd_model), _peak(ctx.fd_residual))
         )
         print(
-            "  peak:  conv_model(Jy/rmtf)=%.6e restored=%.6e"
-            % (_peak(conv_model), _peak(ctx.fd_restored))
+            "  peak:  conv_model(Jy/rmtf)=%.6e restored=%.6e" %
+            (_peak(conv_model), _peak(ctx.fd_restored))
         )
         print(
-            "  sum|model|=%.6e  sum|conv_model|=%.6e"
-            % (_sumabs(ctx.fd_model), _sumabs(conv_model))
+            "  sum|model|=%.6e  sum|conv_model|=%.6e" %
+            (_sumabs(ctx.fd_model), _sumabs(conv_model))
         )
         # Optional diagnostic for amplitude-restored spectrum.
+        print("  peak:  conv_abs_model=%.6e (amp-restored)" % (_peak(conv_abs_model), ))
         print(
-            "  peak:  conv_abs_model=%.6e (amp-restored)"
-            % (_peak(conv_abs_model),)
-        )
-        print(
-            "  ratio dirty_peak/model_peak=%.4f  (expect ~pixels_per_rmtf=%.4f)"
-            % (
+            "  ratio dirty_peak/model_peak=%.4f  (expect ~pixels_per_rmtf=%.4f)" % (
                 _peak(ctx.fd_dirty) / (_peak(ctx.fd_model) + 1e-30),
                 pixels_per_rmtf,
             )
@@ -415,10 +405,10 @@ class RestoredStatsStep:
         dataset_noise = getattr(ctx.dataset, "noise", None)
         if dataset_residual is not None and dataset_noise is not None:
             res_vis = np.asarray(asnumpy(dataset_residual))
-            rms_vis = float(np.sqrt(np.mean(np.abs(res_vis) ** 2)))
+            rms_vis = float(np.sqrt(np.mean(np.abs(res_vis)**2)))
             print(
-                "  vis-space: rms(residual)=%.6e  noise=%.6e  ratio=%.4f"
-                % (rms_vis, float(dataset_noise), rms_vis / (float(dataset_noise) + 1e-30))
+                "  vis-space: rms(residual)=%.6e  noise=%.6e  ratio=%.4f" %
+                (rms_vis, float(dataset_noise), rms_vis / (float(dataset_noise) + 1e-30))
             )
         # Faraday-depth residual noise level (MAD-based, robust to correlation/outliers).
         fd_res = np.asarray(asnumpy(ctx.fd_residual))
@@ -460,9 +450,7 @@ class RestoredStatsStep:
         (
             ctx.rm_restored_quadratic_interpolation,
             ctx.restored_peak_quadratic_interpolation,
-        ) = estimate_peak_quadratic_interpolation(
-            ctx.fd_restored, ctx.parameter.cellsize
-        )
+        ) = estimate_peak_quadratic_interpolation(ctx.fd_restored, ctx.parameter.cellsize)
         # Use the Ricean-corrected peak and residual noise for the quadratic-interp RM error,
         # and adopt the quadratic-interpolated RM and its error as the canonical restored values.
         ctx.rm_restored_quadratic_interpolation_error = calculate_sigma_phi_peak(

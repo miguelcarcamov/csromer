@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import numpy as np
 
+
 def f1dim(objective_function, parameter):
     """
     Build 1D function f(alpha) = F(parameter.data - alpha * objective_function.dphi).
@@ -17,7 +18,9 @@ def f1dim(objective_function, parameter):
     grad = objective_function.dphi
     data = parameter.data
     if grad is None:
-        raise ValueError("objective_function.dphi must be set before f1dim (e.g. call calculate_gradient)")
+        raise ValueError(
+            "objective_function.dphi must be set before f1dim (e.g. call calculate_gradient)"
+        )
 
     def wrapped(alpha: float) -> float:
         x = data - alpha * grad

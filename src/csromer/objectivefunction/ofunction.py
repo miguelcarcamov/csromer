@@ -317,4 +317,5 @@ class OFunction:
             term._func_value = v
             value += term.reg * v
         self.phi = value
-        return float(value.compute()) if hasattr(value, "compute") else float(np.asarray(value).item())
+        return float(value.compute()) if hasattr(value,
+                                                 "compute") else float(np.asarray(value).item())

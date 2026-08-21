@@ -26,9 +26,7 @@ def _thin_source(P0=1.0, phi0=50.0):
     src = FaradayThinSource(nu=nu, s_nu=P0, phi_gal=phi0, spectral_idx=0.0)
     src.l2_ref = 0.0
     src.simulate()
-    src.data = (P0 * np.exp(2.0j * (phi0 * np.asarray(src.lambda2)))).astype(
-        np.complex64
-    )
+    src.data = (P0 * np.exp(2.0j * (phi0 * np.asarray(src.lambda2)))).astype(np.complex64)
     return src
 
 
@@ -48,9 +46,7 @@ def test_clean_kind_recovers_point_source_peak(clean_kind):
     half = 3.0 * recon.parameter.rmtf_fwhm
     P, phi = _window_peak(recon.fd_restored, recon.parameter.phi, phi0, half)
     assert abs(phi - phi0) < recon.parameter.rmtf_fwhm
-    assert abs(P - P0) / P0 < 0.12, (
-        f"clean_kind={clean_kind}: restored peak {P:.4f} vs P0={P0}"
-    )
+    assert abs(P - P0) / P0 < 0.12, (f"clean_kind={clean_kind}: restored peak {P:.4f} vs P0={P0}")
 
 
 def test_major_cycle_model_sparser_than_phi_on_oversampled_grid():
@@ -136,9 +132,7 @@ def test_phi_and_major_cycle_results_similar():
     rest_maj = np.asarray(asnumpy(r_maj.fd_restored))[win]
     # Align lengths if grids differ slightly (should not with same oversampling)
     assert rest_phi.shape == rest_maj.shape
-    rel_l2 = float(
-        np.linalg.norm(rest_phi - rest_maj) / (np.linalg.norm(rest_phi) + 1e-30)
-    )
+    rel_l2 = float(np.linalg.norm(rest_phi - rest_maj) / (np.linalg.norm(rest_phi) + 1e-30))
     assert rel_l2 < 0.20, (
         f"windowed restored L2 relative difference {rel_l2:.3f} too large "
         f"(P_phi={P_phi:.4f}, P_maj={P_maj:.4f})"
@@ -212,9 +206,7 @@ def test_all_methods_comparison_point_source():
         "nnz": int(np.sum(np.abs(r_cg.fd_model) > 1e-4)),
     }
     # Model fits data even when restored peak is low
-    md = r_cg.measurement_operator.dirty_spectrum(
-        r_cg.measurement_operator.forward(r_cg.fd_model)
-    )
+    md = r_cg.measurement_operator.dirty_spectrum(r_cg.measurement_operator.forward(r_cg.fd_model))
     P_af, _ = _window_peak(md, r_cg.parameter.phi, phi0, hw)
     results["cg_l0"]["P_dirty_AF"] = P_af
 
@@ -252,9 +244,7 @@ def test_all_methods_comparison_point_source():
     assert abs(results["dirty"]["P_rest"] - P0) / P0 < 0.03
     assert abs(results["clean_phi"]["P_rest"] - P0) / P0 < 0.12
     assert abs(results["clean_major_cycle"]["P_rest"] - P0) / P0 < 0.12
-    assert abs(
-        results["clean_phi"]["P_rest"] - results["clean_major_cycle"]["P_rest"]
-    ) / P0 < 0.12
+    assert abs(results["clean_phi"]["P_rest"] - results["clean_major_cycle"]["P_rest"]) / P0 < 0.12
 
     # λ→0 RML: restored attenuated, but dirty(A F) ≈ P0
     assert results["cg_l0"]["P_rest"] < 0.4 * P0

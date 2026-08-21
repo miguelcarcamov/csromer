@@ -13,8 +13,9 @@ from csromer.utils.array_utils import asnumpy
 
 def _norm2(arr):
     """Squared L2 norm (sum of |z|^2), works with numpy/dask."""
-    s = np.sum(np.abs(arr) ** 2)
-    return float(s.compute()) if hasattr(s, "compute") else float(np.sum(np.abs(np.asarray(arr)) ** 2))
+    s = np.sum(np.abs(arr)**2)
+    return float(s.compute()) if hasattr(s,
+                                         "compute") else float(np.sum(np.abs(np.asarray(arr))**2))
 
 
 # ---- DirectFourier1D fixtures and tests ----
@@ -24,7 +25,7 @@ def _norm2(arr):
 def dataset_direct_fourier():
     """Dataset with uniform lambda² coverage and unit weights so K = n_ch."""
     n = 64
-    lam2 = np.linspace(0.02, 0.1, n) ** 2
+    lam2 = np.linspace(0.02, 0.1, n)**2
     d = Dataset(lambda2=lam2)
     d.w = np.ones(n, dtype=np.float64)
     d.data = np.ones(n, dtype=np.complex64)
@@ -42,7 +43,9 @@ def parameter_direct_fourier(dataset_direct_fourier):
 class TestDirectFourier1DE2E:
     """DirectFourier1D: energy conservation, point source flux, RMTF."""
 
-    def test_energy_conservation_point_source(self, dataset_direct_fourier, parameter_direct_fourier):
+    def test_energy_conservation_point_source(
+        self, dataset_direct_fourier, parameter_direct_fourier
+    ):
         """For a 1 Jy point source (delta), ||A x||^2 = n_ch (diagonal of A^H A)."""
         op = DirectFourier1D(dataset=dataset_direct_fourier, parameter=parameter_direct_fourier)
         n_phi = parameter_direct_fourier.n
@@ -54,16 +57,20 @@ class TestDirectFourier1DE2E:
         energy_data = _norm2(b)
         np.testing.assert_allclose(energy_data, n_ch, rtol=1e-4)
 
-    def test_energy_conservation_adjoint_forward(self, dataset_direct_fourier, parameter_direct_fourier):
+    def test_energy_conservation_adjoint_forward(
+        self, dataset_direct_fourier, parameter_direct_fourier
+    ):
         """<x, A^H A x> = ||Ax||^2: adjoint(forward(x)) matches energy in data."""
         op = DirectFourier1D(dataset=dataset_direct_fourier, parameter=parameter_direct_fourier)
         n_phi = parameter_direct_fourier.n
-        x = np.random.randn(n_phi).astype(np.complex64) + 1j * np.random.randn(n_phi).astype(np.complex64)
+        x = np.random.randn(n_phi).astype(np.complex64
+                                          ) + 1j * np.random.randn(n_phi).astype(np.complex64)
         b = op.forward(x)
         a = op.adjoint(b)
         # <a, x> = <A^H A x, x> = ||Ax||^2 (real for this kernel)
         inner_val = np.real(np.vdot(a.ravel(), x.ravel()))
-        inner = float(inner_val.compute()) if hasattr(inner_val, "compute") else float(np.real(inner_val))
+        inner = float(inner_val.compute()) if hasattr(inner_val,
+                                                      "compute") else float(np.real(inner_val))
         energy_data = _norm2(b)
         np.testing.assert_allclose(inner, energy_data, rtol=1e-3)
 
@@ -93,7 +100,9 @@ class TestDirectFourier1DE2E:
         rmtf_peak = np.abs(rmtf_np[center])
         np.testing.assert_allclose(rmtf_peak, 1.0, rtol=1e-4)
 
-    def test_point_source_dirty_equals_1_over_rmtf_peak(self, dataset_direct_fourier, parameter_direct_fourier):
+    def test_point_source_dirty_equals_1_over_rmtf_peak(
+        self, dataset_direct_fourier, parameter_direct_fourier
+    ):
         """Dirty value at source = 1 Jy / RMTF_peak (same pixel); here both 1."""
         op = DirectFourier1D(dataset=dataset_direct_fourier, parameter=parameter_direct_fourier)
         n_phi = parameter_direct_fourier.n
@@ -117,7 +126,7 @@ class TestDirectFourier1DE2E:
 def dataset_gridded_fft():
     """Uniform lambda² and unit weights for GriddedFFT (K = n)."""
     n = 64
-    lam2 = np.linspace(0.01, 0.1, n) ** 2
+    lam2 = np.linspace(0.01, 0.1, n)**2
     d = Dataset(lambda2=lam2)
     d.w = np.ones(n, dtype=np.float64)
     d.data = np.ones(n, dtype=np.complex64)

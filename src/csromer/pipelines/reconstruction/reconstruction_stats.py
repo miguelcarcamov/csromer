@@ -12,9 +12,8 @@ from astropy.stats import sigma_clipped_stats
 from csromer.utils.array_utils import asnumpy
 
 
-def estimate_peak_quadratic_interpolation(
-    fd_signal: np.ndarray, cellsize: float
-) -> tuple[float, float]:
+def estimate_peak_quadratic_interpolation(fd_signal: np.ndarray,
+                                          cellsize: float) -> tuple[float, float]:
     """
     Estimate peak location and value using quadratic interpolation.
 
@@ -36,9 +35,8 @@ def estimate_peak_quadratic_interpolation(
     fd_signal_m1 = np.abs(fd_signal[index_0 - 1])
     fd_signal_p1 = np.abs(fd_signal[index_0 + 1])
 
-    pos_estimated_peak = (fd_signal_p1 - fd_signal_m1) / (
-        4 * fd_signal_0 - 2 * fd_signal_m1 - 2 * fd_signal_p1
-    )
+    pos_estimated_peak = (fd_signal_p1 -
+                          fd_signal_m1) / (4 * fd_signal_0 - 2 * fd_signal_m1 - 2 * fd_signal_p1)
     estimated_peak = fd_signal_0 - 0.25 * (fd_signal_m1 - fd_signal_p1) * pos_estimated_peak
     location = index_0 + pos_estimated_peak
     pos_phi_peak = (location - length_n / 2) * cellsize
@@ -132,9 +130,7 @@ def calculate_fd_signal_noise(
     return float(fd_signal_noise)
 
 
-def calculate_sigma_phi_peak(
-    rmtf_fwhm: float, fd_peak: float, fd_signal_noise: float
-) -> float:
+def calculate_sigma_phi_peak(rmtf_fwhm: float, fd_peak: float, fd_signal_noise: float) -> float:
     """Error on RM peak (rad/m²). Returns NaN if peak or noise is zero."""
     denom = 2.0 * fd_peak
     if denom == 0 or fd_signal_noise == 0:
@@ -152,7 +148,7 @@ def calculate_second_moment(phi: np.ndarray, fd_model: np.ndarray) -> float:
     if k == 0 or phi_nz.size == 0:
         return 0.0
     first = np.sum(phi_nz * fd_abs) / k
-    return float(np.sum(fd_abs * (phi_nz - first) ** 2) / k)
+    return float(np.sum(fd_abs * (phi_nz - first)**2) / k)
 
 
 def _dataset_sigma_sq(dataset) -> np.ndarray:
@@ -160,7 +156,7 @@ def _dataset_sigma_sq(dataset) -> np.ndarray:
     sigma = getattr(dataset, "sigma", None)
     if sigma is not None:
         s = np.asarray(asnumpy(sigma))
-        return np.abs(s) ** 2
+        return np.abs(s)**2
     w = getattr(dataset, "w", None)
     if w is not None:
         w_np = np.asarray(asnumpy(w))

@@ -62,7 +62,7 @@ def parameter_from_dataset(dataset_from_nu):
 
 def _build_operator_and_dataset(kind, dataset, parameter):
     """Build (op, dataset_to_use) for the given kind. Avoids pipeline import (pywt)."""
-    from csromer.transformers.dfts import GriddedFFT1D, NDFT1D, NUFFT1D
+    from csromer.transformers.dfts import NDFT1D, NUFFT1D, GriddedFFT1D
     from csromer.transformers.gridding import Gridding
 
     if kind == "direct":
@@ -130,7 +130,9 @@ def test_delta_phi_dirty_peak_close_to_one(dataset_from_nu, parameter_from_datas
         "135deg",
     ],
 )
-def test_handmade_fd_spectrum_1jy_dirty_peak_one(dataset_from_nu, parameter_from_dataset, kind, re, im):
+def test_handmade_fd_spectrum_1jy_dirty_peak_one(
+    dataset_from_nu, parameter_from_dataset, kind, re, im
+):
     """
     Complex fd_spectrum with |F| = 1 Jy at one φ (varying real/imag); forward then dirty_spectrum; peak ≈ 1.
     Dataset from uniform nu (irregular λ²). All operator kinds.

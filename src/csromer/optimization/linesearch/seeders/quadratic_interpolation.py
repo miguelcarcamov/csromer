@@ -63,7 +63,9 @@ class QuadraticInterpolationSeeder(StepSizeSeeder):
         f_current = getattr(objective_function, "phi", None)
         if f_current is None:
             f_current = objective_function.evaluate(x)
-        f_current = float(f_current.compute()) if hasattr(f_current, "compute") else float(np.asarray(f_current).item())
+        f_current = float(f_current.compute()) if hasattr(f_current, "compute") else float(
+            np.asarray(f_current).item()
+        )
         g0 = -_vdot_real(dphi, dphi)
         if self._prev_step is None or self._prev_f is None:
             step = self.init_step

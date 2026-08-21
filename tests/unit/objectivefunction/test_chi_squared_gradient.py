@@ -79,6 +79,4 @@ def test_chi_squared_gradient_at_zero_proportional_to_dirty(small_source_and_dft
     dirty_norm = np.sqrt(np.real(np.vdot(dirty.ravel(), dirty.ravel()))) + 1e-14
     cos_sim = np.real(np.vdot(grad.ravel(), dirty.ravel())) / (grad_norm * dirty_norm)
     # At x=0, grad = -A^H W b; dirty ∝ A^H W b, so grad and dirty are opposite (cos_sim ≈ -1)
-    assert cos_sim < -0.99, (
-        f"Gradient at 0 should be opposite to dirty (cos_sim={cos_sim:.4f})"
-    )
+    assert cos_sim < -0.99, (f"Gradient at 0 should be opposite to dirty (cos_sim={cos_sim:.4f})")

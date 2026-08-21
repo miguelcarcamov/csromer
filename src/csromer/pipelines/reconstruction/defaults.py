@@ -12,7 +12,7 @@ import numpy as np
 
 from csromer.objectivefunction import L1, ChiSquared, OFunction
 from csromer.reconstruction import Parameter
-from csromer.transformers.dfts import GriddedFFT1D, NDFT1D, NUFFT1D
+from csromer.transformers.dfts import NDFT1D, NUFFT1D, GriddedFFT1D
 from csromer.transformers.gridding import Gridding
 
 
@@ -90,9 +90,7 @@ def build_measurement_operator(
     )
 
 
-def default_objective_factory(
-    lambda_l_norm: float = 0.0, wavelet=None
-) -> Callable:
+def default_objective_factory(lambda_l_norm: float = 0.0, wavelet=None) -> Callable:
     """
     Return an objective factory: (measurement_operator, parameter) -> OFunction.
 
@@ -101,9 +99,7 @@ def default_objective_factory(
     """
 
     def factory(measurement_operator, parameter):
-        chi_squared = ChiSquared(
-            measurement_operator=measurement_operator, wavelet=wavelet
-        )
+        chi_squared = ChiSquared(measurement_operator=measurement_operator, wavelet=wavelet)
         terms = [chi_squared]
         if lambda_l_norm != 0:
             terms.append(L1(reg=lambda_l_norm))

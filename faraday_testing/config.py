@@ -55,7 +55,7 @@ def setup_matplotlib():
 # Faraday depth (plotting xlim ±value rad/m² per band; default when not set)
 # ---------------------------------------------------------------------------
 
-PHI_MAX = 1000.0   # rad/m² (fallback when band not in PHI_XLIM_BY_BAND)
+PHI_MAX = 1000.0  # rad/m² (fallback when band not in PHI_XLIM_BY_BAND)
 
 # FD plot x-axis half-width per band (wider for B5a/B5b so thick peaks are visible).
 PHI_XLIM_BY_BAND = {
@@ -67,22 +67,26 @@ PHI_XLIM_BY_BAND = {
     "SKA-MID B5b": 80000.0,
 }
 
-
 # ---------------------------------------------------------------------------
 # SKA bands (CLI key -> full name -> freq + short label)
 # ---------------------------------------------------------------------------
 
+
 def _ska_low_freq():
     return da.arange(50e6, 350e6, 3.9e3, dtype=np.float32)
+
 
 def _ska_mid_b1_freq():
     return da.arange(350e6, 1050e6, 13.44e3, dtype=np.float32)
 
+
 def _ska_mid_b2_freq():
     return da.arange(950e6, 1760e6, 13.44e3, dtype=np.float32)
 
+
 def _ska_mid_b5a_freq():
     return da.arange(4.6e9, 8.5e9, 13.44e3 * 10.0, dtype=np.float32)
+
 
 def _ska_mid_b5b_freq():
     return da.arange(8.3e9, 15.4e9, 13.44e3 * 10.0, dtype=np.float32)
@@ -90,11 +94,26 @@ def _ska_mid_b5b_freq():
 
 # Internal band id (used in code) -> config
 SKA_BANDS = {
-    "SKA-LOW":      {"freq": _ska_low_freq,   "short": "LOW"},
-    "SKA-MID B1":   {"freq": _ska_mid_b1_freq, "short": "B1"},
-    "SKA-MID B2":   {"freq": _ska_mid_b2_freq, "short": "B2"},
-    "SKA-MID B5a":  {"freq": _ska_mid_b5a_freq, "short": "B5a"},
-    "SKA-MID B5b":  {"freq": _ska_mid_b5b_freq, "short": "B5b"},
+    "SKA-LOW": {
+        "freq": _ska_low_freq,
+        "short": "LOW"
+    },
+    "SKA-MID B1": {
+        "freq": _ska_mid_b1_freq,
+        "short": "B1"
+    },
+    "SKA-MID B2": {
+        "freq": _ska_mid_b2_freq,
+        "short": "B2"
+    },
+    "SKA-MID B5a": {
+        "freq": _ska_mid_b5a_freq,
+        "short": "B5a"
+    },
+    "SKA-MID B5b": {
+        "freq": _ska_mid_b5b_freq,
+        "short": "B5b"
+    },
 }
 
 # CLI band choices: low, mid-b1, mid-b2, mid-b5a, mid-b5b -> internal name
@@ -179,10 +198,23 @@ def get_thick_params_for_band(band_name: str) -> dict:
         "spectral_idx": -0.7,
     }
 
+
 # Mixed source: thin + thick. Fallback only when band not in DELTA_PHI_NOM_BY_BAND.
 MIXED_CONFIG = [
-    {"type": "thin",  "phi_gal": -400.0, "s_nu": 0.5, "spectral_idx": -0.7, "dchi": 0.0},
-    {"type": "thick", "phi_fg": 50.0, "phi_center": 400.0, "s_nu": 0.5, "spectral_idx": -0.7},
+    {
+        "type": "thin",
+        "phi_gal": -400.0,
+        "s_nu": 0.5,
+        "spectral_idx": -0.7,
+        "dchi": 0.0
+    },
+    {
+        "type": "thick",
+        "phi_fg": 50.0,
+        "phi_center": 400.0,
+        "s_nu": 0.5,
+        "spectral_idx": -0.7
+    },
 ]
 
 # Mixed separation: thin at -half_sep, thick center at +half_sep.
@@ -216,8 +248,19 @@ def get_mixed_config_for_band(band_name: str) -> list:
     half_sep_from_beams = 0.5 * n_beams * delta_phi
     half_sep = max(half_sep_from_beams, half_sep_from_gap, phi_fg)
     return [
-        {"type": "thin", "phi_gal": -half_sep, "s_nu": 0.5, "spectral_idx": -0.7, "dchi": 0.0},
-        {"type": "thick", **{**thick_params, "phi_center": half_sep}},
+        {
+            "type": "thin",
+            "phi_gal": -half_sep,
+            "s_nu": 0.5,
+            "spectral_idx": -0.7,
+            "dchi": 0.0
+        },
+        {
+            "type": "thick",
+            **{
+                **thick_params, "phi_center": half_sep
+            }
+        },
     ]
 
 
@@ -242,9 +285,8 @@ NOISE_BAND_FACTOR = {
     "SKA-MID B5b": 0.9,
 }
 
-DEPOL_SIGMA_RM_THIN = 5.0   # rad/m²
+DEPOL_SIGMA_RM_THIN = 5.0  # rad/m²
 DEPOL_SIGMA_RM_THICK = 3.0  # rad/m²
-
 
 # ---------------------------------------------------------------------------
 # Reconstructor default and choices

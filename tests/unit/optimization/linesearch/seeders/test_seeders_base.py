@@ -9,6 +9,7 @@ from csromer.reconstruction.parameter import Parameter
 
 
 class ConcreteSeeder(StepSizeSeeder):
+
     def estimate_step_size(self, x, objective_function):
         return self.init_step
 

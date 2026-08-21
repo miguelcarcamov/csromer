@@ -6,8 +6,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from ..fi import Fi
 from ...utils.array_utils import math_module
+from ..fi import Fi
 
 if TYPE_CHECKING:
     from ...transformers.measurement_operator import MeasurementOperator
@@ -98,13 +98,13 @@ class ChiSquared(Fi):
     def calculate_prox(self, x, nu=0):
         """
         Proximal operator (not defined for chi-squared).
-        
+
         Public method. Chi-squared is differentiable, so proximal is not needed.
-        
+
         Args:
             x: Input array (unused)
             nu: Step size (unused)
-            
+
         Raises:
             NotImplementedError: Always raised (chi-squared is differentiable)
         """

@@ -6,17 +6,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from csromer.pipelines import (
-    ApplyNoiseStep,
-    ApplyRFIStep,
-    SimulateStep,
-    run_simulation,
-)
+from csromer.pipelines import ApplyNoiseStep, ApplyRFIStep, SimulateStep, run_simulation
 from csromer.simulation import FaradayThickSource, FaradayThinSource
-
 from faraday_testing.config import (
-    DEPOL_SIGMA_RM_THIN,
     DEPOL_SIGMA_RM_THICK,
+    DEPOL_SIGMA_RM_THIN,
     MIXED_CONFIG,
     NOISE_BAND_FACTOR,
     RFI_REMOVE_FRAC_PER_BAND,

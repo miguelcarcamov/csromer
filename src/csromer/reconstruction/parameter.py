@@ -12,7 +12,9 @@ from typing import TYPE_CHECKING, Union
 import numpy as np
 from astropy.convolution import Gaussian1DKernel
 
-from ..utils import complex_to_real, convolve as convolve_real, convolve_complex, next_power_2, real_to_complex
+from ..utils import complex_to_real
+from ..utils import convolve as convolve_real
+from ..utils import convolve_complex, next_power_2, real_to_complex
 from ..utils.array_utils import asnumpy, is_dask_array, length_of
 
 if TYPE_CHECKING:
@@ -28,11 +30,11 @@ except ImportError:
 class Parameter:
     """
     Faraday depth space parameter configuration.
-    
+
     Manages the phi grid (Faraday depth axis), cellsize, RMTF properties,
     and data storage. Supports conversion between complex and real representations
     for optimizers that require real-only arrays.
-    
+
     Attributes:
         phi: Faraday depth grid (rad/m²)
         data: Complex Faraday depth spectrum (or real stacked [real, imag])
@@ -53,7 +55,7 @@ class Parameter:
     def __init__(self, phi=None, cellsize=None, data=None):
         """
         Initialize Parameter.
-        
+
         Args:
             phi: Faraday depth grid (rad/m²). If None, will be computed by calculate_cellsize.
             cellsize: Grid spacing (rad/m²). If None, will be computed by calculate_cellsize.
@@ -83,7 +85,7 @@ class Parameter:
     def data(self, val):
         """
         Set data array and update n.
-        
+
         Args:
             val: Data array (complex or real stacked)
         """
@@ -113,10 +115,10 @@ class Parameter:
     ):
         """
         Calculate optimal cellsize and phi grid from dataset.
-        
+
         Computes RMTF properties (FWHM, max recovered width, max Faraday depth)
         and sets phi grid with appropriate cellsize and size.
-        
+
         Args:
             dataset: Dataset with lambda² coverage
             oversampling: Oversampling factor (default: 8.0)
@@ -131,7 +133,9 @@ class Parameter:
             if len(l2_nonzero) == 0:
                 l2_nonzero = l2
             l2_min = float(np.min(l2_nonzero))
-            l2_max = float(np.max(dataset.lambda2) if not is_dask_array(dataset.lambda2) else np.max(l2))
+            l2_max = float(
+                np.max(dataset.lambda2) if not is_dask_array(dataset.lambda2) else np.max(l2)
+            )
 
             # Single source of truth: RMTF FWHM from Dataset (full vs nominal by l2_ref)
             delta_phi_fwhm = dataset.delta_phi
@@ -185,7 +189,7 @@ class Parameter:
     def calculate_sparsity(self) -> float:
         """
         Calculate sparsity percentage of data.
-        
+
         Returns:
             Sparsity percentage (0-100): 100 * (1 - nonzeros / total_elements)
         """
@@ -201,9 +205,9 @@ class Parameter:
     def complex_data_to_real(self):
         """
         Convert Faraday depth from complex (n_phi,) to real stacked [real, imag] (2n).
-        
+
         For use with real-only optimizers. Converts complex array to [real, imag] stacked.
-        
+
         Raises:
             TypeError: If data is not complex
         """
@@ -217,9 +221,9 @@ class Parameter:
     def real_data_to_complex(self):
         """
         Convert Faraday depth from real stacked [real, imag] (2n) to complex (n_phi,).
-        
+
         For use after real-only optimization. Converts [real, imag] stacked array back to complex.
-        
+
         Raises:
             ValueError: If data is not real
         """
@@ -240,9 +244,7 @@ class Parameter:
         kernel /= kernel.max()
         return kernel
 
-    def convolve_fd(
-        self, x=None, rmtf_fwhm=None
-    ) -> tuple[np.ndarray, np.ndarray]:
+    def convolve_fd(self, x=None, rmtf_fwhm=None) -> tuple[np.ndarray, np.ndarray]:
         """
         Convolve Faraday depth spectrum with Gaussian restore beam (default from
         :meth:`_clean_beam_kernel`: peak-normalized, max=1).
@@ -276,10 +278,7 @@ class Parameter:
         )
         k_sum = float(np.asarray(kernel).sum())
         k_max = float(np.asarray(kernel).max())
-        print(
-            "  [convolve_fd] kernel len=%d sum=%.6f max=%.6f"
-            % (len(kernel), k_sum, k_max)
-        )
+        print("  [convolve_fd] kernel len=%d sum=%.6f max=%.6f" % (len(kernel), k_sum, k_max))
         data_src = x if x is not None else self.data
         data_np = np.asarray(asnumpy(data_src), dtype=np.complex64)
         complex_restored = convolve_complex(data_np, kernel, mode="same")

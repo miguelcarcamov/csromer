@@ -24,8 +24,7 @@ class TestSetupBracketing:
     def test_setup_bracketing_return_middle(self, simple_quadratic, param_x):
         simple_quadratic.calculate_gradient(param_x.data)
         result = setup_bracketing(
-            simple_quadratic, param_x,
-            initial_a=0.0, initial_b=1.0, return_middle=True
+            simple_quadratic, param_x, initial_a=0.0, initial_b=1.0, return_middle=True
         )
         f, a, c, b_ = result
         assert callable(f)

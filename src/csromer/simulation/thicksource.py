@@ -22,7 +22,7 @@ class FaradayThickSource(FaradaySource):
     def simulate(self):
         xp = math_module(self.lambda2)
         nu = c / xp.sqrt(self.lambda2)
-        k = (nu / self.nu_0) ** self.spectral_idx
+        k = (nu / self.nu_0)**self.spectral_idx
         const = self.s_nu * k
         z = self.phi_fg * self.lambda2 / np.pi
         sinc_z = xp.sin(np.pi * z) / (np.pi * z)
