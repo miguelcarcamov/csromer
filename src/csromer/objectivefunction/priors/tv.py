@@ -3,7 +3,7 @@ Total Variation (TV) regularization term for piecewise-constant reconstruction.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 import prox_tv as ptv
@@ -28,10 +28,8 @@ class TV(Fi):
 
     Attributes:
         is_differentiable: Always False (TV is non-differentiable at zero)
-        nu: Internal array (unused, kept for compatibility)
     """
     is_differentiable: bool = False
-    nu: np.ndarray = field(init=False, default=np.array([]))
 
     def __post_init__(self):
         """

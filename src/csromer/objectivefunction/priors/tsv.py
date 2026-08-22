@@ -3,7 +3,7 @@ Total Squared Variation (TSV) regularization term for smooth reconstruction.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 import prox_tv as ptv
@@ -25,10 +25,8 @@ class TSV(Fi):
 
     Attributes:
         is_differentiable: Always True (TSV is a smooth quadratic in the differences)
-        nu: Internal array (unused, kept for compatibility)
     """
     is_differentiable: bool = True
-    nu: np.ndarray = field(init=False, default=np.array([]))
 
     def __post_init__(self):
         """
