@@ -2,7 +2,7 @@
 
 csromer (Compressed Sensing ROtation MEasure Reconstructor) reconstructs Faraday depth
 spectra `F(φ)` from polarized radio spectra `P(λ²)` using regularized maximum likelihood
-(RML) and compressed-sensing techniques. Python 3.10+, OOP-first, dask-aware, built around
+(RML) and compressed-sensing techniques. Python 3.9–3.11, OOP-first, dask-aware, built around
 injectable factories and a step pipeline.
 
 ---
@@ -26,7 +26,13 @@ suite means you used the wrong interpreter, not that the tests are fine.
 
 ## 🔍 General principles
 
-- Python 3.10+. Readable, maintainable, as simple as the problem allows.
+- **Python 3.9–3.11.** The floor is 3.9 (3.8 is EOL); the ceiling is a hard constraint,
+  not a preference — `scipy==1.10.0`, `astropy==5.2.1`, `matplotlib==3.6.3` and
+  `PyWavelets==1.4.1` publish no wheels past cp311, so 3.12+ falls back to building from
+  source. Supporting newer interpreters requires bumping those pins first. `prox_tv` and
+  `pynufft` ship no wheels at all and always compile, so a cold environment needs a
+  C/C++ toolchain.
+- Readable, maintainable, as simple as the problem allows.
 - PEP 8, enforced by `yapf` (pep8 base, **column limit 100**, `dedent_closing_brackets`)
   and `isort` (line length 100, trailing commas). Config lives in `setup.cfg`.
 - Style is enforced by pre-commit hooks. **They rewrite files**, so a commit whose files

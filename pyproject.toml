@@ -24,7 +24,10 @@ maintainers = [
 ]
 name = "csromer"
 readme = "README.md"
-requires-python = ">=3.8"
+# 3.9 floor: 3.8 is EOL. Upper end is effectively 3.11 today because scipy==1.10.0,
+# astropy==5.2.1, matplotlib==3.6.3 and PyWavelets==1.4.1 publish no wheels past cp311;
+# raising it means bumping those pins in requirements.txt first. See tox.ini.
+requires-python = ">=3.9"
 
 [project.urls]
 Source = "https://github.com/miguelcarcamov/csromer"
