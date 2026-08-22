@@ -5,9 +5,11 @@
 
 name: testpypi-publish
 
+# TestPyPI is the pre-release stage: publish on merge to master. The real index is
+# published from publishpypi.yaml on `release: published`.
 on:
-  release:
-    types: [published]
+  push:
+    branches: [master]
 
 
 permissions:

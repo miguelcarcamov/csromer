@@ -1,7 +1,10 @@
 name: build-latest-container
 
+# Pushes the `latest` tag, so it must not run pre-merge: on a pull_request this would
+# publish an image built from unmerged code. Master is the pre-release stage; release is
+# the final one.
 on:
-  pull_request:
+  push:
     branches: [master]
     paths:
     - '**.py'
