@@ -5,10 +5,6 @@ spectra `F(φ)` from polarized radio spectra `P(λ²)` using regularized maximum
 (RML) and compressed-sensing techniques. Python 3.10+, OOP-first, dask-aware, built around
 injectable factories and a step pipeline.
 
-These conventions are adapted from the sibling project
-[pyralysis](https://gitlab.com/miguelcarcamov/pyralysis) `CONVENTIONS.md`. Where csromer
-diverges, the divergence is stated explicitly — follow **this** file for this repo.
-
 ---
 
 ## ⚠️ Environment — read this first
