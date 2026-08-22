@@ -1,7 +1,14 @@
 name: build-base-container
 
-# Docker image builds belong on the release path only: a PR that targets master.
+# Validate the image builds on a PR to master; publish it only once that PR lands.
+# Pushing from a pull_request would put an image built from unmerged code on the
+# registry under the tag everything else consumes.
 on:
+  push:
+    branches:
+    - master
+    paths:
+    - Dockerfile
   pull_request:
     branches:
     - master
@@ -40,5 +47,6 @@ jobs:
     - name: Build and Push Docker Image
       uses: docker/build-push-action@v2
       with:
-        push: true   # Will only build if this is not here
+        # Build on both events, publish only on the push to master.
+        push: ${{ github.event_name == 'push' }}
         tags: ${{ env.REGISTRY }}/${{ github.repository }}:base
