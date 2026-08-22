@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import prox_tv as ptv
 
+from ...utils.array_utils import math_module
 from ..fi import Fi
 
 
@@ -16,14 +17,17 @@ class TSV(Fi):
     """
     Total Squared Variation (TSV) regularization: sum(|x[i+1] - x[i]|^2).
 
-    Differentiable term that promotes smoothness (squared differences). Uses prox_tv
-    library for efficient proximal operator (TV2).
+    Differentiable term that promotes smooth (as opposed to piecewise-constant)
+    solutions. Unlike TV, TSV admits no isotropic/anisotropic distinction: squaring
+    the modulus makes the two definitions identical, since
+    |d|^2 == Re(d)^2 + Im(d)^2 exactly. It is therefore invariant under a global
+    phase rotation without needing a variant flag.
 
     Attributes:
-        is_differentiable: Always True (TSV is differentiable)
+        is_differentiable: Always True (TSV is a smooth quadratic in the differences)
         nu: Internal array (unused, kept for compatibility)
     """
-    is_differentiable: bool = False
+    is_differentiable: bool = True
     nu: np.ndarray = field(init=False, default=np.array([]))
 
     def __post_init__(self):
@@ -32,53 +36,72 @@ class TSV(Fi):
         """
         super().__post_init__()
 
-    def evaluate(self, x) -> float:
+    def evaluate(self, x):
         """
-        Evaluate TSV norm: sum(|x[i+1] - x[i]|^2).
+        Evaluate TSV: sum(|x[i+1] - x[i]|^2).
 
-        Public method. Computes sum of squared differences between adjacent elements.
+        Public method. Vectorized and dask-compatible; works for real and complex
+        input, where |.| is the complex modulus.
 
         Args:
-            x: Input array (1D)
+            x: Input array (1D, real or complex)
 
         Returns:
-            TSV norm (scalar)
+            TSV value (scalar)
         """
-        tv = 0.0
-        n = x.shape[0]
-        for i in range(0, n - 1):
-            tv += np.abs(x[i + 1] - x[i])**2
-        return tv
+        xp = math_module(x)
+        d = xp.diff(x)
+        result = xp.sum(xp.abs(d)**2)
+        self._func_value = result
+        return result
 
-    def calculate_gradient(self, x) -> np.ndarray:
+    def calculate_gradient(self, x):
         """
-        Calculate gradient of TSV.
+        Calculate gradient of TSV: 2 * D^T D x.
 
-        Public method. Computes gradient of squared differences.
+        Public method. TSV is smooth, so this is a true gradient, not a subgradient.
+        For f = sum_i |x[i+1] - x[i]|^2 the interior entries are
+        2 * ((x[i] - x[i-1]) - (x[i+1] - x[i])), with the endpoints carrying only the
+        single difference each participates in. Vectorized and dask-compatible.
 
         Args:
-            x: Input array (1D)
+            x: Input array (1D, real or complex)
 
         Returns:
-            Gradient array (same shape as x)
+            Gradient array (same shape and dtype as x)
         """
-        n = len(x)
-        dx = np.zeros(n, dtype=x.dtype)
-        for i in range(1, n - 1):
-            dx[i] = 2.0 * (np.sign(x[i] - x[i - 1]) - np.sign(x[i + 1] - x[i]))
-        return dx
+        xp = math_module(x)
+        d = 2.0 * xp.diff(x)
+        zero = xp.zeros(1, dtype=x.dtype)
+        # d[i] contributes -2*d[i] to entry i and +2*d[i] to entry i+1, which yields
+        # the correct endpoint terms without special-casing them.
+        grad = xp.concatenate([zero, d]) - xp.concatenate([d, zero])
+        self._grad_value = grad
+        return grad
 
-    def calculate_prox(self, x, nu: float = 0.0) -> np.ndarray:
+    def calculate_prox(self, x, nu: float = 0.0):
         """
-        Proximal operator: TSV denoising via prox_tv (TV2).
+        Proximal operator for TSV.
 
-        Public method. Uses prox_tv library for efficient TSV proximal operator.
+        Public method. Solves min_z 0.5*||z - x||^2 + reg*||D z||^2, whose solution is
+        the linear system (I + 2*reg*D^T D) z = x. Delegates to prox_tv for now.
+
+        Note: prox_tv's tv2_1d minimizes ||D z||_2 (the norm) rather than ||D z||^2
+        (its square), so this does not currently match evaluate(). Replacing it with an
+        exact tridiagonal solve is tracked in #27. Complex input is handled
+        channel-wise because prox_tv is real-valued.
 
         Args:
-            x: Input array (1D)
-            nu: Step size parameter (not used, threshold is self.reg)
+            x: Input array (1D, real or complex)
+            nu: Step size. The effective threshold is reg*nu, or reg when nu == 0.
 
         Returns:
-            TSV-denoised array (same shape as x)
+            Denoised array (same shape and dtype as x)
         """
-        return ptv.tv2_1d(x, self.reg)
+        reg = self.reg if nu == 0 else self.reg * nu
+        x_np = np.asarray(x)
+        if np.iscomplexobj(x_np):
+            real = ptv.tv2_1d(np.ascontiguousarray(x_np.real, dtype=np.float64), reg)
+            imag = ptv.tv2_1d(np.ascontiguousarray(x_np.imag, dtype=np.float64), reg)
+            return (real + 1j * imag).astype(x_np.dtype)
+        return ptv.tv2_1d(np.ascontiguousarray(x_np, dtype=np.float64), reg).astype(x_np.dtype)

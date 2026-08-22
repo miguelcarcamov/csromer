@@ -234,6 +234,30 @@ Two principles from that plan that affect day-to-day work:
 
 ---
 
+## 🚢 Release stages
+
+Work reaches users in three stages, mirrored by the CI triggers:
+
+| stage | trigger | what happens |
+| --- | --- | --- |
+| development | push or PR to any branch | tests run on Python 3.9, 3.10 and 3.11 |
+| pre-release | merge to `master` | package and container build, image published as `latest`, published to TestPyPI |
+| release | a published GitHub release | published to PyPI |
+
+Publishing never happens from a pull request — a PR has not landed yet, so anything it
+published would come from unmerged code.
+
+Record user-visible changes in `CHANGELOG.md` under `## [Unreleased]`, following
+[Keep a Changelog](https://keepachangelog.com/en/1.0.0/): use only the standard
+sections (Added, Changed, Deprecated, Removed, Fixed, Security), in that order.
+
+> **Versioning note:** the version is derived from git tags by `setuptools_scm`, and
+> the repository currently has **no tags**, so builds carry a development version
+> rather than a release number. A first tag needs to exist before the first PyPI
+> publish.
+
+---
+
 ## 💡 Error handling
 
 - Raise exceptions; do not return error codes or fail silently.
