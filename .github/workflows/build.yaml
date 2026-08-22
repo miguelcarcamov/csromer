@@ -3,14 +3,16 @@ name: build
 on:
   push:
     branches:
-    - development
-    paths:
-    - '**.py'
-    - '**.toml'
-    - requirements*.txt
+    - '**'
   pull_request:
     branches:
     - master
+
+# Supersede in-flight runs for the same ref rather than letting them pile up. The test
+# matrix is the expensive part, so this matters now that every push triggers it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -61,8 +63,19 @@ jobs:
       # provides the toolchain they need to compile.
     - name: Run tox
       run: tox -e ${{ matrix.toxenv }}
+    - name: Upload coverage
+      # One upload is enough; the suite is the same across the matrix.
+      if: matrix.python-version == '3.11'
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./coverage.xml
+        fail_ci_if_error: false
 
   build:
+    # Packaging check. PR-only: it needs registry credentials and adds little on a
+    # day-to-day push, where test-matrix is the signal that matters.
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     needs: lint
     container:
@@ -98,6 +111,11 @@ jobs:
         pip3 freeze | grep "csromer"
         python3 -c "import csromer"
   test:
+    # Runs the suite inside the prebuilt base image, i.e. against the conda-provided
+    # (ABI-matched) stack rather than the pip-resolved one in test-matrix. Different
+    # question, so it is kept -- but PR-only, since test-matrix already covers every
+    # supported interpreter on every push.
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     needs: build
     container:
