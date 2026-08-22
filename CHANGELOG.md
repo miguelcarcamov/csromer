@@ -38,6 +38,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   than both container publication and TestPyPI firing at release time.
 - `TV.evaluate`, `TV.calculate_gradient`, `TSV.evaluate` and `TSV.calculate_gradient`
   are vectorized rather than looping element by element, and are dask-compatible.
+- Container base image pinned to `python:3.11-slim-bookworm`. It was `ubuntu:latest`,
+  which resolves to Ubuntu 26.04 and offers Python 3.14 — far outside the supported
+  3.9–3.11 range, and a version for which none of the pinned scientific dependencies
+  publish wheels. Debian slim also keeps the image smaller and states the Python
+  version in the tag rather than inheriting whatever the distribution ships.
+- Container images build in fewer layers, with pip caching and bytecode generation
+  disabled and apt lists removed in the same layer that creates them.
+- `Dockerfile.prod` takes a `CSROMER_REF` build argument so an image can be pinned to
+  a tag or commit instead of always tracking the default branch.
+- Continuous integration lints with `pre-commit` rather than a bare yapf action, so it
+  runs the same hooks contributors run locally rather than a subset of them.
 - `TSV.is_differentiable` is now `True`, matching both its documentation and the fact
   that a sum of squared differences is smooth. This changes solver routing for
   objectives containing a `TSV` term.
@@ -73,6 +84,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   release.
 - TestPyPI published at the same moment as PyPI, which made the test index redundant.
   It now publishes at the pre-release stage.
+- The base `Dockerfile` passed `--no-install-recommends` on a line of its own with no
+  package names, where it did nothing, and spent four layers on two version prints, a
+  bare `pip3` that only printed usage, and an echo.
 - `README.md` link text failed markdownlint's `MD059` rule, which blocked every commit
   in the repository regardless of what was staged.
 

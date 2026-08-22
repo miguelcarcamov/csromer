@@ -23,13 +23,6 @@ jobs:
     # action that covered only part of what the repo already enforces locally, and
     # that was pinned to a mutable branch.
     - uses: pre-commit/action@v3.0.1
-      env:
-        # dockerfilelint flags two pre-existing Dockerfile issues (an unpinned
-        # `ubuntu:latest` base, and `--no-install-recommends` passed with no package
-        # names so it is a no-op). Both are real and worth fixing, but pinning the
-        # base tag changes the image's Python version, so that is a deliberate change
-        # rather than a lint cleanup. Skipped here so it does not gate every push.
-        SKIP: dockerfilelint
   build:
     runs-on: ubuntu-latest
     needs: lint

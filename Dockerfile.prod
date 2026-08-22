@@ -1,10 +1,23 @@
 FROM ghcr.io/miguelcarcamov/csromer:base
 
-RUN python3 --version
-RUN pip3 --version
-RUN echo "Installing CS-ROMER"
-RUN pip3 install git+https://github.com/miguelcarcamov/csromer.git
-RUN echo "Hello from CS-ROMER production image"
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# One layer instead of five. The previous file spent separate instructions on two
+# version prints and two echoes, each committing a layer for no artifact.
+#
+# Installing from git HEAD means the image contents depend on when it was built.
+# Point CSROMER_REF at a tag or commit for a reproducible image:
+#   docker build -f Dockerfile.prod --build-arg CSROMER_REF=v1.2.3 .
+ARG CSROMER_REF=master
+RUN python -m pip install --no-cache-dir \
+        "git+https://github.com/miguelcarcamov/csromer.git@${CSROMER_REF}" && \
+    python -c "import csromer; print('csromer', csromer.__version__)" && \
+    find /usr/local/lib/python3.11 -name '__pycache__' -type d -prune -exec rm -rf {} + && \
+    rm -rf /root/.cache
+
 LABEL org.opencontainers.image.source="https://github.com/miguelcarcamov/csromer"
 LABEL org.opencontainers.image.description="Container latest image for CS-ROMER"
 LABEL org.opencontainers.image.licenses=GPL3
