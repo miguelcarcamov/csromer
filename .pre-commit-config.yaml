@@ -1,5 +1,9 @@
+# `python3` by name, not by absolute path. Hook environments only need an
+# interpreter new enough for the hooks themselves (one requires >=3.10); this is
+# independent of the Python csromer supports. An absolute path here worked on one
+# machine and broke every CI runner and contributor.
 default_language_version:
-  python: /usr/bin/python3.14
+  python: python3
 
 repos:
 - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
@@ -25,7 +29,7 @@ repos:
   rev: v0.1.0
   hooks:
   - id: dockerfilelint
-    stages: [commit]
+    stages: [pre-commit]
 
 - repo: https://github.com/pycqa/isort
   rev: 8.0.1
