@@ -20,7 +20,7 @@ This code will run in a Python >= 3.9.7 environment with all the packages instal
 
 ## Examples
 
-Examples and use of cases can be found [here](https://github.com/miguelcarcamov/cs-romer-notebooks)
+Examples and use of cases can be found in the [cs-romer-notebooks repository](https://github.com/miguelcarcamov/cs-romer-notebooks)
 
 ## Citing
 
