@@ -60,10 +60,16 @@ jobs:
         cache-dependency-glob: requirements*.txt
     - name: Install Python ${{ matrix.python-version }}
       run: uv python install ${{ matrix.python-version }}
+    # prox_tv ships no wheels and compiles against LAPACKE. ubuntu-latest provides a
+    # C++ toolchain but not these headers, so the build fails on `lapacke.h: No such
+    # file or directory` without them. Mirrors what the base Dockerfile installs.
+    - name: Install native build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          libblas-dev liblapack-dev liblapacke-dev
     - name: Install tox
       run: uv tool install tox --with tox-uv
-      # prox_tv and pynufft are source-only distributions; ubuntu-latest already
-      # provides the toolchain they need to compile.
     - name: Run tox
       run: tox -e ${{ matrix.toxenv }}
     - name: Upload coverage
