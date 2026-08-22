@@ -1,11 +1,7 @@
 name: build-base-container
 
+# Docker image builds belong on the release path only: a PR that targets master.
 on:
-  push:
-    branches:
-    - development
-    paths:
-    - Dockerfile
   pull_request:
     branches:
     - master
