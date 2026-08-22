@@ -19,10 +19,22 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3.0.2
-    - uses: ptxmac/yapf-action@master
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
       with:
-        args: --recursive --verbose
+        python-version: '3.11'
+    # Runs every hook in .pre-commit-config.yaml -- yapf and isort, but also nbqa on
+    # the notebooks, markdownlint and the YAML/TOML formatters. Replaces a bare yapf
+    # action that covered only part of what the repo already enforces locally, and
+    # that was pinned to a mutable branch.
+    - uses: pre-commit/action@v3.0.1
+      env:
+        # dockerfilelint flags two pre-existing Dockerfile issues (an unpinned
+        # `ubuntu:latest` base, and `--no-install-recommends` passed with no package
+        # names so it is a no-op). Both are real and worth fixing, but pinning the
+        # base tag changes the image's Python version, so that is a deliberate change
+        # rather than a lint cleanup. Skipped here so it does not gate every push.
+        SKIP: dockerfilelint
 
   test-matrix:
     # Version-compatibility signal: installs from the pinned requirements with uv and
