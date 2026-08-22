@@ -6,6 +6,7 @@ HestenesStiefel, DaiYuan, HagerZhang. Supports dask arrays and Powell restart.
 from __future__ import annotations
 
 import copy
+import warnings
 from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Optional, Tuple, Union
@@ -60,6 +61,8 @@ class ConjugateGradient(GradientOptimizer):
         if self.guess_param is None or self.F_obj is None:
             raise ValueError("guess_param and F_obj cannot be None")
 
+        self._warn_if_nonsmooth_objective()
+
         current_param, prev_function_value, prev_gradient = self._initialize_optimization_state(
             self.guess_param
         )
@@ -102,6 +105,36 @@ class ConjugateGradient(GradientOptimizer):
             print(f"{self.method_name()} reached max iterations ({max_iter})")
         return prev_function_value, current_param
 
+    def _warn_if_nonsmooth_objective(self) -> None:
+        """
+        Warn when F_obj contains a non-differentiable term (e.g. L1).
+
+        Protected method. This CG implementation's line search only ever accepts a
+        step that does not increase the objective (see _line_search), so monotone
+        decrease itself is guaranteed even when a non-differentiable term
+        (L1.is_differentiable is False) is present. What is NOT guaranteed is that
+        CG's smoothed-gradient handling of such a term induces as much sparsity /
+        flux concentration as a proximal method: empirically, sweeping both the
+        term's smoothing epsilon and its regularization weight leaves CG's
+        recovered peak amplitude essentially unchanged, while a proximal method
+        (e.g. FISTA, using L1's exact soft-threshold prox) gets much closer to the
+        expected peak for the same problem. Prefer a proximal method when a
+        non-differentiable regularizer needs to meaningfully shape the solution.
+        """
+        terms = getattr(self.F_obj, "F", None) or []
+        if any(not getattr(term, "is_differentiable", True) for term in terms):
+            warnings.warn(
+                f"{self.method_name()}: F_obj contains a non-differentiable term "
+                "(e.g. L1 regularization). This CG implementation's line search "
+                "will not take a step that increases the objective, but its "
+                "smoothed-gradient handling of non-differentiable terms is weaker "
+                "at inducing sparsity/flux concentration than a proximal method's "
+                "exact prox step -- consider FISTA if that term needs to "
+                "meaningfully shape the solution.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+
     def _line_search(
         self,
         x,
@@ -127,7 +160,13 @@ class ConjugateGradient(GradientOptimizer):
             max_ls: Maximum line search iterations
 
         Returns:
-            Step size alpha
+            Step size alpha. If no trial alpha satisfies the Armijo condition within
+            max_ls backtracks, returns the best (lowest-f) trial alpha found, but only
+            if it actually improves on f_x -- otherwise returns 0.0 (no step). This
+            guarantees the caller never takes a step that increases the objective, even
+            when Armijo's sufficient-decrease condition can't be satisfied (e.g. near a
+            non-smooth kink, where backtracking can exhaust its budget without meeting
+            the strict Armijo margin even though smaller alphas do improve f).
         """
         c1 = c1 if c1 is not None else self.c1
         rho = rho if rho is not None else self.rho
@@ -136,6 +175,8 @@ class ConjugateGradient(GradientOptimizer):
         if slope >= 0:
             return 0.0
         alpha = 1.0
+        best_alpha = 0.0
+        best_f = f_x
         for _ in range(max_ls):
             x_new = x + alpha * d
             f_new = self.F_obj.evaluate(x_new)
@@ -145,8 +186,11 @@ class ConjugateGradient(GradientOptimizer):
                 f_new = float(np.asarray(f_new).item())
             if f_new <= f_x + c1 * alpha * slope:
                 return alpha
+            if f_new < best_f:
+                best_f = f_new
+                best_alpha = alpha
             alpha *= rho
-        return alpha
+        return best_alpha
 
     def conjugate_gradient_parameter(self, grad, grad_prev, dir_prev) -> Tuple[float, float, float]:
         """

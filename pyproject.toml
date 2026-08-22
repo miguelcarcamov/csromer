@@ -31,7 +31,8 @@ Source = "https://github.com/miguelcarcamov/csromer"
 
 [tool.pytest.ini_options]
 markers = [
-  "integration: full pipeline tests (simulate -> reconstruct). Require PyWavelets."
+  "integration: full pipeline tests (simulate -> reconstruct). Require PyWavelets.",
+  "slow: long-running regression tests (many iterations/variants). Run explicitly with `-m slow`."
 ]
 # So "import csromer" works when running pytest from repo root (with or without pip install -e .)
 pythonpath = ["src"]
